@@ -78,15 +78,23 @@ export function AppSidebar() {
       >
         <SidebarHeader className="p-4 flex items-center justify-between border-b border-border">
           <div className="flex items-center gap-2">
-            {!collapsed && (
-              <span className="text-xl font-bold bg-gold-gradient bg-clip-text text-transparent">
-                DJ Davizão
-              </span>
-            )}
-            {collapsed && (
-              <span className="text-2xl font-bold bg-gold-gradient bg-clip-text text-transparent">
-                DJ
-              </span>
+            {!collapsed ? (
+              <div className="flex items-center gap-2">
+                <img 
+                  src="/lovable-uploads/550bc18d-1965-4d01-9112-472d02b6b439.png" 
+                  alt="DJ Davizão Logo" 
+                  className="h-8 w-8"
+                />
+                <span className="text-xl font-bold bg-gold-gradient bg-clip-text text-transparent">
+                  DJ Davizão
+                </span>
+              </div>
+            ) : (
+              <img 
+                src="/lovable-uploads/550bc18d-1965-4d01-9112-472d02b6b439.png" 
+                alt="DJ Logo" 
+                className="h-8 w-8"
+              />
             )}
           </div>
           <Button
