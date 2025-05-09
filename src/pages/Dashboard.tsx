@@ -37,6 +37,14 @@ const Dashboard = () => {
     .filter((event) => event.status === 'upcoming')
     .slice(0, 3);
 
+  // Convert MonthlyData to ChartData format for charts
+  const chartData = mockMonthlyData.map(item => ({
+    name: item.month,
+    income: item.income,
+    expenses: item.expenses,
+    profit: item.profit
+  }));
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -90,11 +98,11 @@ const Dashboard = () => {
         {/* Charts section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <FinancialAreaChart
-            data={mockMonthlyData}
+            data={chartData}
             title="Visão Financeira Mensal"
           />
           <FinancialBarChart
-            data={mockMonthlyData}
+            data={chartData}
             title="Receitas vs Despesas"
           />
         </div>

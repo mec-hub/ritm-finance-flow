@@ -69,7 +69,6 @@ export function AppSidebar() {
 
   return (
     <Sidebar 
-      defaultCollapsed={collapsed} 
       className={cn(
         "h-screen fixed left-0 top-0 z-30 border-r border-border transition-all",
         collapsed ? "w-16" : "w-64"
