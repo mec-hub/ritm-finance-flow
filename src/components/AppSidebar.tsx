@@ -81,7 +81,7 @@ export function AppSidebar() {
             {!collapsed ? (
               <div className="flex items-center gap-2">
                 <img 
-                  src="/lovable-uploads/550bc18d-1965-4d01-9112-472d02b6b439.png" 
+                  src="/lovable-uploads/6dc40ed7-a14c-4559-9e6d-bc00337c35f1.png" 
                   alt="DJ Davizão Logo" 
                   className="h-8 w-8"
                 />
@@ -91,7 +91,7 @@ export function AppSidebar() {
               </div>
             ) : (
               <img 
-                src="/lovable-uploads/550bc18d-1965-4d01-9112-472d02b6b439.png" 
+                src="/lovable-uploads/6dc40ed7-a14c-4559-9e6d-bc00337c35f1.png" 
                 alt="DJ Logo" 
                 className="h-8 w-8"
               />
