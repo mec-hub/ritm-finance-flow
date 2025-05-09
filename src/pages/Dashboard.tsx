@@ -17,6 +17,7 @@ import { CategoryPieChart } from '@/components/ui/dashboard/PieChart';
 import { RecentTransactions } from '@/components/ui/dashboard/RecentTransactions';
 import { EventsList } from '@/components/ui/dashboard/EventsList';
 import { formatCurrency } from '@/utils/formatters';
+import { Link } from 'react-router-dom';
 import {
   mockDashboardStats,
   mockMonthlyData,
@@ -55,9 +56,11 @@ const Dashboard = () => {
               Visão geral das finanças e próximos eventos.
             </p>
           </div>
-          <Button>
-            Nova Transação
-            <ArrowRight className="ml-2 h-4 w-4" />
+          <Button asChild>
+            <Link to="/nova-transacao">
+              Nova Transação
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
           </Button>
         </div>
 
