@@ -69,21 +69,19 @@ export function AppSidebar() {
   ];
 
   return (
-    <SidebarProvider>
-      <Sidebar 
-        className={cn(
-          "h-screen fixed left-0 top-0 z-30 border-r border-border transition-all",
-          collapsed ? "w-16" : "w-64"
-        )}
-      >
-        <SidebarHeader className="p-4 flex items-center justify-between border-b border-border">
+    <div className={cn(
+      "h-full border-r border-border transition-all shrink-0",
+      collapsed ? "w-16" : "w-64"
+    )}>
+      <div className="h-full flex flex-col">
+        <div className="p-4 flex items-center justify-between border-b border-border">
           <div className="flex items-center gap-2">
             {!collapsed ? (
               <div className="flex items-center gap-2">
                 <img 
-                  src="/lovable-uploads/6dc40ed7-a14c-4559-9e6d-bc00337c35f1.png" 
+                  src="/lovable-uploads/5202181d-8da4-4676-b649-b3d3d396dcf2.png" 
                   alt="DJ Davizão Logo" 
-                  className="h-8 w-8"
+                  className="h-8 w-auto"
                 />
                 <span className="text-xl font-bold bg-gold-gradient bg-clip-text text-transparent">
                   DJ Davizão
@@ -91,9 +89,9 @@ export function AppSidebar() {
               </div>
             ) : (
               <img 
-                src="/lovable-uploads/6dc40ed7-a14c-4559-9e6d-bc00337c35f1.png" 
+                src="/lovable-uploads/5202181d-8da4-4676-b649-b3d3d396dcf2.png" 
                 alt="DJ Logo" 
-                className="h-8 w-8"
+                className="h-8 w-auto mx-auto"
               />
             )}
           </div>
@@ -101,13 +99,13 @@ export function AppSidebar() {
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
-            className="ml-auto"
+            className={collapsed ? "ml-auto" : ""}
           >
             {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </Button>
-        </SidebarHeader>
+        </div>
 
-        <SidebarContent className="px-3 py-4">
+        <div className="px-3 py-4 flex-1 overflow-y-auto">
           <nav className="space-y-2">
             {menuItems.map((item) => (
               <Link
@@ -125,9 +123,9 @@ export function AppSidebar() {
               </Link>
             ))}
           </nav>
-        </SidebarContent>
+        </div>
 
-        <SidebarFooter className="p-4 border-t border-border">
+        <div className="p-4 border-t border-border">
           <div className="flex items-center gap-3">
             {!collapsed && (
               <>
@@ -146,8 +144,8 @@ export function AppSidebar() {
               </div>
             )}
           </div>
-        </SidebarFooter>
-      </Sidebar>
-    </SidebarProvider>
+        </div>
+      </div>
+    </div>
   );
 }
