@@ -14,6 +14,7 @@ export interface Transaction {
   teamMemberId?: string;
   attachments?: string[];
   notes?: string;
+  percentageValue?: number;
 }
 
 export interface Event {
@@ -71,4 +72,14 @@ export interface DashboardStats {
   eventCount: number;
   upcomingEvents: number;
   clientCount: number;
+}
+
+export interface ContributorStats {
+  id: string;
+  name: string;
+  role: string;
+  income: number;
+  expenses: number;
+  profit: number;
+  transactionCount: number;
 }

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/use-toast';
 import { 
   Form,
   FormControl,
@@ -19,32 +20,84 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { Transaction } from '@/types';
+import { mockTransactions } from '@/data/mockData';
+
+// Team members for percentage allocation
+const teamMembers = [
+  { id: '1', name: 'DJ Davizão', role: 'Proprietário' },
+  { id: '2', name: 'João Silva', role: 'DJ Assistente' },
+  { id: '3', name: 'Maria Oliveira', role: 'Técnica de Som' },
+  { id: '4', name: 'Carlos Santos', role: 'Agente' },
+];
+
+interface TransactionFormData {
+  descricao: string;
+  valor: string;
+  categoria: string;
+  data: string;
+  tipo: 'receita' | 'despesa';
+  hasPercentage: boolean;
+  percentageValue: string;
+  teamMemberId: string;
+}
 
 const NovaTransacao = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
   
-  const form = useForm({
+  const form = useForm<TransactionFormData>({
     defaultValues: {
       descricao: '',
       valor: '',
       categoria: '',
-      data: '',
+      data: new Date().toISOString().split('T')[0], // Today's date as default
       tipo: 'receita',
+      hasPercentage: false,
+      percentageValue: '',
+      teamMemberId: '',
     },
   });
 
-  const onSubmit = (data: any) => {
+  const watchHasPercentage = form.watch("hasPercentage");
+  const watchTipo = form.watch("tipo");
+
+  const onSubmit = (data: TransactionFormData) => {
     setIsLoading(true);
     
-    // Simulando uma requisição
+    // Create a new transaction object
+    const newTransaction: Transaction = {
+      id: `trans-${Date.now()}`, // Generate unique ID
+      amount: parseFloat(data.valor),
+      description: data.descricao,
+      date: new Date(data.data),
+      category: data.categoria,
+      isRecurring: false,
+      type: data.tipo,
+    };
+
+    // If percentage is enabled, add contributor data
+    if (data.hasPercentage && data.teamMemberId) {
+      newTransaction.teamMemberId = data.teamMemberId;
+      newTransaction.notes = `Porcentagem: ${data.percentageValue}%`;
+    }
+
+    // In a real app, this would be an API call
+    // For now, we'll add it to our mock data
     setTimeout(() => {
-      console.log('Dados da transação:', data);
+      mockTransactions.push(newTransaction);
       setIsLoading(false);
-      alert('Transação adicionada com sucesso!');
-      form.reset();
+      toast({
+        title: "Transação adicionada",
+        description: `${data.tipo === 'receita' ? 'Receita' : 'Despesa'} de ${data.valor} adicionada com sucesso!`,
+      });
+      
+      // Navigate back to dashboard
+      navigate('/');
     }, 1000);
   };
 
@@ -167,6 +220,75 @@ const NovaTransacao = () => {
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="hasPercentage"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Atribuição Percentual</FormLabel>
+                      <FormDescription>
+                        Esta transação envolve distribuição percentual com colaboradores?
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              
+              {watchHasPercentage && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="teamMemberId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Colaborador</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um colaborador" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {teamMembers.map((member) => (
+                              <SelectItem key={member.id} value={member.id}>
+                                {member.name} - {member.role}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="percentageValue"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Valor Percentual (%)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: 15" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {watchTipo === 'receita' 
+                            ? 'Porcentagem da receita que será destinada ao colaborador' 
+                            : 'Porcentagem da despesa que será atribuída ao colaborador'}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
               
               <Button 
                 type="submit" 

@@ -1,13 +1,6 @@
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarProvider,
-} from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { 
   ChartBar, 
@@ -79,7 +72,7 @@ export function AppSidebar() {
             {!collapsed ? (
               <div className="flex items-center gap-2">
                 <img 
-                  src="/lovable-uploads/5202181d-8da4-4676-b649-b3d3d396dcf2.png" 
+                  src="/lovable-uploads/3867e3d9-7903-46de-9705-af9db3e627d0.png" 
                   alt="DJ Davizão Logo" 
                   className="h-8 w-auto"
                 />
@@ -89,7 +82,7 @@ export function AppSidebar() {
               </div>
             ) : (
               <img 
-                src="/lovable-uploads/5202181d-8da4-4676-b649-b3d3d396dcf2.png" 
+                src="/lovable-uploads/3867e3d9-7903-46de-9705-af9db3e627d0.png" 
                 alt="DJ Logo" 
                 className="h-8 w-auto mx-auto"
               />
