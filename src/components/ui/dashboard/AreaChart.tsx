@@ -29,14 +29,31 @@ export function FinancialAreaChart({
   title,
   height = 300
 }: FinancialChartProps) {
+  // Safe check to prevent useMemo from running with empty data
   const lines = useMemo(() => {
-    if (!data.length) return [];
+    if (!data || !data.length) return [];
     
     const firstItem = data[0];
     return Object.keys(firstItem).filter(key => key !== 'name');
   }, [data]);
 
   const colors = ['#FFD700', '#3B82F6', '#10B981', '#EC4899'];
+
+  // Add a safety check to prevent rendering if data is missing
+  if (!data || data.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-0">
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px] flex items-center justify-center">
+            No data available
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

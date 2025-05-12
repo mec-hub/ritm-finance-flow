@@ -1,4 +1,5 @@
 
+import { StrictMode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,28 +15,31 @@ import Configuracoes from "./pages/Configuracoes";
 import NovaTransacao from "./pages/NovaTransacao";
 import NotFound from "./pages/NotFound";
 
+// Create a client
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/financas" element={<Financas />} />
-          <Route path="/eventos" element={<Eventos />} />
-          <Route path="/clientes" element={<Clientes />} />
-          <Route path="/analises" element={<Analises />} />
-          <Route path="/relatorios" element={<Relatorios />} />
-          <Route path="/configuracoes" element={<Configuracoes />} />
-          <Route path="/nova-transacao" element={<NovaTransacao />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/financas" element={<Financas />} />
+            <Route path="/eventos" element={<Eventos />} />
+            <Route path="/clientes" element={<Clientes />} />
+            <Route path="/analises" element={<Analises />} />
+            <Route path="/relatorios" element={<Relatorios />} />
+            <Route path="/configuracoes" element={<Configuracoes />} />
+            <Route path="/nova-transacao" element={<NovaTransacao />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+        <Toaster />
+        <Sonner />
+      </TooltipProvider>
+    </QueryClientProvider>
+  </StrictMode>
 );
 
 export default App;

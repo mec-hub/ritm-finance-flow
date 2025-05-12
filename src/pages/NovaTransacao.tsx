@@ -69,7 +69,7 @@ const NovaTransacao = () => {
   const onSubmit = (data: TransactionFormData) => {
     setIsLoading(true);
     
-    // Create a new transaction object
+    // Create a new transaction object with correct type mapping
     const newTransaction: Transaction = {
       id: `trans-${Date.now()}`, // Generate unique ID
       amount: parseFloat(data.valor),
@@ -77,12 +77,13 @@ const NovaTransacao = () => {
       date: new Date(data.data),
       category: data.categoria,
       isRecurring: false,
-      type: data.tipo,
+      type: data.tipo === 'receita' ? 'income' : 'expense', // Map 'receita' to 'income' and 'despesa' to 'expense'
     };
 
     // If percentage is enabled, add contributor data
     if (data.hasPercentage && data.teamMemberId) {
       newTransaction.teamMemberId = data.teamMemberId;
+      newTransaction.percentageValue = parseFloat(data.percentageValue);
       newTransaction.notes = `Porcentagem: ${data.percentageValue}%`;
     }
 
