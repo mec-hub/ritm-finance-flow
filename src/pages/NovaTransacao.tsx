@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useForm } from 'react-hook-form';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, PlusCircle, Trash2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Transaction } from '@/types';
 import { mockTransactions } from '@/data/mockData';
@@ -35,6 +35,11 @@ const teamMembers = [
   { id: '4', name: 'Carlos Santos', role: 'Agente' },
 ];
 
+interface TeamPercentage {
+  teamMemberId: string;
+  percentageValue: string;
+}
+
 interface TransactionFormData {
   descricao: string;
   valor: string;
@@ -42,8 +47,7 @@ interface TransactionFormData {
   data: string;
   tipo: 'receita' | 'despesa';
   hasPercentage: boolean;
-  percentageValue: string;
-  teamMemberId: string;
+  teamPercentages: TeamPercentage[];
 }
 
 const NovaTransacao = () => {
@@ -58,13 +62,30 @@ const NovaTransacao = () => {
       data: new Date().toISOString().split('T')[0], // Today's date as default
       tipo: 'receita',
       hasPercentage: false,
-      percentageValue: '',
-      teamMemberId: '',
+      teamPercentages: [{ teamMemberId: '', percentageValue: '' }],
     },
   });
 
   const watchHasPercentage = form.watch("hasPercentage");
   const watchTipo = form.watch("tipo");
+  const watchTeamPercentages = form.watch("teamPercentages");
+
+  const addTeamMember = () => {
+    const currentTeamPercentages = form.getValues("teamPercentages");
+    form.setValue("teamPercentages", [
+      ...currentTeamPercentages,
+      { teamMemberId: '', percentageValue: '' }
+    ]);
+  };
+
+  const removeTeamMember = (index: number) => {
+    const currentTeamPercentages = form.getValues("teamPercentages");
+    if (currentTeamPercentages.length > 1) {
+      const updatedTeamPercentages = [...currentTeamPercentages];
+      updatedTeamPercentages.splice(index, 1);
+      form.setValue("teamPercentages", updatedTeamPercentages);
+    }
+  };
 
   const onSubmit = (data: TransactionFormData) => {
     setIsLoading(true);
@@ -81,10 +102,24 @@ const NovaTransacao = () => {
     };
 
     // If percentage is enabled, add contributor data
-    if (data.hasPercentage && data.teamMemberId) {
-      newTransaction.teamMemberId = data.teamMemberId;
-      newTransaction.percentageValue = parseFloat(data.percentageValue);
-      newTransaction.notes = `Porcentagem: ${data.percentageValue}%`;
+    if (data.hasPercentage && data.teamPercentages.length > 0) {
+      newTransaction.teamPercentages = data.teamPercentages
+        .filter(item => item.teamMemberId && item.percentageValue)
+        .map(item => ({
+          teamMemberId: item.teamMemberId,
+          percentageValue: parseFloat(item.percentageValue)
+        }));
+      
+      // Create a note with all percentages
+      const percentageNotes = data.teamPercentages
+        .filter(item => item.teamMemberId && item.percentageValue)
+        .map(item => {
+          const teamMember = teamMembers.find(tm => tm.id === item.teamMemberId);
+          return `${teamMember?.name || 'Colaborador'}: ${item.percentageValue}%`;
+        })
+        .join(', ');
+      
+      newTransaction.notes = `Porcentagens: ${percentageNotes}`;
     }
 
     // In a real app, this would be an API call
@@ -244,51 +279,84 @@ const NovaTransacao = () => {
               />
               
               {watchHasPercentage && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="teamMemberId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Colaborador</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione um colaborador" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {teamMembers.map((member) => (
-                              <SelectItem key={member.id} value={member.id}>
-                                {member.name} - {member.role}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <div className="space-y-4 border rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium">Atribuições percentuais</h3>
+                    <Button 
+                      type="button" 
+                      onClick={addTeamMember} 
+                      variant="outline"
+                      size="sm"
+                    >
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Adicionar colaborador
+                    </Button>
+                  </div>
                   
-                  <FormField
-                    control={form.control}
-                    name="percentageValue"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Valor Percentual (%)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: 15" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          {watchTipo === 'receita' 
-                            ? 'Porcentagem da receita que será destinada ao colaborador' 
-                            : 'Porcentagem da despesa que será atribuída ao colaborador'}
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
+                  {watchTeamPercentages.map((_, index) => (
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-4 first:border-t-0 first:pt-0">
+                      <FormField
+                        control={form.control}
+                        name={`teamPercentages.${index}.teamMemberId`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Colaborador {index + 1}</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione um colaborador" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {teamMembers.map((member) => (
+                                  <SelectItem key={member.id} value={member.id}>
+                                    {member.name} - {member.role}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name={`teamPercentages.${index}.percentageValue`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Valor Percentual (%)</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ex: 15" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="flex items-end">
+                        {watchTeamPercentages.length > 1 && (
+                          <Button 
+                            type="button" 
+                            onClick={() => removeTeamMember(index)}
+                            variant="destructive"
+                            size="sm"
+                            className="mt-auto"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Remover
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <FormDescription className="text-xs text-muted-foreground">
+                    {watchTipo === 'receita' 
+                      ? 'Porcentagem da receita que será destinada aos colaboradores' 
+                      : 'Porcentagem da despesa que será atribuída aos colaboradores'}
+                  </FormDescription>
+                </div>
               )}
               
               <Button 

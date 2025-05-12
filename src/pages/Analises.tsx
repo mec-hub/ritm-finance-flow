@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Layout } from '@/components/Layout';
 import { 
   Card, 
@@ -28,7 +28,7 @@ import {
   mockExpenseCategories
 } from '@/data/mockData';
 import { formatCurrency } from '@/utils/formatters';
-import { Transaction } from '@/types';
+import { Transaction, CategoryData } from '@/types';
 
 // Pre-defined team members for analysis
 const teamMembers = [
@@ -43,8 +43,157 @@ const Analises = () => {
   const [showContributorAnalysis, setShowContributorAnalysis] = useState(false);
   const [selectedContributor, setSelectedContributor] = useState<string>('all');
 
+  // Get filtered transactions based on selected contributor
+  const filteredTransactions = useMemo(() => {
+    if (selectedContributor === 'all') {
+      return mockTransactions;
+    }
+    
+    return mockTransactions.filter(transaction => {
+      // Check if transaction has the teamMemberId property (legacy)
+      if (transaction.teamMemberId === selectedContributor) {
+        return true;
+      }
+      
+      // Check if transaction has teamPercentages with the selected contributor
+      if (transaction.teamPercentages?.some(tp => tp.teamMemberId === selectedContributor)) {
+        return true;
+      }
+      
+      // Check notes as fallback (for older data)
+      if (transaction.notes?.toLowerCase().includes(
+        teamMembers.find(m => m.id === selectedContributor)?.name.toLowerCase() || ''
+      )) {
+        return true;
+      }
+      
+      return false;
+    });
+  }, [selectedContributor]);
+
+  // Process monthly data based on filtered transactions
+  const processedMonthlyData = useMemo(() => {
+    if (selectedContributor === 'all') {
+      return mockMonthlyData;
+    }
+    
+    // Create a map of months to initialize the data structure
+    const monthsMap = mockMonthlyData.reduce((acc, item) => {
+      acc[item.month] = { month: item.month, income: 0, expenses: 0, profit: 0 };
+      return acc;
+    }, {} as Record<string, { month: string; income: number; expenses: number; profit: number }>);
+    
+    // Process filtered transactions
+    filteredTransactions.forEach(transaction => {
+      const month = transaction.date.toLocaleString('default', { month: 'short' });
+      
+      if (monthsMap[month]) {
+        if (transaction.type === 'income') {
+          // For income, calculate the percentage if assigned to the contributor
+          if (transaction.teamPercentages?.some(tp => tp.teamMemberId === selectedContributor)) {
+            const contributorPercentage = transaction.teamPercentages.find(
+              tp => tp.teamMemberId === selectedContributor
+            )?.percentageValue || 0;
+            monthsMap[month].income += (transaction.amount * contributorPercentage) / 100;
+          } 
+          else if (transaction.teamMemberId === selectedContributor && transaction.percentageValue) {
+            monthsMap[month].income += (transaction.amount * transaction.percentageValue) / 100;
+          }
+          // If no percentage specified but directly assigned to contributor, count full amount
+          else if (transaction.teamMemberId === selectedContributor) {
+            monthsMap[month].income += transaction.amount;
+          }
+        } else {
+          // For expenses, handle similarly
+          if (transaction.teamPercentages?.some(tp => tp.teamMemberId === selectedContributor)) {
+            const contributorPercentage = transaction.teamPercentages.find(
+              tp => tp.teamMemberId === selectedContributor
+            )?.percentageValue || 0;
+            monthsMap[month].expenses += (transaction.amount * contributorPercentage) / 100;
+          }
+          else if (transaction.teamMemberId === selectedContributor && transaction.percentageValue) {
+            monthsMap[month].expenses += (transaction.amount * transaction.percentageValue) / 100;
+          }
+          else if (transaction.teamMemberId === selectedContributor) {
+            monthsMap[month].expenses += transaction.amount;
+          }
+        }
+        
+        // Recalculate profit
+        monthsMap[month].profit = monthsMap[month].income - monthsMap[month].expenses;
+      }
+    });
+    
+    return Object.values(monthsMap);
+  }, [selectedContributor, filteredTransactions]);
+
+  // Process category data for pie charts based on filtered transactions
+  const processedCategories = useMemo(() => {
+    if (selectedContributor === 'all') {
+      return {
+        income: mockIncomeCategories,
+        expense: mockExpenseCategories
+      };
+    }
+    
+    // Create maps to track category totals
+    const incomeByCategory: Record<string, number> = {};
+    const expensesByCategory: Record<string, number> = {};
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    
+    // Process filtered transactions
+    filteredTransactions.forEach(transaction => {
+      const category = transaction.category;
+      let amount = transaction.amount;
+      
+      // Adjust amount if percentage-based
+      if (transaction.teamPercentages?.some(tp => tp.teamMemberId === selectedContributor)) {
+        const contributorPercentage = transaction.teamPercentages.find(
+          tp => tp.teamMemberId === selectedContributor
+        )?.percentageValue || 0;
+        amount = (amount * contributorPercentage) / 100;
+      }
+      else if (transaction.teamMemberId === selectedContributor && transaction.percentageValue) {
+        amount = (amount * transaction.percentageValue) / 100;
+      }
+      else if (transaction.teamMemberId !== selectedContributor && !transaction.notes?.toLowerCase().includes(
+        teamMembers.find(m => m.id === selectedContributor)?.name.toLowerCase() || ''
+      )) {
+        // Skip if not related to the selected contributor
+        return;
+      }
+      
+      if (transaction.type === 'income') {
+        incomeByCategory[category] = (incomeByCategory[category] || 0) + amount;
+        totalIncome += amount;
+      } else {
+        expensesByCategory[category] = (expensesByCategory[category] || 0) + amount;
+        totalExpenses += amount;
+      }
+    });
+    
+    // Convert to CategoryData format
+    const incomeCategories: CategoryData[] = Object.entries(incomeByCategory).map(([name, value]) => ({
+      name,
+      value,
+      percentage: totalIncome > 0 ? (value / totalIncome) * 100 : 0
+    }));
+    
+    const expenseCategories: CategoryData[] = Object.entries(expensesByCategory).map(([name, value]) => ({
+      name,
+      value,
+      percentage: totalExpenses > 0 ? (value / totalExpenses) * 100 : 0
+    }));
+    
+    return {
+      income: incomeCategories,
+      expense: expenseCategories
+    };
+  }, [selectedContributor, filteredTransactions]);
+
   // Convert MonthlyData to ChartData format for charts
-  const chartData = mockMonthlyData.map(item => ({
+  const chartData = processedMonthlyData.map(item => ({
     name: item.month,
     income: item.income,
     expenses: item.expenses,
@@ -55,20 +204,49 @@ const Analises = () => {
   const getContributorStats = () => {
     // Group by contributor
     const contributorTotals = teamMembers.map(member => {
-      // In a real app, you would filter by actual teamMemberId
-      // For mock data, we'll use notes that contain the member name
-      const relatedTransactions = mockTransactions.filter(
-        t => t.teamMemberId === member.id || 
-             (t.notes && t.notes.toLowerCase().includes(member.name.toLowerCase()))
-      );
-
-      const income = relatedTransactions
-        .filter(t => t.type === 'income')
-        .reduce((sum, t) => sum + t.amount, 0);
+      // Filter transactions for this team member
+      const relatedTransactions = mockTransactions.filter(transaction => {
+        // Check direct assignment
+        if (transaction.teamMemberId === member.id) {
+          return true;
+        }
         
-      const expenses = relatedTransactions
-        .filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + t.amount, 0);
+        // Check through teamPercentages
+        if (transaction.teamPercentages?.some(tp => tp.teamMemberId === member.id)) {
+          return true;
+        }
+        
+        // Check notes as fallback
+        if (transaction.notes && transaction.notes.toLowerCase().includes(member.name.toLowerCase())) {
+          return true;
+        }
+        
+        return false;
+      });
+
+      // Calculate income and expenses based on percentages when applicable
+      let income = 0;
+      let expenses = 0;
+      
+      relatedTransactions.forEach(transaction => {
+        let amount = transaction.amount;
+        // Adjust for percentage if applicable
+        if (transaction.teamPercentages?.some(tp => tp.teamMemberId === member.id)) {
+          const percentage = transaction.teamPercentages.find(
+            tp => tp.teamMemberId === member.id
+          )?.percentageValue || 0;
+          amount = (amount * percentage) / 100;
+        }
+        else if (transaction.teamMemberId === member.id && transaction.percentageValue) {
+          amount = (amount * transaction.percentageValue) / 100;
+        }
+        
+        if (transaction.type === 'income') {
+          income += amount;
+        } else {
+          expenses += amount;
+        }
+      });
 
       return {
         id: member.id,
@@ -85,21 +263,6 @@ const Analises = () => {
   };
 
   const contributorStats = getContributorStats();
-
-  const getFilteredTransactions = (): Transaction[] => {
-    if (selectedContributor === 'all') {
-      return mockTransactions;
-    }
-    
-    return mockTransactions.filter(
-      t => t.teamMemberId === selectedContributor || 
-           (t.notes && t.notes.toLowerCase().includes(
-             teamMembers.find(m => m.id === selectedContributor)?.name.toLowerCase() || ''
-           ))
-    );
-  };
-
-  const filteredTransactions = getFilteredTransactions();
 
   return (
     <Layout>
@@ -216,11 +379,11 @@ const Analises = () => {
               {chartType === 'pie' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <CategoryPieChart
-                    data={mockIncomeCategories}
+                    data={processedCategories.income}
                     title="Distribuição de Receitas"
                   />
                   <CategoryPieChart
-                    data={mockExpenseCategories}
+                    data={processedCategories.expense}
                     title="Distribuição de Despesas"
                   />
                 </div>
@@ -231,11 +394,11 @@ const Analises = () => {
           <TabsContent value="categorias">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <CategoryPieChart
-                data={mockIncomeCategories}
+                data={processedCategories.income}
                 title="Distribuição de Receitas"
               />
               <CategoryPieChart
-                data={mockExpenseCategories}
+                data={processedCategories.expense}
                 title="Distribuição de Despesas"
               />
             </div>

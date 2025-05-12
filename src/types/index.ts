@@ -11,10 +11,16 @@ export interface Transaction {
   type: 'income' | 'expense';
   eventId?: string;
   clientId?: string;
-  teamMemberId?: string;
+  teamMemberId?: string; // For backward compatibility
+  teamPercentages?: TeamPercentageAssignment[];
   attachments?: string[];
   notes?: string;
-  percentageValue?: number;
+  percentageValue?: number; // For backward compatibility
+}
+
+export interface TeamPercentageAssignment {
+  teamMemberId: string;
+  percentageValue: number;
 }
 
 export interface Event {
