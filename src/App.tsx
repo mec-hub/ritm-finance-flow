@@ -13,6 +13,8 @@ import Analises from "./pages/Analises";
 import Relatorios from "./pages/Relatorios";
 import Configuracoes from "./pages/Configuracoes";
 import NovaTransacao from "./pages/NovaTransacao";
+import NovoCliente from "./pages/NovoCliente";
+import NovoEvento from "./pages/NovoEvento";
 import NotFound from "./pages/NotFound";
 
 // Create a client
@@ -32,6 +34,8 @@ const App = () => (
             <Route path="/relatorios" element={<Relatorios />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
             <Route path="/nova-transacao" element={<NovaTransacao />} />
+            <Route path="/novo-cliente" element={<NovoCliente />} />
+            <Route path="/novo-evento" element={<NovoEvento />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
