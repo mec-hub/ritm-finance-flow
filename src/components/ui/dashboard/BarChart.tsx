@@ -21,18 +21,19 @@ interface FinancialBarChartProps {
   data: ChartData[];
   title: string;
   height?: number;
+  dataKeys?: string[];
+  colors?: string[];
 }
 
 export function FinancialBarChart({
   data,
   title,
-  height = 300
+  height = 300,
+  dataKeys,
+  colors = ['#FFD700', '#ff7b00', '#10B981', '#EC4899']
 }: FinancialBarChartProps) {
-  // Dynamically determine the bars to show based on the first data item
-  const bars = Object.keys(data[0] || {}).filter(key => key !== 'name');
-  
-  // Define colors for each type of data
-  const colors = ['#FFD700', '#ff7b00', '#10B981', '#EC4899'];
+  // Dynamically determine the bars to show based on dataKeys or the first data item
+  const bars = dataKeys || Object.keys(data[0] || {}).filter(key => key !== 'name');
   
   return (
     <Card>

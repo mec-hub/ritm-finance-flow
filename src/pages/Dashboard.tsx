@@ -7,12 +7,13 @@ import {
   Calendar, 
   Users, 
   BarChart4,
-  ArrowRight
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Layout } from '@/components/Layout';
 import { StatCard } from '@/components/ui/dashboard/StatCard';
-import { FinancialAreaChart } from '@/components/ui/dashboard/AreaChart';
 import { FinancialBarChart } from '@/components/ui/dashboard/BarChart';
 import { CategoryPieChart } from '@/components/ui/dashboard/PieChart';
 import { RecentTransactions } from '@/components/ui/dashboard/RecentTransactions';
@@ -113,6 +114,16 @@ const Dashboard = () => {
   };
   
   const dashboardStats = calculateDashboardStats();
+  
+  const navigateYear = (direction: 'next' | 'prev') => {
+    const currentIndex = availableYears.indexOf(selectedYear);
+    
+    if (direction === 'next' && currentIndex > 0) {
+      setSelectedYear(availableYears[currentIndex - 1]);
+    } else if (direction === 'prev' && currentIndex < availableYears.length - 1) {
+      setSelectedYear(availableYears[currentIndex + 1]);
+    }
+  };
 
   return (
     <Layout>
@@ -166,16 +177,44 @@ const Dashboard = () => {
           />
         </div>
 
-        {/* Charts section */}
+        {/* Charts section with year selector */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <FinancialAreaChart
-            data={chartData}
-            title={`Visão Financeira Mensal (${selectedYear})`}
-          />
-          <FinancialBarChart
-            data={chartData}
-            title={`Receitas vs Despesas (${selectedYear})`}
-          />
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Visão Financeira</h2>
+              <div className="flex items-center space-x-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigateYear('prev')}
+                  disabled={availableYears.indexOf(selectedYear) === availableYears.length - 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium">{selectedYear}</span>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigateYear('next')}
+                  disabled={availableYears.indexOf(selectedYear) === 0}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <FinancialBarChart
+              data={chartData}
+              title={`Receitas vs Despesas (${selectedYear})`}
+            />
+          </div>
+          <div>
+            <FinancialBarChart
+              data={chartData}
+              title={`Lucro Mensal (${selectedYear})`}
+              dataKeys={['profit']}
+              colors={['#10B981']}
+            />
+          </div>
         </div>
 
         {/* Client events chart */}

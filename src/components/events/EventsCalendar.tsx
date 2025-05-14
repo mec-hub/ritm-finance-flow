@@ -74,32 +74,38 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
   
   return (
     <>
-      <div className="flex justify-center p-4">
-        <Calendar
-          mode="single"
-          selected={selectedDate}
-          onSelect={handleDayClick}
-          className="rounded-md border pointer-events-auto w-full max-w-5xl h-auto"
-          modifiers={{
-            hasEvent: (date) => hasEventOnDay(date),
-          }}
-          modifiersStyles={{
-            hasEvent: { 
-              fontWeight: 'bold', 
-              backgroundColor: 'rgba(37, 99, 235, 0.2)',
-              color: '#ffffff',
-              textDecoration: 'underline' 
-            },
-          }}
-          styles={{
-            months: { fontSize: '1.2rem' },
-            cell: { width: '4rem', height: '4rem' },
-            day: { transform: 'scale(1.3)', fontWeight: 'bold' },
-            caption: { fontSize: '1.3rem', fontWeight: 'bold' },
-            head_cell: { fontSize: '1.1rem', paddingTop: '1rem', paddingBottom: '1rem', fontWeight: 'bold' },
-            nav_button: { transform: 'scale(1.5)', margin: '0 0.5rem' }
-          }}
-        />
+      <div className="flex justify-center p-4 w-full">
+        <Card className="w-full max-w-full">
+          <CardContent className="p-4">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={handleDayClick}
+              className="rounded-md border w-full pointer-events-auto"
+              modifiers={{
+                hasEvent: (date) => hasEventOnDay(date),
+              }}
+              modifiersStyles={{
+                hasEvent: { 
+                  fontWeight: 'bold', 
+                  backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                  color: '#000000',
+                  textDecoration: 'underline' 
+                },
+              }}
+              styles={{
+                month: { width: '100%' },
+                months: { width: '100%' },
+                table: { width: '100%' },
+                cell: { width: '14.28%', height: '60px' },
+                day: { transform: 'scale(1.2)', fontWeight: 'bold' },
+                caption: { fontSize: '1.3rem', fontWeight: 'bold' },
+                head_cell: { fontSize: '1.1rem', paddingTop: '1rem', paddingBottom: '1rem', fontWeight: 'bold' },
+                nav_button: { transform: 'scale(1.5)', margin: '0 0.5rem' }
+              }}
+            />
+          </CardContent>
+        </Card>
       </div>
       
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
