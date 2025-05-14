@@ -69,7 +69,7 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
           mode="single"
           selected={selectedDate}
           onSelect={handleDayClick}
-          className="rounded-md border pointer-events-auto"
+          className="rounded-md border pointer-events-auto w-full max-w-4xl h-auto"
           modifiers={{
             hasEvent: (date) => hasEventOnDay(date),
           }}
@@ -79,6 +79,13 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
               backgroundColor: 'rgba(37, 99, 235, 0.1)',
               textDecoration: 'underline' 
             },
+          }}
+          styles={{
+            months: { fontSize: '1rem' },
+            cell: { width: '3rem', height: '3rem' },
+            day: { transform: 'scale(1.2)' },
+            caption: { fontSize: '1.1rem' },
+            head_cell: { fontSize: '1rem', paddingTop: '0.75rem', paddingBottom: '0.75rem' },
           }}
         />
       </div>

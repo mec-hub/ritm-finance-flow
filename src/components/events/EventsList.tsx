@@ -17,17 +17,33 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import { toast } from '@/components/ui/use-toast';
 import { formatDate, formatCurrency } from '@/utils/formatters';
 import { Event } from '@/types';
-import { MoreHorizontal, Search } from 'lucide-react';
+import { MoreHorizontal, Search, Eye, Trash2, Edit } from 'lucide-react';
 
 interface EventsListProps {
   events: Event[];
 }
 
-export function EventsList({ events }: EventsListProps) {
+export function EventsList({ events: initialEvents }: EventsListProps) {
+  const [events, setEvents] = useState<Event[]>(initialEvents);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed' | 'cancelled'>('all');
+  
+  // For details, edit, delete modals
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   
   const filteredEvents = events.filter(event => {
     const matchesSearch = 
@@ -51,6 +67,41 @@ export function EventsList({ events }: EventsListProps) {
       default:
         return <Badge>{status}</Badge>;
     }
+  };
+  
+  const handleDelete = () => {
+    if (selectedEvent) {
+      // Filter out the event we want to delete
+      const updatedEvents = events.filter(event => event.id !== selectedEvent.id);
+      setEvents(updatedEvents);
+      
+      // Close dialog
+      setDeleteDialogOpen(false);
+      
+      // Show toast notification
+      toast({
+        title: "Evento excluído",
+        description: `O evento "${selectedEvent.title}" foi excluído com sucesso.`,
+      });
+      
+      // Clear selection
+      setSelectedEvent(null);
+    }
+  };
+  
+  const handleViewDetails = (event: Event) => {
+    setSelectedEvent(event);
+    setViewDetailsOpen(true);
+  };
+  
+  const handleEdit = (event: Event) => {
+    setSelectedEvent(event);
+    // In a full implementation, we would redirect to an edit page
+    // For now, we'll just show a toast
+    toast({
+      title: "Função em desenvolvimento",
+      description: `A edição do evento "${event.title}" será implementada em breve.`,
+    });
   };
   
   return (
@@ -135,9 +186,24 @@ export function EventsList({ events }: EventsListProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Ver detalhes</DropdownMenuItem>
-                        <DropdownMenuItem>Editar</DropdownMenuItem>
-                        <DropdownMenuItem>Excluir</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleViewDetails(event)}>
+                          <Eye className="mr-2 h-4 w-4" />
+                          Ver detalhes
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(event)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setSelectedEvent(event);
+                            setDeleteDialogOpen(true);
+                          }}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Excluir
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -147,6 +213,94 @@ export function EventsList({ events }: EventsListProps) {
           </TableBody>
         </Table>
       </div>
+
+      {/* View Details Dialog */}
+      <Dialog open={viewDetailsOpen} onOpenChange={setViewDetailsOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          {selectedEvent && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedEvent.title}</DialogTitle>
+                <DialogDescription>
+                  Detalhes completos do evento
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="grid gap-4 py-4">
+                <div className="flex justify-between">
+                  <div className="text-sm font-medium">Status</div>
+                  <div>{getStatusBadge(selectedEvent.status)}</div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-sm font-medium">Data</div>
+                    <div className="text-sm">{formatDate(selectedEvent.date)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">Cliente</div>
+                    <div className="text-sm">{selectedEvent.client}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">Local</div>
+                    <div className="text-sm">{selectedEvent.location}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">Receita Estimada</div>
+                    <div className="text-sm">{formatCurrency(selectedEvent.estimatedRevenue)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">Despesa Estimada</div>
+                    <div className="text-sm">{formatCurrency(selectedEvent.estimatedExpenses)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">Lucro Estimado</div>
+                    <div className="text-sm">{formatCurrency(selectedEvent.estimatedRevenue - selectedEvent.estimatedExpenses)}</div>
+                  </div>
+                </div>
+                
+                {selectedEvent.notes && (
+                  <div>
+                    <div className="text-sm font-medium">Observações</div>
+                    <div className="text-sm mt-1">{selectedEvent.notes}</div>
+                  </div>
+                )}
+              </div>
+              
+              <DialogFooter>
+                <Button onClick={() => handleEdit(selectedEvent)} className="mr-2">
+                  <Edit className="mr-2 h-4 w-4" />
+                  Editar
+                </Button>
+                <DialogClose asChild>
+                  <Button variant="outline">Fechar</Button>
+                </DialogClose>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+            <DialogDescription>
+              Você tem certeza que deseja excluir o evento "{selectedEvent?.title}"? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

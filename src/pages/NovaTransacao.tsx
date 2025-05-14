@@ -22,10 +22,10 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useForm } from 'react-hook-form';
-import { ArrowLeft, PlusCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, PlusCircle, Trash2, CalendarDays } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Transaction } from '@/types';
-import { mockTransactions } from '@/data/mockData';
+import { Transaction, Event } from '@/types';
+import { mockTransactions, mockEvents } from '@/data/mockData';
 
 // Team members for percentage allocation
 const teamMembers = [
@@ -48,11 +48,18 @@ interface TransactionFormData {
   tipo: 'receita' | 'despesa';
   hasPercentage: boolean;
   teamPercentages: TeamPercentage[];
+  isEventRelated: boolean;
+  eventId: string;
 }
 
 const NovaTransacao = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  
+  // Filter only upcoming and completed events for selection
+  const availableEvents = mockEvents.filter(event => 
+    event.status === 'upcoming' || event.status === 'completed'
+  );
   
   const form = useForm<TransactionFormData>({
     defaultValues: {
@@ -63,12 +70,15 @@ const NovaTransacao = () => {
       tipo: 'receita',
       hasPercentage: false,
       teamPercentages: [{ teamMemberId: '', percentageValue: '' }],
+      isEventRelated: false,
+      eventId: '',
     },
   });
 
   const watchHasPercentage = form.watch("hasPercentage");
   const watchTipo = form.watch("tipo");
   const watchTeamPercentages = form.watch("teamPercentages");
+  const watchIsEventRelated = form.watch("isEventRelated");
 
   const addTeamMember = () => {
     const currentTeamPercentages = form.getValues("teamPercentages");
@@ -120,6 +130,20 @@ const NovaTransacao = () => {
         .join(', ');
       
       newTransaction.notes = `Porcentagens: ${percentageNotes}`;
+    }
+
+    // If event related, add event ID
+    if (data.isEventRelated && data.eventId) {
+      newTransaction.eventId = data.eventId;
+      
+      // Add event information to notes
+      const selectedEvent = mockEvents.find(event => event.id === data.eventId);
+      if (selectedEvent) {
+        const eventNote = `Evento: ${selectedEvent.title} (${new Date(selectedEvent.date).toLocaleDateString()})`;
+        newTransaction.notes = newTransaction.notes 
+          ? `${newTransaction.notes}. ${eventNote}`
+          : eventNote;
+      }
     }
 
     // In a real app, this would be an API call
@@ -256,6 +280,63 @@ const NovaTransacao = () => {
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="isEventRelated"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Relacionada a Evento</FormLabel>
+                      <FormDescription>
+                        Esta transação está relacionada a um evento específico?
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              
+              {watchIsEventRelated && (
+                <FormField
+                  control={form.control}
+                  name="eventId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Evento Relacionado</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um evento" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {availableEvents.length > 0 ? (
+                            availableEvents.map((event) => (
+                              <SelectItem key={event.id} value={event.id}>
+                                {event.title} ({new Date(event.date).toLocaleDateString()})
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-events" disabled>
+                              Nenhum evento disponível
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Selecione o evento ao qual esta transação está relacionada.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}
