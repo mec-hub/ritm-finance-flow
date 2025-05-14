@@ -1,5 +1,5 @@
-
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Table,
   TableBody,
@@ -39,6 +39,7 @@ export function EventsList({ events: initialEvents }: EventsListProps) {
   const [events, setEvents] = useState<Event[]>(initialEvents);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed' | 'cancelled'>('all');
+  const navigate = useNavigate();
   
   // For details, edit, delete modals
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -95,13 +96,8 @@ export function EventsList({ events: initialEvents }: EventsListProps) {
   };
   
   const handleEdit = (event: Event) => {
-    setSelectedEvent(event);
-    // In a full implementation, we would redirect to an edit page
-    // For now, we'll just show a toast
-    toast({
-      title: "Função em desenvolvimento",
-      description: `A edição do evento "${event.title}" será implementada em breve.`,
-    });
+    // Navigate to edit page with event data
+    navigate(`/editar-evento/${event.id}`, { state: { eventData: event } });
   };
   
   return (

@@ -1,4 +1,5 @@
 
+import { useState } from 'react';
 import { 
   ChartBar, 
   DollarSign, 
@@ -16,6 +17,7 @@ import { FinancialBarChart } from '@/components/ui/dashboard/BarChart';
 import { CategoryPieChart } from '@/components/ui/dashboard/PieChart';
 import { RecentTransactions } from '@/components/ui/dashboard/RecentTransactions';
 import { EventsList } from '@/components/ui/dashboard/EventsList';
+import { ClientEventChart } from '@/components/clients/ClientEventChart';
 import { formatCurrency } from '@/utils/formatters';
 import { Link } from 'react-router-dom';
 import {
@@ -25,9 +27,20 @@ import {
   mockEvents,
   mockIncomeCategories,
   mockExpenseCategories,
+  mockClients
 } from '@/data/mockData';
 
 const Dashboard = () => {
+  // Track selected year for financial charts
+  const availableYears = [...new Set(
+    mockMonthlyData.map(item => new Date(item.month + ' 1, 2023').getFullYear())
+  )].sort((a, b) => b - a);
+  
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(
+    availableYears.includes(currentYear) ? currentYear : availableYears[0] || currentYear
+  );
+  
   // Only get most recent transactions for display
   const recentTransactions = [...mockTransactions]
     .sort((a, b) => b.date.getTime() - a.date.getTime())
@@ -38,13 +51,68 @@ const Dashboard = () => {
     .filter((event) => event.status === 'upcoming')
     .slice(0, 3);
 
+  // Filter monthly data by selected year
+  const filteredMonthlyData = mockMonthlyData.filter(item => {
+    const itemYear = new Date(item.month + ' 1, 2023').getFullYear();
+    return itemYear === selectedYear;
+  });
+
   // Convert MonthlyData to ChartData format for charts
-  const chartData = mockMonthlyData.map(item => ({
+  const chartData = filteredMonthlyData.map(item => ({
     name: item.month,
     income: item.income,
     expenses: item.expenses,
     profit: item.profit
   }));
+
+  // Calculate updated dashboard stats
+  const calculateDashboardStats = () => {
+    // Total revenue from transactions
+    const totalRevenue = mockTransactions
+      .filter(tx => tx.type === 'income')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+    
+    // Total expenses from transactions
+    const totalExpenses = mockTransactions
+      .filter(tx => tx.type === 'expense')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+    
+    // Net profit
+    const netProfit = totalRevenue - totalExpenses;
+    
+    // Count of events
+    const eventCount = mockEvents.length;
+    
+    // Count of upcoming events
+    const upcomingEvents = mockEvents.filter(event => event.status === 'upcoming').length;
+    
+    // Average revenue per show
+    const completedEvents = mockEvents.filter(event => event.status === 'completed');
+    const averageRevenuePerShow = completedEvents.length > 0 
+      ? completedEvents.reduce((sum, event) => sum + (event.actualRevenue || event.estimatedRevenue), 0) / completedEvents.length
+      : 0;
+    
+    // Average cost per event
+    const averageCostPerEvent = eventCount > 0
+      ? mockEvents.reduce((sum, event) => sum + event.estimatedExpenses, 0) / eventCount
+      : 0;
+    
+    // Count of active clients
+    const clientCount = mockClients.length;
+    
+    return {
+      totalRevenue,
+      totalExpenses,
+      netProfit,
+      eventCount,
+      upcomingEvents,
+      averageRevenuePerShow,
+      averageCostPerEvent,
+      clientCount
+    };
+  };
+  
+  const dashboardStats = calculateDashboardStats();
 
   return (
     <Layout>
@@ -68,7 +136,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="Receita Total"
-            value={formatCurrency(mockDashboardStats.totalRevenue)}
+            value={formatCurrency(dashboardStats.totalRevenue)}
             description="Receita acumulada no ano"
             trend="up"
             trendValue="+12%"
@@ -76,7 +144,7 @@ const Dashboard = () => {
           />
           <StatCard
             title="Despesas Totais"
-            value={formatCurrency(mockDashboardStats.totalExpenses)}
+            value={formatCurrency(dashboardStats.totalExpenses)}
             description="Despesas acumuladas no ano"
             trend="up"
             trendValue="+8%"
@@ -84,7 +152,7 @@ const Dashboard = () => {
           />
           <StatCard
             title="Lucro Líquido"
-            value={formatCurrency(mockDashboardStats.netProfit)}
+            value={formatCurrency(dashboardStats.netProfit)}
             description="Lucro acumulado no ano"
             trend="up"
             trendValue="+15%"
@@ -92,8 +160,8 @@ const Dashboard = () => {
           />
           <StatCard
             title="Eventos"
-            value={mockDashboardStats.eventCount.toString()}
-            description={`${mockDashboardStats.upcomingEvents} próximos eventos`}
+            value={dashboardStats.eventCount.toString()}
+            description={`${dashboardStats.upcomingEvents} próximos eventos`}
             icon={Calendar}
           />
         </div>
@@ -102,12 +170,17 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <FinancialAreaChart
             data={chartData}
-            title="Visão Financeira Mensal"
+            title={`Visão Financeira Mensal (${selectedYear})`}
           />
           <FinancialBarChart
             data={chartData}
-            title="Receitas vs Despesas"
+            title={`Receitas vs Despesas (${selectedYear})`}
           />
+        </div>
+
+        {/* Client events chart */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ClientEventChart clients={mockClients} events={mockEvents} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -131,19 +204,19 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <StatCard
             title="Média por Show"
-            value={formatCurrency(mockDashboardStats.averageRevenuePerShow)}
+            value={formatCurrency(dashboardStats.averageRevenuePerShow)}
             description="Receita média por apresentação"
             icon={BarChart4}
           />
           <StatCard
             title="Custo por Evento"
-            value={formatCurrency(mockDashboardStats.averageCostPerEvent)}
+            value={formatCurrency(dashboardStats.averageCostPerEvent)}
             description="Despesa média por evento"
             icon={TrendingUp}
           />
           <StatCard
             title="Total de Clientes"
-            value={mockDashboardStats.clientCount.toString()}
+            value={dashboardStats.clientCount.toString()}
             description="Clientes ativos"
             icon={Users}
           />

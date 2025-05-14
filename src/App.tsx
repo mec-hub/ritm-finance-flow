@@ -1,49 +1,46 @@
 
-import { StrictMode } from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Dashboard from "./pages/Dashboard";
-import Financas from "./pages/Financas";
-import Eventos from "./pages/Eventos";
-import Clientes from "./pages/Clientes";
-import Analises from "./pages/Analises";
-import Relatorios from "./pages/Relatorios";
-import Configuracoes from "./pages/Configuracoes";
-import NovaTransacao from "./pages/NovaTransacao";
-import NovoCliente from "./pages/NovoCliente";
-import NovoEvento from "./pages/NovoEvento";
-import NotFound from "./pages/NotFound";
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from '@/components/ui/toaster';
 
-// Create a client
-const queryClient = new QueryClient();
+// Pages
+import Index from '@/pages/Index';
+import NotFound from '@/pages/NotFound';
+import Dashboard from '@/pages/Dashboard';
+import Clientes from '@/pages/Clientes';
+import NovoCliente from '@/pages/NovoCliente';
+import EditarCliente from '@/pages/EditarCliente';
+import Eventos from '@/pages/Eventos';
+import NovoEvento from '@/pages/NovoEvento';
+import EditarEvento from '@/pages/EditarEvento';
+import Financas from '@/pages/Financas';
+import NovaTransacao from '@/pages/NovaTransacao';
+import Analises from '@/pages/Analises';
+import Relatorios from '@/pages/Relatorios';
+import Configuracoes from '@/pages/Configuracoes';
 
-const App = () => (
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/financas" element={<Financas />} />
-            <Route path="/eventos" element={<Eventos />} />
-            <Route path="/clientes" element={<Clientes />} />
-            <Route path="/analises" element={<Analises />} />
-            <Route path="/relatorios" element={<Relatorios />} />
-            <Route path="/configuracoes" element={<Configuracoes />} />
-            <Route path="/nova-transacao" element={<NovaTransacao />} />
-            <Route path="/novo-cliente" element={<NovoCliente />} />
-            <Route path="/novo-evento" element={<NovoEvento />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-        <Toaster />
-        <Sonner />
-      </TooltipProvider>
-    </QueryClientProvider>
-  </StrictMode>
-);
+const App = () => {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/clientes" element={<Clientes />} />
+        <Route path="/novo-cliente" element={<NovoCliente />} />
+        <Route path="/editar-cliente/:id" element={<EditarCliente />} />
+        <Route path="/eventos" element={<Eventos />} />
+        <Route path="/novo-evento" element={<NovoEvento />} />
+        <Route path="/editar-evento/:id" element={<EditarEvento />} />
+        <Route path="/financas" element={<Financas />} />
+        <Route path="/nova-transacao" element={<NovaTransacao />} />
+        <Route path="/analises" element={<Analises />} />
+        <Route path="/relatorios" element={<Relatorios />} />
+        <Route path="/configuracoes" element={<Configuracoes />} />
+        <Route path="/index" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      <Toaster />
+    </BrowserRouter>
+  );
+};
 
 export default App;

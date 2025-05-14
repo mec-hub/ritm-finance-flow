@@ -42,6 +42,7 @@ export interface Client {
   name: string;
   contact: string;
   email: string;
+  phone?: string;
   totalRevenue: number;
   lastEvent?: Date;
   notes?: string;

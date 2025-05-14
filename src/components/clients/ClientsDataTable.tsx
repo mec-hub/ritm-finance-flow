@@ -1,5 +1,5 @@
-
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Table,
   TableBody,
@@ -37,6 +37,7 @@ interface ClientsDataTableProps {
 export function ClientsDataTable({ clients: initialClients }: ClientsDataTableProps) {
   const [clients, setClients] = useState(initialClients);
   const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
   
   // For details, edit, delete modals
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -54,13 +55,8 @@ export function ClientsDataTable({ clients: initialClients }: ClientsDataTablePr
   };
   
   const handleEdit = (client: Client) => {
-    setSelectedClient(client);
-    // In a full implementation, we would redirect to an edit page
-    // For now, we'll just show a toast
-    toast({
-      title: "Função em desenvolvimento",
-      description: `A edição do cliente "${client.name}" será implementada em breve.`,
-    });
+    // Navigate to edit page with client data
+    navigate(`/editar-cliente/${client.id}`, { state: { clientData: client } });
   };
   
   const handleDelete = () => {

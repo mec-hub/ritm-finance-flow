@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Client } from '@/types';
 import { mockClients } from '@/data/mockData';
 
@@ -28,41 +28,65 @@ interface ClientFormData {
   notes?: string;
 }
 
-const NovoCliente = () => {
+const EditarCliente = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { id } = useParams();
+  const location = useLocation();
+  const clientData = location.state?.clientData;
+  
+  // Find the client if not provided in location state
+  useEffect(() => {
+    if (!clientData && id) {
+      const client = mockClients.find(client => client.id === id);
+      if (!client) {
+        toast({
+          title: "Erro",
+          description: "Cliente não encontrado",
+          variant: "destructive"
+        });
+        navigate('/clientes');
+      }
+    }
+  }, [clientData, id, navigate]);
   
   const form = useForm<ClientFormData>({
     defaultValues: {
-      name: '',
-      contact: '',
-      email: '',
-      phone: '',
-      notes: '',
+      name: clientData?.name || '',
+      contact: clientData?.contact || '',
+      email: clientData?.email || '',
+      phone: clientData?.phone || '',
+      notes: clientData?.notes || '',
     },
   });
 
   const onSubmit = (data: ClientFormData) => {
     setIsLoading(true);
     
-    // Create a new client object
-    const newClient: Client = {
-      id: `client-${Date.now()}`, // Generate unique ID
+    // Create an updated client object
+    const updatedClient: Client = {
+      id: id || clientData.id,
       name: data.name,
       contact: data.contact,
       email: data.email,
       phone: data.phone,
-      totalRevenue: 0, // Initial revenue is zero
+      totalRevenue: clientData?.totalRevenue || 0,
+      lastEvent: clientData?.lastEvent,
       notes: data.notes,
     };
 
     // In a real app, this would be an API call
     setTimeout(() => {
-      mockClients.push(newClient);
+      // Update the client in the mockClients array
+      const clientIndex = mockClients.findIndex(client => client.id === id || client.id === clientData.id);
+      if (clientIndex !== -1) {
+        mockClients[clientIndex] = updatedClient;
+      }
+      
       setIsLoading(false);
       toast({
-        title: "Cliente adicionado",
-        description: `${data.name} foi adicionado com sucesso!`,
+        title: "Cliente atualizado",
+        description: `${data.name} foi atualizado com sucesso!`,
       });
       
       // Navigate back to clients page
@@ -85,9 +109,9 @@ const NovoCliente = () => {
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Novo Cliente</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Editar Cliente</h1>
             <p className="text-muted-foreground">
-              Adicione um novo cliente ao sistema.
+              Atualize as informações do cliente.
             </p>
           </div>
         </div>
@@ -179,7 +203,7 @@ const NovoCliente = () => {
                 className="w-full bg-gold-gradient text-black hover:brightness-110"
                 disabled={isLoading}
               >
-                {isLoading ? 'Salvando...' : 'Salvar Cliente'}
+                {isLoading ? 'Atualizando...' : 'Atualizar Cliente'}
               </Button>
             </form>
           </Form>
@@ -189,4 +213,4 @@ const NovoCliente = () => {
   );
 };
 
-export default NovoCliente;
+export default EditarCliente;

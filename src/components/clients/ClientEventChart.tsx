@@ -3,8 +3,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Client, Event } from '@/types';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface ClientEventChartProps {
@@ -83,21 +82,24 @@ export function ClientEventChart({ clients, events }: ClientEventChartProps) {
           </div>
         </CardHeader>
         <CardContent>
-          <ChartContainer
-            config={{
-              eventos: {
-                label: "Eventos",
-                color: "#2563eb"
-              }
-            }}
-          >
-            <BarChart data={eventsPerMonth}>
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="eventos" fill="var(--color-eventos, #2563eb)" />
-            </BarChart>
-          </ChartContainer>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={eventsPerMonth}>
+                <XAxis dataKey="month" />
+                <YAxis allowDecimals={false} />
+                <Tooltip
+                  formatter={(value) => [`${value} eventos`, 'Quantidade']}
+                  contentStyle={{
+                    backgroundColor: '#121212',
+                    borderColor: '#333',
+                    borderRadius: 6,
+                    fontSize: 12
+                  }}
+                />
+                <Bar dataKey="eventos" fill="#2563eb" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </CardContent>
       </Card>
       
@@ -106,21 +108,24 @@ export function ClientEventChart({ clients, events }: ClientEventChartProps) {
           <CardTitle>Principais Clientes</CardTitle>
         </CardHeader>
         <CardContent>
-          <ChartContainer
-            config={{
-              eventos: {
-                label: "Eventos",
-                color: "#f59e0b"
-              }
-            }}
-          >
-            <BarChart data={eventsPerClient} layout="vertical">
-              <XAxis type="number" />
-              <YAxis type="category" dataKey="name" width={100} />
-              <Tooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="eventos" fill="var(--color-eventos, #f59e0b)" />
-            </BarChart>
-          </ChartContainer>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={eventsPerClient} layout="vertical">
+                <XAxis type="number" />
+                <YAxis type="category" dataKey="name" width={120} />
+                <Tooltip
+                  formatter={(value) => [`${value} eventos`, 'Quantidade']}
+                  contentStyle={{
+                    backgroundColor: '#121212',
+                    borderColor: '#333',
+                    borderRadius: 6,
+                    fontSize: 12
+                  }}
+                />
+                <Bar dataKey="eventos" fill="#f59e0b" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </CardContent>
       </Card>
     </>

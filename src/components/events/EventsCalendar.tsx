@@ -8,10 +8,15 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
+  DialogFooter,
+  DialogClose
 } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Event } from '@/types';
 import { formatDate, formatCurrency } from '@/utils/formatters';
+import { useNavigate } from 'react-router-dom';
+import { Edit } from 'lucide-react';
 
 interface EventsCalendarProps {
   events: Event[];
@@ -20,6 +25,7 @@ interface EventsCalendarProps {
 export function EventsCalendar({ events }: EventsCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const navigate = useNavigate();
   
   // Create events by date mapping
   const eventsByDate: { [key: string]: Event[] } = {};
@@ -47,6 +53,10 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
       setIsDetailsOpen(true);
     }
   };
+
+  const handleEditEvent = (event: Event) => {
+    navigate(`/editar-evento/${event.id}`, { state: { eventData: event } });
+  };
   
   // Function to get status badge color
   const getStatusBadge = (status: string) => {
@@ -69,29 +79,31 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
           mode="single"
           selected={selectedDate}
           onSelect={handleDayClick}
-          className="rounded-md border pointer-events-auto w-full max-w-4xl h-auto"
+          className="rounded-md border pointer-events-auto w-full max-w-5xl h-auto"
           modifiers={{
             hasEvent: (date) => hasEventOnDay(date),
           }}
           modifiersStyles={{
             hasEvent: { 
               fontWeight: 'bold', 
-              backgroundColor: 'rgba(37, 99, 235, 0.1)',
+              backgroundColor: 'rgba(37, 99, 235, 0.2)',
+              color: '#ffffff',
               textDecoration: 'underline' 
             },
           }}
           styles={{
-            months: { fontSize: '1rem' },
-            cell: { width: '3rem', height: '3rem' },
-            day: { transform: 'scale(1.2)' },
-            caption: { fontSize: '1.1rem' },
-            head_cell: { fontSize: '1rem', paddingTop: '0.75rem', paddingBottom: '0.75rem' },
+            months: { fontSize: '1.2rem' },
+            cell: { width: '4rem', height: '4rem' },
+            day: { transform: 'scale(1.3)', fontWeight: 'bold' },
+            caption: { fontSize: '1.3rem', fontWeight: 'bold' },
+            head_cell: { fontSize: '1.1rem', paddingTop: '1rem', paddingBottom: '1rem', fontWeight: 'bold' },
+            nav_button: { transform: 'scale(1.5)', margin: '0 0.5rem' }
           }}
         />
       </div>
       
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Eventos em {selectedDate && formatDate(selectedDate)}</DialogTitle>
             <DialogDescription>
@@ -133,10 +145,23 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
                       </div>
                     )}
                   </div>
+                  
+                  <div className="mt-4 flex justify-end">
+                    <Button onClick={() => handleEditEvent(event)} size="sm">
+                      <Edit className="mr-2 h-4 w-4" />
+                      Editar
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
+          
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Fechar</Button>
+            </DialogClose>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
