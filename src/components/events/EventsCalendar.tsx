@@ -88,7 +88,7 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
               modifiersStyles={{
                 hasEvent: { 
                   fontWeight: 'bold', 
-                  backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                  backgroundColor: 'rgba(255, 191, 0, 0.2)',
                   color: '#000000',
                   textDecoration: 'underline' 
                 },
