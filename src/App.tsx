@@ -14,6 +14,7 @@ import NovoEvento from '@/pages/NovoEvento';
 import EditarEvento from '@/pages/EditarEvento';
 import Financas from '@/pages/Financas';
 import NovaTransacao from '@/pages/NovaTransacao';
+import EditarTransacao from '@/pages/EditarTransacao';
 import Analises from '@/pages/Analises';
 import Relatorios from '@/pages/Relatorios';
 import Configuracoes from '@/pages/Configuracoes';
@@ -22,7 +23,7 @@ const App = () => {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Index />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/clientes" element={<Clientes />} />
         <Route path="/novo-cliente" element={<NovoCliente />} />
@@ -32,6 +33,7 @@ const App = () => {
         <Route path="/editar-evento/:id" element={<EditarEvento />} />
         <Route path="/financas" element={<Financas />} />
         <Route path="/nova-transacao" element={<NovaTransacao />} />
+        <Route path="/editar-transacao/:id" element={<EditarTransacao />} />
         <Route path="/analises" element={<Analises />} />
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/configuracoes" element={<Configuracoes />} />
