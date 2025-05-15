@@ -183,7 +183,7 @@ const EventsByMonth = () => {
             data={eventsByMonth}
             title=""
             dataKeys={['events']}
-            colors={['#8B5CF6']}
+            colors={['#ffbf00']}
           />
         </div>
       </CardContent>
