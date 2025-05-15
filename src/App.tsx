@@ -15,6 +15,7 @@ import EditarEvento from '@/pages/EditarEvento';
 import Financas from '@/pages/Financas';
 import NovaTransacao from '@/pages/NovaTransacao';
 import EditarTransacao from '@/pages/EditarTransacao';
+import DetalhesTransacao from '@/pages/DetalhesTransacao';
 import Analises from '@/pages/Analises';
 import Relatorios from '@/pages/Relatorios';
 import Configuracoes from '@/pages/Configuracoes';
@@ -34,6 +35,7 @@ const App = () => {
         <Route path="/financas" element={<Financas />} />
         <Route path="/nova-transacao" element={<NovaTransacao />} />
         <Route path="/editar-transacao/:id" element={<EditarTransacao />} />
+        <Route path="/detalhes-transacao/:id" element={<DetalhesTransacao />} />
         <Route path="/analises" element={<Analises />} />
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/configuracoes" element={<Configuracoes />} />

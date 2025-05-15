@@ -23,18 +23,21 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Trash2, Calendar } from 'lucide-react';
+import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Trash2, Calendar, Eye } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Transaction } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { mockTransactions } from '@/data/mockData';
+import { useNavigate } from 'react-router-dom';
 
 interface RecurringTransactionsProps {
   transactions: Transaction[];
 }
 
 export function RecurringTransactions({ transactions }: RecurringTransactionsProps) {
+  const navigate = useNavigate();
+  
   // Helper function to get next occurrence date
   const getNextOccurrenceDate = (transaction: Transaction): Date => {
     const today = new Date();
@@ -42,15 +45,8 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
     let nextDate = new Date(lastDate);
     
     while (nextDate <= today) {
-      if (transaction.recurrenceInterval === 'weekly') {
-        nextDate.setDate(nextDate.getDate() + 7);
-      } else if (transaction.recurrenceInterval === 'monthly') {
-        nextDate.setMonth(nextDate.getMonth() + 1);
-      } else if (transaction.recurrenceInterval === 'quarterly') {
-        nextDate.setMonth(nextDate.getMonth() + 3);
-      } else if (transaction.recurrenceInterval === 'yearly') {
-        nextDate.setFullYear(nextDate.getFullYear() + 1);
-      }
+      // Simplified to just handle monthly recurrence
+      nextDate.setMonth(nextDate.getMonth() + 1);
     }
     
     return nextDate;
@@ -116,6 +112,30 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
       window.location.reload();
     }
   };
+  
+  const handleDuplicate = (transaction: Transaction) => {
+    // Create a duplicate transaction with a new ID
+    const duplicateTransaction: Transaction = {
+      ...transaction,
+      id: `trans-${Date.now()}`, // Generate new ID
+      description: `${transaction.description} (Cópia)`
+    };
+    
+    // Add to mockTransactions
+    mockTransactions.push(duplicateTransaction);
+    
+    toast({
+      title: "Transação duplicada",
+      description: "Uma cópia da transação foi criada com sucesso."
+    });
+    
+    // Force re-render by refreshing the page
+    window.location.reload();
+  };
+  
+  const handleViewDetails = (id: string) => {
+    navigate(`/detalhes-transacao/${id}`);
+  };
 
   return (
     <Card>
@@ -131,7 +151,6 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
             <TableHeader>
               <TableRow>
                 <TableHead>Descrição</TableHead>
-                <TableHead>Frequência</TableHead>
                 <TableHead>Próxima Ocorrência</TableHead>
                 <TableHead>Restam</TableHead>
                 <TableHead>Categoria</TableHead>
@@ -146,14 +165,6 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                   <TableRow key={transaction.id}>
                     <TableCell className="font-medium">
                       {transaction.description}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {transaction.recurrenceInterval === 'weekly' && 'Semanal'}
-                        {transaction.recurrenceInterval === 'monthly' && 'Mensal'}
-                        {transaction.recurrenceInterval === 'quarterly' && 'Trimestral'}
-                        {transaction.recurrenceInterval === 'yearly' && 'Anual'}
-                      </Badge>
                     </TableCell>
                     <TableCell>{formatDate(getNextOccurrenceDate(transaction))}</TableCell>
                     <TableCell>
@@ -199,10 +210,30 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                             <Button 
                               variant="ghost" 
                               className="w-full justify-start" 
+                              onClick={() => handleViewDetails(transaction.id)}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              <span>Ver Detalhes</span>
+                            </Button>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Button 
+                              variant="ghost" 
+                              className="w-full justify-start" 
                               onClick={() => handleCreateInstance(transaction)}
                             >
                               <Calendar className="h-4 w-4 mr-2" />
                               <span>Criar Instância</span>
+                            </Button>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Button 
+                              variant="ghost" 
+                              className="w-full justify-start" 
+                              onClick={() => handleDuplicate(transaction)}
+                            >
+                              <Calendar className="h-4 w-4 mr-2" />
+                              <span>Duplicar</span>
                             </Button>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
@@ -230,7 +261,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-4">
+                  <TableCell colSpan={7} className="text-center py-4">
                     Nenhuma transação recorrente encontrada.
                   </TableCell>
                 </TableRow>

@@ -53,7 +53,6 @@ const formSchema = z.object({
     required_error: 'Selecione o tipo de transação',
   }),
   isRecurring: z.boolean().default(false),
-  recurrenceInterval: z.enum(['weekly', 'monthly', 'quarterly', 'yearly']).optional(),
   recurrenceMonths: z.coerce.number().min(1).max(60).optional(),
   notes: z.string().optional(),
   clientId: z.string().optional(),
@@ -101,7 +100,6 @@ const EditarTransacao = () => {
             subcategory: foundTransaction.subcategory || '',
             type: foundTransaction.type,
             isRecurring: foundTransaction.isRecurring,
-            recurrenceInterval: foundTransaction.recurrenceInterval,
             recurrenceMonths: foundTransaction.recurrenceMonths || 1,
             notes: foundTransaction.notes || '',
             clientId: foundTransaction.clientId || '',
@@ -137,7 +135,7 @@ const EditarTransacao = () => {
       
       if (index !== -1) {
         // Update the transaction in the mockTransactions array
-        mockTransactions[index] = {
+        const updatedTransaction: Transaction = {
           ...mockTransactions[index],
           description: values.description,
           amount: values.amount,
@@ -146,12 +144,15 @@ const EditarTransacao = () => {
           subcategory: values.subcategory || undefined,
           type: values.type,
           isRecurring: values.isRecurring,
-          recurrenceInterval: values.isRecurring ? values.recurrenceInterval : undefined,
+          recurrenceInterval: values.isRecurring ? 'monthly' : undefined, // Default to monthly
           recurrenceMonths: values.isRecurring ? values.recurrenceMonths : undefined,
           notes: values.notes || undefined,
           clientId: values.clientId || undefined,
           eventId: values.eventId || undefined,
         };
+        
+        // Replace the transaction in the array
+        mockTransactions[index] = updatedTransaction;
         
         toast({
           title: "Transação atualizada",
@@ -173,6 +174,27 @@ const EditarTransacao = () => {
       });
     }
   };
+  
+  const handleDuplicate = () => {
+    if (!transaction) return;
+    
+    // Create a duplicate transaction with a new ID
+    const duplicateTransaction: Transaction = {
+      ...transaction,
+      id: `trans-${Date.now()}`, // Generate new ID
+      description: `${transaction.description} (Cópia)`
+    };
+    
+    // Add to mockTransactions
+    mockTransactions.push(duplicateTransaction);
+    
+    toast({
+      title: "Transação duplicada",
+      description: "Uma cópia da transação foi criada com sucesso."
+    });
+    
+    navigate('/financas');
+  };
 
   // Sample categories
   const categories = [
@@ -192,17 +214,22 @@ const EditarTransacao = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex items-center">
-          <Button variant="ghost" onClick={() => navigate('/financas')} className="mr-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Editar Transação</h1>
-            <p className="text-muted-foreground">
-              Atualize os detalhes da transação abaixo.
-            </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Button variant="ghost" onClick={() => navigate('/financas')} className="mr-4">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Editar Transação</h1>
+              <p className="text-muted-foreground">
+                Atualize os detalhes da transação abaixo.
+              </p>
+            </div>
           </div>
+          <Button variant="outline" onClick={handleDuplicate}>
+            Duplicar
+          </Button>
         </div>
 
         {loading ? (
@@ -372,9 +399,9 @@ const EditarTransacao = () => {
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">
-                            <FormLabel>Transação Recorrente</FormLabel>
+                            <FormLabel>Transação Recorrente Mensal</FormLabel>
                             <FormDescription>
-                              Marque esta opção se for uma transação recorrente.
+                              Marque esta opção se for uma transação que se repete mensalmente.
                             </FormDescription>
                           </div>
                         </FormItem>
@@ -382,57 +409,28 @@ const EditarTransacao = () => {
                     />
 
                     {form.watch('isRecurring') && (
-                      <>
-                        <FormField
-                          control={form.control}
-                          name="recurrenceInterval"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Frequência</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Selecione a frequência" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="weekly">Semanal</SelectItem>
-                                  <SelectItem value="monthly">Mensal</SelectItem>
-                                  <SelectItem value="quarterly">Trimestral</SelectItem>
-                                  <SelectItem value="yearly">Anual</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name="recurrenceMonths"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Número de Meses</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  min="1" 
-                                  max="60" 
-                                  placeholder="Número de meses" 
-                                  {...field} 
-                                />
-                              </FormControl>
-                              <FormDescription>
-                                Por quantos meses esta transação se repetirá
-                              </FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </>
+                      <FormField
+                        control={form.control}
+                        name="recurrenceMonths"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Número de Meses</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min="1" 
+                                max="60" 
+                                placeholder="Número de meses" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Por quantos meses esta transação se repetirá
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     )}
 
                     <FormField

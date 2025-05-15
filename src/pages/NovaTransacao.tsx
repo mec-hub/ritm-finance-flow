@@ -51,7 +51,6 @@ interface TransactionFormData {
   isEventRelated: boolean;
   eventId: string;
   isRecurring: boolean;
-  recurrenceInterval: string;
   recurrenceMonths: string;
 }
 
@@ -76,7 +75,6 @@ const NovaTransacao = () => {
       isEventRelated: false,
       eventId: '',
       isRecurring: false,
-      recurrenceInterval: 'monthly',
       recurrenceMonths: '1'
     },
   });
@@ -120,7 +118,8 @@ const NovaTransacao = () => {
 
     // Add recurrence information if it's a recurring transaction
     if (data.isRecurring) {
-      newTransaction.recurrenceInterval = data.recurrenceInterval as 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+      // Assume monthly recurrence by default
+      newTransaction.recurrenceInterval = 'monthly';
       newTransaction.recurrenceMonths = parseInt(data.recurrenceMonths);
     }
 
@@ -302,7 +301,7 @@ const NovaTransacao = () => {
                     <div className="space-y-0.5">
                       <FormLabel className="text-base">Transação Recorrente</FormLabel>
                       <FormDescription>
-                        Esta transação se repetirá regularmente?
+                        Esta é uma transação mensal recorrente?
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -316,54 +315,28 @@ const NovaTransacao = () => {
               />
               
               {watchIsRecurring && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="recurrenceInterval"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Frequência</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione a frequência" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="weekly">Semanal</SelectItem>
-                            <SelectItem value="monthly">Mensal</SelectItem>
-                            <SelectItem value="quarterly">Trimestral</SelectItem>
-                            <SelectItem value="yearly">Anual</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="recurrenceMonths"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Número de Meses</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            min="1" 
-                            max="60" 
-                            placeholder="Número de meses" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Por quantos meses esta transação se repetirá
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="recurrenceMonths"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Número de Meses</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          min="1" 
+                          max="60" 
+                          placeholder="Número de meses" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Por quantos meses esta transação mensal se repetirá
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
 
               <FormField
