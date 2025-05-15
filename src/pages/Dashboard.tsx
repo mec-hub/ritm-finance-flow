@@ -1,9 +1,11 @@
+
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { mockTransactions, mockEvents } from '@/data/mockData';
 import { formatCurrency } from '@/utils/formatters';
 import { ArrowDownIcon, ArrowUpIcon, CalendarIcon, UsersIcon } from 'lucide-react';
 import { FinancialSummary } from '@/components/financas/FinancialSummary';
+import { EventsCalendar } from '@/components/events/EventsCalendar';
 
 // Components
 const StatCards = () => {
@@ -96,30 +98,52 @@ const StatCards = () => {
   );
 };
 
-const EventsList = ({ events }) => {
+// Restored original design of Upcoming Events
+const UpcomingEventsList = () => {
+  // Get upcoming events
+  const upcomingEvents = mockEvents
+    .filter(event => event.status === 'upcoming')
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 5);
+
   return (
-    <div className="space-y-4">
-      {events.length > 0 ? (
-        events.map((event) => (
-          <div key={event.id} className="flex items-center">
-            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 mr-3">
-              <CalendarIcon className="h-5 w-5" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-sm font-medium">{event.title}</h3>
-              <p className="text-xs text-muted-foreground">
-                {new Date(event.date).toLocaleDateString()} - {event.location}
-              </p>
-            </div>
-            <div className="text-sm font-medium">
-              {formatCurrency(event.estimatedRevenue)}
+    <Card className="col-span-1">
+      <CardHeader>
+        <CardTitle>Próximos Eventos</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {upcomingEvents.map((event) => (
+          <div key={event.id} className="rounded-lg border border-border/40 bg-background/60 p-4 shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-yellow-500/20">
+                <CalendarIcon className="h-5 w-5 text-yellow-500" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold">{event.title}</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 mt-1 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Data: {new Date(event.date).toLocaleDateString('pt-BR')}</p>
+                    <p className="text-muted-foreground">Local: {event.location}</p>
+                  </div>
+                  <div className="sm:text-right">
+                    <p className="text-muted-foreground">Cliente: {event.client}</p>
+                    <p className="text-muted-foreground">Receita Estimada: {formatCurrency(event.estimatedRevenue)}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-md bg-blue-500 px-2 py-1 text-xs text-white">
+                Próximo
+              </div>
             </div>
           </div>
-        ))
-      ) : (
-        <p className="text-muted-foreground text-center py-4">Nenhum evento próximo.</p>
-      )}
-    </div>
+        ))}
+        {upcomingEvents.length === 0 && (
+          <p className="text-center text-muted-foreground py-4">
+            Nenhum evento próximo.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
@@ -175,28 +199,8 @@ export default function Dashboard() {
       <div className="flex flex-col gap-8">
         <StatCards />
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Visão Geral Financeira</CardTitle>
-            <CardDescription>
-              Acompanhe suas receitas e despesas ao longo do tempo
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FinancialSummary transactions={mockTransactions} />
-          </CardContent>
-        </Card>
-        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Próximos Eventos</CardTitle>
-              <CardDescription>Eventos agendados para os próximos dias</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <EventsList events={upcomingEvents} />
-            </CardContent>
-          </Card>
+          <UpcomingEventsList />
           
           <Card>
             <CardHeader>
@@ -205,6 +209,34 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <RecentTransactions transactions={recentTransactions} />
+            </CardContent>
+          </Card>
+        </div>
+        
+        <div className="grid grid-cols-1 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Visão Geral Financeira</CardTitle>
+              <CardDescription>
+                Acompanhe suas receitas e despesas ao longo do tempo
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FinancialSummary transactions={mockTransactions} />
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Calendário de Eventos</CardTitle>
+              <CardDescription>
+                Visualize seus eventos agendados
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EventsCalendar events={mockEvents} />
             </CardContent>
           </Card>
         </div>
