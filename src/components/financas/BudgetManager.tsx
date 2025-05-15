@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import {
   Card,
@@ -329,7 +328,7 @@ export function BudgetManager({ transactions }: BudgetManagerProps) {
                           <div className="flex items-center gap-2">
                             <Progress 
                               value={progress} 
-                              className={`h-2 w-full ${isOverBudget ? 'bg-red-200' : ''}`}
+                              className={isOverBudget ? 'bg-red-200' : ''}
                               indicatorClassName={isOverBudget ? 'bg-red-500' : ''}
                             />
                             <span className="text-xs tabular-nums">
