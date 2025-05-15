@@ -30,7 +30,8 @@ export function FinancialBarChart({
   title,
   height = 300,
   dataKeys,
-  colors = ['#FFD700', '#ff7b00', '#10B981', '#EC4899']
+  colors = ['#10B981', '#EF4444', '#FFD700', '#EC4899']
+  //amarelo,laranja, verde,rosa
 }: FinancialBarChartProps) {
   // Dynamically determine the bars to show based on dataKeys or the first data item
   const bars = dataKeys || Object.keys(data[0] || {}).filter(key => key !== 'name');
