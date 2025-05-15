@@ -30,10 +30,10 @@ import { mockTransactions, mockEvents } from '@/data/mockData';
 // Team members for percentage allocation
 const teamMembers = [
   { id: '1', name: 'DJ Davizão', role: 'Proprietário' },
-  { id: '2', name: 'João Silva', role: 'DJ Assistente' },
-  { id: '3', name: 'Maria Oliveira', role: 'Técnica de Som' },
-  { id: '4', name: 'Carlos Santos', role: 'Agente' },
+  { id: '2', name: 'Rian Dultra', role: 'CEO' },
+  { id: '3', name: 'Maria Clara', role: 'Lider de Marketing' },
 ];
+
 
 interface TeamPercentage {
   teamMemberId: string;
