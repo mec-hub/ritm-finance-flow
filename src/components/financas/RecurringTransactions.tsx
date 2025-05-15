@@ -28,6 +28,7 @@ import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Transaction } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
+import { mockTransactions } from '@/data/mockData';
 
 interface RecurringTransactionsProps {
   transactions: Transaction[];
@@ -54,21 +55,66 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
     
     return nextDate;
   };
+  
+  // Helper function to calculate remaining occurrences
+  const getRemainingOccurrences = (transaction: Transaction): number => {
+    if (!transaction.recurrenceMonths) return 0;
+    
+    const startDate = transaction.date;
+    const today = new Date();
+    const monthsPassed = (today.getFullYear() - startDate.getFullYear()) * 12 + 
+                         (today.getMonth() - startDate.getMonth());
+    
+    return Math.max(0, transaction.recurrenceMonths - monthsPassed);
+  };
 
   const handleCreateInstance = (transaction: Transaction) => {
-    // In a real app, this would create a new instance of the recurring transaction
+    // Create a new instance of the recurring transaction
+    const nextOccurrence = getNextOccurrenceDate(transaction);
+    
+    const newTransaction: Transaction = {
+      ...transaction,
+      id: `trans-${Date.now()}`, // Generate new ID
+      date: nextOccurrence,
+      description: `${transaction.description} (Recorrência)`,
+      isRecurring: false, // This instance is not recurring anymore
+      recurrenceInterval: undefined,
+      recurrenceMonths: undefined
+    };
+    
+    // Add to mockTransactions
+    mockTransactions.push(newTransaction);
+    
     toast({
       title: "Instância criada",
       description: "Uma nova instância da transação recorrente foi criada."
     });
+    
+    // Force re-render by refreshing the page
+    window.location.reload();
   };
 
   const handleStopRecurring = (id: string) => {
-    // In a real app, this would stop the recurring transaction
-    toast({
-      title: "Recorrência interrompida",
-      description: "A transação não será mais recorrente."
-    });
+    // Find the transaction in the array
+    const index = mockTransactions.findIndex(t => t.id === id);
+    
+    if (index !== -1) {
+      // Update the transaction to not be recurring
+      mockTransactions[index] = {
+        ...mockTransactions[index],
+        isRecurring: false,
+        recurrenceInterval: undefined,
+        recurrenceMonths: undefined
+      };
+      
+      toast({
+        title: "Recorrência interrompida",
+        description: "A transação não será mais recorrente."
+      });
+      
+      // Force re-render by refreshing the page
+      window.location.reload();
+    }
   };
 
   return (
@@ -87,6 +133,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                 <TableHead>Descrição</TableHead>
                 <TableHead>Frequência</TableHead>
                 <TableHead>Próxima Ocorrência</TableHead>
+                <TableHead>Restam</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
@@ -109,6 +156,11 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                       </Badge>
                     </TableCell>
                     <TableCell>{formatDate(getNextOccurrenceDate(transaction))}</TableCell>
+                    <TableCell>
+                      {transaction.recurrenceMonths 
+                        ? `${getRemainingOccurrences(transaction)} de ${transaction.recurrenceMonths}`
+                        : 'Indefinido'}
+                    </TableCell>
                     <TableCell>{transaction.category}</TableCell>
                     <TableCell>
                       {transaction.type === 'income' ? (
@@ -178,7 +230,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-4">
+                  <TableCell colSpan={8} className="text-center py-4">
                     Nenhuma transação recorrente encontrada.
                   </TableCell>
                 </TableRow>

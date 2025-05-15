@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { 
   Form,
   FormControl,
@@ -50,6 +50,9 @@ interface TransactionFormData {
   teamPercentages: TeamPercentage[];
   isEventRelated: boolean;
   eventId: string;
+  isRecurring: boolean;
+  recurrenceInterval: string;
+  recurrenceMonths: string;
 }
 
 const NovaTransacao = () => {
@@ -72,6 +75,9 @@ const NovaTransacao = () => {
       teamPercentages: [{ teamMemberId: '', percentageValue: '' }],
       isEventRelated: false,
       eventId: '',
+      isRecurring: false,
+      recurrenceInterval: 'monthly',
+      recurrenceMonths: '1'
     },
   });
 
@@ -79,6 +85,7 @@ const NovaTransacao = () => {
   const watchTipo = form.watch("tipo");
   const watchTeamPercentages = form.watch("teamPercentages");
   const watchIsEventRelated = form.watch("isEventRelated");
+  const watchIsRecurring = form.watch("isRecurring");
 
   const addTeamMember = () => {
     const currentTeamPercentages = form.getValues("teamPercentages");
@@ -107,9 +114,15 @@ const NovaTransacao = () => {
       description: data.descricao,
       date: new Date(data.data),
       category: data.categoria,
-      isRecurring: false,
+      isRecurring: data.isRecurring,
       type: data.tipo === 'receita' ? 'income' : 'expense', // Map 'receita' to 'income' and 'despesa' to 'expense'
     };
+
+    // Add recurrence information if it's a recurring transaction
+    if (data.isRecurring) {
+      newTransaction.recurrenceInterval = data.recurrenceInterval as 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+      newTransaction.recurrenceMonths = parseInt(data.recurrenceMonths);
+    }
 
     // If percentage is enabled, add contributor data
     if (data.hasPercentage && data.teamPercentages.length > 0) {
@@ -156,8 +169,8 @@ const NovaTransacao = () => {
         description: `${data.tipo === 'receita' ? 'Receita' : 'Despesa'} de ${data.valor} adicionada com sucesso!`,
       });
       
-      // Navigate back to dashboard
-      navigate('/');
+      // Navigate back to finance page
+      navigate('/financas');
     }, 1000);
   };
 
@@ -171,7 +184,7 @@ const NovaTransacao = () => {
             asChild 
             className="mr-2"
           >
-            <Link to="/">
+            <Link to="/financas">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
@@ -280,6 +293,78 @@ const NovaTransacao = () => {
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="isRecurring"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Transação Recorrente</FormLabel>
+                      <FormDescription>
+                        Esta transação se repetirá regularmente?
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              
+              {watchIsRecurring && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="recurrenceInterval"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Frequência</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a frequência" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="weekly">Semanal</SelectItem>
+                            <SelectItem value="monthly">Mensal</SelectItem>
+                            <SelectItem value="quarterly">Trimestral</SelectItem>
+                            <SelectItem value="yearly">Anual</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="recurrenceMonths"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Número de Meses</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="1" 
+                            max="60" 
+                            placeholder="Número de meses" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Por quantos meses esta transação se repetirá
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
 
               <FormField
                 control={form.control}

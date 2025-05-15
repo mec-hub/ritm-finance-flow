@@ -54,6 +54,7 @@ const formSchema = z.object({
   }),
   isRecurring: z.boolean().default(false),
   recurrenceInterval: z.enum(['weekly', 'monthly', 'quarterly', 'yearly']).optional(),
+  recurrenceMonths: z.coerce.number().min(1).max(60).optional(),
   notes: z.string().optional(),
   clientId: z.string().optional(),
   eventId: z.string().optional(),
@@ -75,6 +76,7 @@ const EditarTransacao = () => {
       subcategory: '',
       type: 'income',
       isRecurring: false,
+      recurrenceMonths: 1,
       notes: '',
     },
   });
@@ -84,6 +86,7 @@ const EditarTransacao = () => {
     const fetchTransaction = () => {
       setLoading(true);
       try {
+        // Find the transaction by ID - make sure to search in the actual array
         const foundTransaction = mockTransactions.find((t) => t.id === id);
         
         if (foundTransaction) {
@@ -99,6 +102,7 @@ const EditarTransacao = () => {
             type: foundTransaction.type,
             isRecurring: foundTransaction.isRecurring,
             recurrenceInterval: foundTransaction.recurrenceInterval,
+            recurrenceMonths: foundTransaction.recurrenceMonths || 1,
             notes: foundTransaction.notes || '',
             clientId: foundTransaction.clientId || '',
             eventId: foundTransaction.eventId || '',
@@ -127,11 +131,47 @@ const EditarTransacao = () => {
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     // In a real app, update the transaction in a database
-    toast({
-      title: "Transação atualizada",
-      description: "A transação foi atualizada com sucesso.",
-    });
-    navigate('/financas');
+    try {
+      // Find the index of the transaction
+      const index = mockTransactions.findIndex(t => t.id === id);
+      
+      if (index !== -1) {
+        // Update the transaction in the mockTransactions array
+        mockTransactions[index] = {
+          ...mockTransactions[index],
+          description: values.description,
+          amount: values.amount,
+          date: values.date,
+          category: values.category,
+          subcategory: values.subcategory || undefined,
+          type: values.type,
+          isRecurring: values.isRecurring,
+          recurrenceInterval: values.isRecurring ? values.recurrenceInterval : undefined,
+          recurrenceMonths: values.isRecurring ? values.recurrenceMonths : undefined,
+          notes: values.notes || undefined,
+          clientId: values.clientId || undefined,
+          eventId: values.eventId || undefined,
+        };
+        
+        toast({
+          title: "Transação atualizada",
+          description: "A transação foi atualizada com sucesso.",
+        });
+        navigate('/financas');
+      } else {
+        toast({
+          title: "Erro",
+          description: "Transação não encontrada para atualização.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao atualizar a transação.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Sample categories
@@ -342,32 +382,57 @@ const EditarTransacao = () => {
                     />
 
                     {form.watch('isRecurring') && (
-                      <FormField
-                        control={form.control}
-                        name="recurrenceInterval"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Frequência</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
+                      <>
+                        <FormField
+                          control={form.control}
+                          name="recurrenceInterval"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Frequência</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione a frequência" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="weekly">Semanal</SelectItem>
+                                  <SelectItem value="monthly">Mensal</SelectItem>
+                                  <SelectItem value="quarterly">Trimestral</SelectItem>
+                                  <SelectItem value="yearly">Anual</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="recurrenceMonths"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Número de Meses</FormLabel>
                               <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione a frequência" />
-                                </SelectTrigger>
+                                <Input 
+                                  type="number" 
+                                  min="1" 
+                                  max="60" 
+                                  placeholder="Número de meses" 
+                                  {...field} 
+                                />
                               </FormControl>
-                              <SelectContent>
-                                <SelectItem value="weekly">Semanal</SelectItem>
-                                <SelectItem value="monthly">Mensal</SelectItem>
-                                <SelectItem value="quarterly">Trimestral</SelectItem>
-                                <SelectItem value="yearly">Anual</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                              <FormDescription>
+                                Por quantos meses esta transação se repetirá
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </>
                     )}
 
                     <FormField

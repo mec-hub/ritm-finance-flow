@@ -8,6 +8,7 @@ export interface Transaction {
   subcategory?: string;
   isRecurring: boolean;
   recurrenceInterval?: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+  recurrenceMonths?: number;
   type: 'income' | 'expense';
   eventId?: string;
   clientId?: string;
