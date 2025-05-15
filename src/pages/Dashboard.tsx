@@ -182,7 +182,7 @@ const EventsByMonth = () => {
           <FinancialBarChart
             data={eventsByMonth}
             title=""
-            dataKeys={['events']}
+            dataKeys={['Eventos']}
             colors={['#ffbf00']}
           />
         </div>
@@ -264,7 +264,7 @@ const IncomeVsExpensesChart = () => {
           <FinancialBarChart
             data={monthlyData}
             title=""
-            dataKeys={['income', 'expenses']}
+            dataKeys={['Receitas', 'Despesas']}
             colors={['#10B981', '#EF4444']}
           />
         </div>
