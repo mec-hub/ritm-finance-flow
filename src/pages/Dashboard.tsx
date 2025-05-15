@@ -3,9 +3,10 @@ import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { mockTransactions, mockEvents } from '@/data/mockData';
 import { formatCurrency } from '@/utils/formatters';
-import { ArrowDownIcon, ArrowUpIcon, CalendarIcon, UsersIcon } from 'lucide-react';
-import { FinancialSummary } from '@/components/financas/FinancialSummary';
+import { ArrowDownIcon, ArrowUpIcon, CalendarIcon, UsersIcon, BarChart3 } from 'lucide-react';
 import { EventsCalendar } from '@/components/events/EventsCalendar';
+import { ClientStats } from '@/components/clients/ClientStats';
+import { FinancialBarChart } from '@/components/ui/dashboard/BarChart';
 
 // Components
 const StatCards = () => {
@@ -98,7 +99,7 @@ const StatCards = () => {
   );
 };
 
-// Restored original design of Upcoming Events
+// Original design of Upcoming Events
 const UpcomingEventsList = () => {
   // Get upcoming events
   const upcomingEvents = mockEvents
@@ -147,6 +148,49 @@ const UpcomingEventsList = () => {
   );
 };
 
+// Events by Month Component
+const EventsByMonth = () => {
+  // Get current year
+  const currentYear = new Date().getFullYear();
+  
+  // Get all events for the current year
+  const currentYearEvents = mockEvents.filter(
+    event => new Date(event.date).getFullYear() === currentYear
+  );
+  
+  // Create data for monthly events count
+  const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const eventsByMonth = months.map(month => ({
+    name: month,
+    events: 0
+  }));
+  
+  // Count events by month
+  currentYearEvents.forEach(event => {
+    const month = new Date(event.date).getMonth();
+    eventsByMonth[month].events += 1;
+  });
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Eventos por Mês</CardTitle>
+        <CardDescription>Distribuição de eventos em {currentYear}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[300px]">
+          <FinancialBarChart
+            data={eventsByMonth}
+            title=""
+            dataKeys={['events']}
+            colors={['#8B5CF6']}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 const RecentTransactions = ({ transactions }) => {
   return (
     <div className="space-y-4">
@@ -182,6 +226,53 @@ const RecentTransactions = ({ transactions }) => {
   );
 };
 
+// Income vs Expenses Component
+const IncomeVsExpensesChart = () => {
+  const currentYear = new Date().getFullYear();
+  
+  // Get all transactions for the current year
+  const yearTransactions = mockTransactions.filter(
+    transaction => transaction.date.getFullYear() === currentYear
+  );
+  
+  // Create data for monthly income and expenses
+  const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const monthlyData = months.map(month => ({
+    name: month,
+    income: 0,
+    expenses: 0
+  }));
+  
+  // Calculate income and expenses by month
+  yearTransactions.forEach(transaction => {
+    const month = transaction.date.getMonth();
+    if (transaction.type === 'income') {
+      monthlyData[month].income += transaction.amount;
+    } else {
+      monthlyData[month].expenses += transaction.amount;
+    }
+  });
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Receitas vs Despesas</CardTitle>
+        <CardDescription>Visão financeira de {currentYear}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[300px]">
+          <FinancialBarChart
+            data={monthlyData}
+            title=""
+            dataKeys={['income', 'expenses']}
+            colors={['#10B981', '#EF4444']}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 export default function Dashboard() {
   // Get upcoming events
   const upcomingEvents = mockEvents
@@ -199,7 +290,16 @@ export default function Dashboard() {
       <div className="flex flex-col gap-8">
         <StatCards />
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="md:col-span-1">
+            <CardHeader>
+              <CardTitle>Total de Clientes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ClientStats clients={[]} events={mockEvents} />
+            </CardContent>
+          </Card>
+          
           <UpcomingEventsList />
           
           <Card>
@@ -213,18 +313,9 @@ export default function Dashboard() {
           </Card>
         </div>
         
-        <div className="grid grid-cols-1 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Visão Geral Financeira</CardTitle>
-              <CardDescription>
-                Acompanhe suas receitas e despesas ao longo do tempo
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FinancialSummary transactions={mockTransactions} />
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <IncomeVsExpensesChart />
+          <EventsByMonth />
         </div>
 
         <div className="grid grid-cols-1 gap-6">
