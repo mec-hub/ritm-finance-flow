@@ -40,7 +40,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
   // Helper function to get next occurrence date
   const getNextOccurrenceDate = (transaction: Transaction): Date => {
     const today = new Date();
-    const lastDate = transaction.date;
+    const lastDate = new Date(transaction.date);
     let nextDate = new Date(lastDate);
     
     while (nextDate <= today) {
@@ -54,7 +54,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
   const getRemainingOccurrences = (transaction: Transaction): number => {
     if (!transaction.recurrenceMonths) return 0;
     
-    const startDate = transaction.date;
+    const startDate = new Date(transaction.date);
     const today = new Date();
     const monthsPassed = (today.getFullYear() - startDate.getFullYear()) * 12 + 
                          (today.getMonth() - startDate.getMonth());
@@ -73,7 +73,8 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
       description: `${transaction.description} (Recorrência)`,
       isRecurring: false, // This instance is not recurring anymore
       recurrenceInterval: undefined,
-      recurrenceMonths: undefined
+      recurrenceMonths: undefined,
+      status: transaction.status || 'not_paid' // Default to "Not paid" if no status
     };
     
     // Add to mockTransactions
@@ -84,8 +85,8 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
       description: "Uma nova instância da transação recorrente foi criada."
     });
     
-    // Force re-render by refreshing the page
-    window.location.reload();
+    // Navigate to refresh the page instead of using window.location.reload()
+    navigate('/financas');
   };
 
   const handleStopRecurring = (id: string) => {
@@ -106,8 +107,8 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
         description: "A transação não será mais recorrente."
       });
       
-      // Force re-render by refreshing the page
-      window.location.reload();
+      // Navigate to refresh the page instead of using window.location.reload()
+      navigate('/financas');
     }
   };
   

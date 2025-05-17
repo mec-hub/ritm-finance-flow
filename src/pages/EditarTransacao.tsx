@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -35,7 +35,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, ArrowLeft } from 'lucide-react';
+import { CalendarIcon, ArrowLeft, FileText, X, Paperclip } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -57,6 +57,7 @@ const formSchema = z.object({
   notes: z.string().optional(),
   clientId: z.string().optional(),
   eventId: z.string().optional(),
+  status: z.enum(['paid', 'not_paid', 'canceled']).default('not_paid'),
 });
 
 const EditarTransacao = () => {
@@ -64,6 +65,9 @@ const EditarTransacao = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [transaction, setTransaction] = useState<Transaction | null>(null);
+  const [attachments, setAttachments] = useState<string[]>([]);
+  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [selectedAttachmentIndex, setSelectedAttachmentIndex] = useState<number | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -77,6 +81,7 @@ const EditarTransacao = () => {
       isRecurring: false,
       recurrenceMonths: 1,
       notes: '',
+      status: 'not_paid',
     },
   });
 
@@ -90,12 +95,13 @@ const EditarTransacao = () => {
         
         if (foundTransaction) {
           setTransaction(foundTransaction);
+          setAttachments(foundTransaction.attachments || []);
           
           // Set form values
           form.reset({
             description: foundTransaction.description,
             amount: foundTransaction.amount,
-            date: foundTransaction.date,
+            date: new Date(foundTransaction.date),
             category: foundTransaction.category,
             subcategory: foundTransaction.subcategory || '',
             type: foundTransaction.type,
@@ -104,6 +110,7 @@ const EditarTransacao = () => {
             notes: foundTransaction.notes || '',
             clientId: foundTransaction.clientId || '',
             eventId: foundTransaction.eventId || '',
+            status: foundTransaction.status || 'not_paid',
           });
         } else {
           toast({
@@ -127,12 +134,31 @@ const EditarTransacao = () => {
     fetchTransaction();
   }, [id, navigate, form]);
 
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const filesArray = Array.from(e.target.files);
+      setNewFiles((prev) => [...prev, ...filesArray]);
+    }
+  };
+
+  const removeNewFile = (index: number) => {
+    setNewFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     try {
       // Find the index of the transaction
       const index = mockTransactions.findIndex(t => t.id === id);
       
       if (index !== -1) {
+        // Process new files (in a real app, you would upload these to a server)
+        // For mock purposes, we'll create fake URLs
+        const fakeFileUrls = newFiles.map(file => URL.createObjectURL(file));
+        
         // Update the transaction in the mockTransactions array
         const updatedTransaction: Transaction = {
           ...mockTransactions[index],
@@ -148,6 +174,8 @@ const EditarTransacao = () => {
           notes: values.notes || undefined,
           clientId: values.clientId || undefined,
           eventId: values.eventId || undefined,
+          status: values.status,
+          attachments: [...attachments, ...fakeFileUrls],
         };
         
         // Replace the transaction in the array
@@ -157,7 +185,9 @@ const EditarTransacao = () => {
           title: "Transação atualizada",
           description: "A transação foi atualizada com sucesso.",
         });
-        navigate('/financas');
+        
+        // Navigate after a short delay to make toast visible
+        setTimeout(() => navigate('/financas'), 500);
       } else {
         toast({
           title: "Erro",
@@ -166,6 +196,7 @@ const EditarTransacao = () => {
         });
       }
     } catch (error) {
+      console.error("Error updating transaction:", error);
       toast({
         title: "Erro",
         description: "Ocorreu um erro ao atualizar a transação.",
@@ -273,6 +304,32 @@ const EditarTransacao = () => {
                             <SelectContent>
                               <SelectItem value="income">Receita</SelectItem>
                               <SelectItem value="expense">Despesa</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="paid">Pago</SelectItem>
+                              <SelectItem value="not_paid">Não Pago</SelectItem>
+                              <SelectItem value="canceled">Cancelado</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -421,6 +478,72 @@ const EditarTransacao = () => {
                         </FormItem>
                       )}
                     />
+                    
+                    <div className="col-span-full">
+                      <Label>Anexos</Label>
+                      <div className="mt-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
+                          {attachments.map((attachment, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 border rounded-md">
+                              <div className="flex items-center">
+                                <FileText className="h-4 w-4 mr-2" />
+                                <a href={attachment} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline truncate">
+                                  Anexo {index + 1}
+                                </a>
+                              </div>
+                              <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => removeAttachment(index)}
+                                className="text-red-500 hover:bg-red-50"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          
+                          {newFiles.map((file, index) => (
+                            <div key={`new-${index}`} className="flex items-center justify-between p-2 border rounded-md bg-blue-50">
+                              <div className="flex items-center">
+                                <FileText className="h-4 w-4 mr-2" />
+                                <span className="truncate">{file.name}</span>
+                              </div>
+                              <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => removeNewFile(index)}
+                                className="text-red-500 hover:bg-red-50"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        <div className="flex items-center justify-center w-full">
+                          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                              <Paperclip className="w-8 h-8 mb-3 text-gray-400" />
+                              <p className="mb-1 text-sm text-gray-500">
+                                <span className="font-medium">Clique para enviar</span> ou arraste um arquivo
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Imagens ou documentos PDF (máx. 10MB)
+                              </p>
+                            </div>
+                            <input 
+                              type="file" 
+                              className="hidden" 
+                              accept="image/*, application/pdf" 
+                              onChange={handleFileChange}
+                              multiple
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
                 <CardFooter className="flex justify-between">

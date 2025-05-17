@@ -17,6 +17,8 @@ export interface Transaction {
   attachments?: string[];
   notes?: string;
   percentageValue?: number; // For backward compatibility
+  status?: 'paid' | 'not_paid' | 'canceled'; // New status field
+  files?: File[]; // For temporary file storage during upload
 }
 
 export interface TeamPercentageAssignment {

@@ -31,11 +31,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Trash2, Eye } from 'lucide-react';
+import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Trash2, Eye, Check, X } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Transaction } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { mockTransactions, mockEvents } from '@/data/mockData';
+import { Badge } from '@/components/ui/badge';
 
 interface TransactionsListProps {
   transactions: Transaction[];
@@ -70,8 +71,23 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
         title: "Transação excluída",
         description: "A transação foi excluída com sucesso."
       });
-      // Force re-render by creating a new array
-      window.location.reload();
+      // Force re-render by refreshing the page (avoiding window reload)
+      window.location.href = window.location.href;
+    }
+  };
+
+  const getStatusBadge = (status?: string) => {
+    if (!status) return null;
+    
+    switch(status) {
+      case 'paid':
+        return <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20"><Check className="h-3 w-3 mr-1" /> Pago</Badge>;
+      case 'not_paid':
+        return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">Não Pago</Badge>;
+      case 'canceled':
+        return <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20"><X className="h-3 w-3 mr-1" /> Cancelado</Badge>;
+      default:
+        return null;
     }
   };
 
@@ -100,6 +116,7 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                   <TableHead>Descrição</TableHead>
                   <TableHead>Categoria</TableHead>
                   <TableHead>Tipo</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                   <TableHead className="w-[80px]"></TableHead>
                 </TableRow>
@@ -130,6 +147,9 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                             <span>Despesa</span>
                           </div>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(transaction.status) || <Badge variant="outline">Não Definido</Badge>}
                       </TableCell>
                       <TableCell className="text-right">
                         <span
@@ -186,7 +206,7 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-4">
+                    <TableCell colSpan={7} className="text-center py-4">
                       Nenhuma transação encontrada.
                     </TableCell>
                   </TableRow>
@@ -274,6 +294,11 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                 </div>
                 
                 <div>
+                  <h3 className="text-sm font-medium">Status</h3>
+                  <p>{getStatusBadge(selectedTransaction.status) || 'Não definido'}</p>
+                </div>
+                
+                <div>
                   <h3 className="text-sm font-medium">Recorrência</h3>
                   {selectedTransaction.isRecurring ? (
                     <p>
@@ -340,7 +365,9 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                     <div className="flex flex-wrap gap-2 mt-1">
                       {selectedTransaction.attachments.map((attachment, index) => (
                         <div key={index} className="border p-2 rounded">
-                          Anexo {index + 1}
+                          <a href={attachment} target="_blank" rel="noopener noreferrer" className="flex items-center text-blue-500 hover:underline">
+                            Anexo {index + 1}
+                          </a>
                         </div>
                       ))}
                     </div>

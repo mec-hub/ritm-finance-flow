@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
@@ -47,7 +47,7 @@ const expandRecurringTransactions = (transactions: Transaction[]): Transaction[]
 
 const Financas = () => {
   const [activeTab, setActiveTab] = useState('transactions');
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     type: 'all',
@@ -58,6 +58,11 @@ const Financas = () => {
     maxAmount: '',
   });
 
+  useEffect(() => {
+    // This ensures we always have the latest data from mockTransactions
+    setTransactions(mockTransactions);
+  }, []);
+  
   // Expand recurring transactions for calculations
   const expandedTransactions = expandRecurringTransactions(transactions);
   
@@ -74,18 +79,18 @@ const Financas = () => {
 
   // Apply filters to transactions
   const applyFilters = (filterOptions: typeof filters) => {
-    let filtered = [...mockTransactions];
+    let filtered = [...mockTransactions]; // Use mockTransactions directly
     
     if (filterOptions.type !== 'all') {
       filtered = filtered.filter(t => t.type === filterOptions.type);
     }
     
     if (filterOptions.dateFrom) {
-      filtered = filtered.filter(t => t.date >= filterOptions.dateFrom!);
+      filtered = filtered.filter(t => new Date(t.date) >= filterOptions.dateFrom!);
     }
     
     if (filterOptions.dateTo) {
-      filtered = filtered.filter(t => t.date <= filterOptions.dateTo!);
+      filtered = filtered.filter(t => new Date(t.date) <= filterOptions.dateTo!);
     }
     
     if (filterOptions.category) {
@@ -110,6 +115,18 @@ const Financas = () => {
     
     setTransactions(filtered);
     setFilters(filterOptions);
+  };
+
+  // Function to reset the filters to get all transactions
+  const resetFilters = () => {
+    applyFilters({
+      type: 'all',
+      dateFrom: null,
+      dateTo: null,
+      category: '',
+      minAmount: '',
+      maxAmount: '',
+    });
   };
 
   return (
@@ -140,14 +157,7 @@ const Financas = () => {
           <TransactionFilters 
             filters={filters} 
             onApplyFilters={applyFilters} 
-            onClearFilters={() => applyFilters({
-              type: 'all',
-              dateFrom: null,
-              dateTo: null,
-              category: '',
-              minAmount: '',
-              maxAmount: '',
-            })}
+            onClearFilters={resetFilters}
           />
         )}
         
