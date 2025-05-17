@@ -15,6 +15,36 @@ import { Transaction } from '@/types';
 import { mockTransactions } from '@/data/mockData';
 import { formatCurrency } from '@/utils/formatters';
 
+// Helper function to expand recurring transactions
+const expandRecurringTransactions = (transactions: Transaction[]): Transaction[] => {
+  const expandedTransactions: Transaction[] = [];
+  
+  transactions.forEach(transaction => {
+    // Add the original transaction
+    expandedTransactions.push(transaction);
+    
+    // If it's recurring, add future occurrences
+    if (transaction.isRecurring && transaction.recurrenceMonths) {
+      const originalDate = new Date(transaction.date);
+      
+      // Start from 1 because we already added the original transaction (month 0)
+      for (let i = 1; i < transaction.recurrenceMonths; i++) {
+        const nextDate = new Date(originalDate);
+        nextDate.setMonth(originalDate.getMonth() + i);
+        
+        expandedTransactions.push({
+          ...transaction,
+          id: `${transaction.id}-recur-${i}`,
+          date: nextDate,
+          description: `${transaction.description} (Recorrência ${i+1})`
+        });
+      }
+    }
+  });
+  
+  return expandedTransactions;
+};
+
 const Financas = () => {
   const [activeTab, setActiveTab] = useState('transactions');
   const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
@@ -28,12 +58,15 @@ const Financas = () => {
     maxAmount: '',
   });
 
+  // Expand recurring transactions for calculations
+  const expandedTransactions = expandRecurringTransactions(transactions);
+  
   // Calculate financial summary data
-  const totalIncome = transactions
+  const totalIncome = expandedTransactions
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
   
-  const totalExpenses = transactions
+  const totalExpenses = expandedTransactions
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
     
@@ -181,7 +214,7 @@ const Financas = () => {
           </TabsContent>
 
           <TabsContent value="budget" className="space-y-4">
-            <BudgetManager transactions={transactions} />
+            <BudgetManager transactions={expandedTransactions} />
           </TabsContent>
         </Tabs>
       </div>

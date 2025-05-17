@@ -20,7 +20,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
 import {
@@ -32,7 +31,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Trash2, Copy, Eye } from 'lucide-react';
+import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Trash2, Eye } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Transaction } from '@/types';
 import { toast } from '@/hooks/use-toast';
@@ -76,27 +75,6 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
     }
   };
 
-  const handleClone = (transaction: Transaction) => {
-    // Create a new transaction with the same properties but a new ID
-    const clonedTransaction: Transaction = {
-      ...transaction,
-      id: `trans-${Date.now()}`, // Generate unique ID
-      description: `${transaction.description} (Cópia)`,
-      date: new Date() // Set today's date
-    };
-    
-    // Add the cloned transaction to the mockTransactions array
-    mockTransactions.push(clonedTransaction);
-    
-    toast({
-      title: "Transação duplicada",
-      description: "Uma cópia da transação foi criada com sucesso."
-    });
-    
-    // Force re-render by refreshing the page
-    window.location.reload();
-  };
-  
   const findEventName = (eventId: string | undefined) => {
     if (!eventId) return 'Não associado';
     const event = mockEvents.find(e => e.id === eventId);
@@ -189,16 +167,6 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                                   <Edit className="h-4 w-4 mr-2" />
                                   <span>Editar</span>
                                 </a>
-                              </Button>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Button 
-                                variant="ghost" 
-                                className="w-full justify-start"
-                                onClick={() => handleClone(transaction)}
-                              >
-                                <Copy className="h-4 w-4 mr-2" />
-                                <span>Duplicar</span>
                               </Button>
                             </DropdownMenuItem>
                             <DropdownMenuItem>
@@ -309,10 +277,7 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                   <h3 className="text-sm font-medium">Recorrência</h3>
                   {selectedTransaction.isRecurring ? (
                     <p>
-                      {selectedTransaction.recurrenceInterval === 'weekly' && 'Semanal'}
-                      {selectedTransaction.recurrenceInterval === 'monthly' && 'Mensal'}
-                      {selectedTransaction.recurrenceInterval === 'quarterly' && 'Trimestral'}
-                      {selectedTransaction.recurrenceInterval === 'yearly' && 'Anual'}
+                      Mensal
                       {selectedTransaction.recurrenceMonths && ` (${selectedTransaction.recurrenceMonths} meses)`}
                     </p>
                   ) : (
@@ -320,21 +285,45 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                   )}
                 </div>
                 
-                <div className="col-span-2">
-                  <h3 className="text-sm font-medium">Evento Relacionado</h3>
-                  <p>{findEventName(selectedTransaction.eventId)}</p>
-                </div>
+                {selectedTransaction.eventId && (
+                  <div className="col-span-2">
+                    <h3 className="text-sm font-medium">Evento Relacionado</h3>
+                    <div className="mt-1 p-2 border rounded bg-muted/50">
+                      <p className="font-medium">{findEventName(selectedTransaction.eventId)}</p>
+                      {(() => {
+                        const event = mockEvents.find(e => e.id === selectedTransaction.eventId);
+                        return event ? (
+                          <div className="text-sm text-muted-foreground mt-1">
+                            <p>Data: {formatDate(event.date)}</p>
+                            <p>Local: {event.location}</p>
+                            {event.status && <p>Status: {event.status === 'upcoming' ? 'Próximo' : 
+                                                         event.status === 'completed' ? 'Realizado' : 
+                                                         'Cancelado'}</p>}
+                          </div>
+                        ) : null;
+                      })()}
+                    </div>
+                  </div>
+                )}
+                
+                {!selectedTransaction.eventId && (
+                  <div className="col-span-2">
+                    <h3 className="text-sm font-medium">Evento Relacionado</h3>
+                    <p>Não associado a nenhum evento</p>
+                  </div>
+                )}
                 
                 {selectedTransaction.teamPercentages && selectedTransaction.teamPercentages.length > 0 && (
                   <div className="col-span-2">
                     <h3 className="text-sm font-medium">Distribuição Percentual</h3>
-                    <ul className="list-disc pl-5">
+                    <div className="mt-1 space-y-2">
                       {selectedTransaction.teamPercentages.map((tp, index) => (
-                        <li key={index}>
-                          {tp.teamMemberId}: {tp.percentageValue}%
-                        </li>
+                        <div key={index} className="flex justify-between items-center p-2 border rounded bg-muted/50">
+                          <span>{tp.teamMemberId}</span>
+                          <span className="font-medium">{tp.percentageValue}%</span>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 )}
                 
@@ -348,7 +337,7 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                 {selectedTransaction.attachments && selectedTransaction.attachments.length > 0 && (
                   <div className="col-span-2">
                     <h3 className="text-sm font-medium">Anexos</h3>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 mt-1">
                       {selectedTransaction.attachments.map((attachment, index) => (
                         <div key={index} className="border p-2 rounded">
                           Anexo {index + 1}

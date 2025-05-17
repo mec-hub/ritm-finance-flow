@@ -128,7 +128,6 @@ const EditarTransacao = () => {
   }, [id, navigate, form]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    // In a real app, update the transaction in a database
     try {
       // Find the index of the transaction
       const index = mockTransactions.findIndex(t => t.id === id);
@@ -174,27 +173,6 @@ const EditarTransacao = () => {
       });
     }
   };
-  
-  const handleDuplicate = () => {
-    if (!transaction) return;
-    
-    // Create a duplicate transaction with a new ID
-    const duplicateTransaction: Transaction = {
-      ...transaction,
-      id: `trans-${Date.now()}`, // Generate new ID
-      description: `${transaction.description} (Cópia)`
-    };
-    
-    // Add to mockTransactions
-    mockTransactions.push(duplicateTransaction);
-    
-    toast({
-      title: "Transação duplicada",
-      description: "Uma cópia da transação foi criada com sucesso."
-    });
-    
-    navigate('/financas');
-  };
 
   // Sample categories
   const categories = [
@@ -227,9 +205,6 @@ const EditarTransacao = () => {
               </p>
             </div>
           </div>
-          <Button variant="outline" onClick={handleDuplicate}>
-            Duplicar
-          </Button>
         </div>
 
         {loading ? (
@@ -425,7 +400,7 @@ const EditarTransacao = () => {
                               />
                             </FormControl>
                             <FormDescription>
-                              Por quantos meses esta transação se repetirá
+                              Por quantos meses esta transação se repetirá (incluindo este mês)
                             </FormDescription>
                             <FormMessage />
                           </FormItem>

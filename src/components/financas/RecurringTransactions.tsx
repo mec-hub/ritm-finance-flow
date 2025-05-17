@@ -26,7 +26,6 @@ import { Button } from '@/components/ui/button';
 import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Trash2, Calendar, Eye } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Transaction } from '@/types';
-import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { mockTransactions } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
@@ -45,7 +44,6 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
     let nextDate = new Date(lastDate);
     
     while (nextDate <= today) {
-      // Simplified to just handle monthly recurrence
       nextDate.setMonth(nextDate.getMonth() + 1);
     }
     
@@ -111,26 +109,6 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
       // Force re-render by refreshing the page
       window.location.reload();
     }
-  };
-  
-  const handleDuplicate = (transaction: Transaction) => {
-    // Create a duplicate transaction with a new ID
-    const duplicateTransaction: Transaction = {
-      ...transaction,
-      id: `trans-${Date.now()}`, // Generate new ID
-      description: `${transaction.description} (Cópia)`
-    };
-    
-    // Add to mockTransactions
-    mockTransactions.push(duplicateTransaction);
-    
-    toast({
-      title: "Transação duplicada",
-      description: "Uma cópia da transação foi criada com sucesso."
-    });
-    
-    // Force re-render by refreshing the page
-    window.location.reload();
   };
   
   const handleViewDetails = (id: string) => {
@@ -224,16 +202,6 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                             >
                               <Calendar className="h-4 w-4 mr-2" />
                               <span>Criar Instância</span>
-                            </Button>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Button 
-                              variant="ghost" 
-                              className="w-full justify-start" 
-                              onClick={() => handleDuplicate(transaction)}
-                            >
-                              <Calendar className="h-4 w-4 mr-2" />
-                              <span>Duplicar</span>
                             </Button>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
