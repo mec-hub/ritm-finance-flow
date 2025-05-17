@@ -31,7 +31,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Trash2, Eye, Check, X } from 'lucide-react';
+import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Trash2, Eye, Check, X, Paperclip } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Transaction } from '@/types';
 import { toast } from '@/hooks/use-toast';
@@ -50,7 +50,7 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
   
   const startIndex = (page - 1) * itemsPerPage;
   const paginatedTransactions = transactions
-    .sort((a, b) => b.date.getTime() - a.date.getTime())
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(startIndex, startIndex + itemsPerPage);
   
   const handlePrevious = () => {
@@ -97,6 +97,16 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
     return event ? event.title : 'Evento não encontrado';
   };
 
+  const getAttachmentCount = (attachments?: string[]) => {
+    if (!attachments || attachments.length === 0) return null;
+    return (
+      <div className="flex items-center">
+        <Paperclip className="h-4 w-4 mr-1 text-gray-500" />
+        <span className="text-gray-600">{attachments.length}</span>
+      </div>
+    );
+  };
+
   const closeDialog = () => {
     setSelectedTransaction(null);
   };
@@ -117,6 +127,7 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                   <TableHead>Categoria</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Anexos</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                   <TableHead className="w-[80px]"></TableHead>
                 </TableRow>
@@ -150,6 +161,9 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                       </TableCell>
                       <TableCell>
                         {getStatusBadge(transaction.status) || <Badge variant="outline">Não Definido</Badge>}
+                      </TableCell>
+                      <TableCell>
+                        {getAttachmentCount(transaction.attachments)}
                       </TableCell>
                       <TableCell className="text-right">
                         <span
@@ -206,7 +220,7 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-4">
+                    <TableCell colSpan={8} className="text-center py-4">
                       Nenhuma transação encontrada.
                     </TableCell>
                   </TableRow>

@@ -23,12 +23,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Trash2, Calendar, Eye } from 'lucide-react';
+import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Trash2, Calendar, Eye, X } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Transaction } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { mockTransactions } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
 
 interface RecurringTransactionsProps {
   transactions: Transaction[];
@@ -40,12 +41,24 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
   // Helper function to get next occurrence date
   const getNextOccurrenceDate = (transaction: Transaction): Date => {
     const today = new Date();
-    const lastDate = new Date(transaction.date);
-    let nextDate = new Date(lastDate);
+    // Find the latest instance of this recurring transaction
+    const allInstancesOfThisTransaction = mockTransactions.filter(t => 
+      t.description.includes(transaction.description) && 
+      (t.id === transaction.id || t.id.startsWith(`${transaction.id}-instance-`))
+    );
     
-    while (nextDate <= today) {
-      nextDate.setMonth(nextDate.getMonth() + 1);
-    }
+    // Sort by date to find the latest one
+    const sortedInstances = allInstancesOfThisTransaction.sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    
+    const lastDate = sortedInstances.length > 0 
+      ? new Date(sortedInstances[0].date) 
+      : new Date(transaction.date);
+    
+    // Calculate next occurrence - one month after the latest instance
+    const nextDate = new Date(lastDate);
+    nextDate.setMonth(nextDate.getMonth() + 1);
     
     return nextDate;
   };
@@ -54,27 +67,37 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
   const getRemainingOccurrences = (transaction: Transaction): number => {
     if (!transaction.recurrenceMonths) return 0;
     
-    const startDate = new Date(transaction.date);
-    const today = new Date();
-    const monthsPassed = (today.getFullYear() - startDate.getFullYear()) * 12 + 
-                         (today.getMonth() - startDate.getMonth());
+    // Count how many instances of this transaction already exist
+    const instanceCount = mockTransactions.filter(t => 
+      t.id.startsWith(`${transaction.id}-instance-`)
+    ).length;
     
-    return Math.max(0, transaction.recurrenceMonths - monthsPassed);
+    // Original transaction plus instances created minus total allowed recurrences
+    // Add 1 to include the original transaction
+    return Math.max(0, transaction.recurrenceMonths - instanceCount - 1);
   };
 
   const handleCreateInstance = (transaction: Transaction) => {
     // Create a new instance of the recurring transaction
     const nextOccurrence = getNextOccurrenceDate(transaction);
     
+    // Count existing instances to create a proper ID
+    const existingInstanceCount = mockTransactions.filter(t => 
+      t.id.startsWith(`${transaction.id}-instance-`)
+    ).length;
+    
+    const newInstanceId = `${transaction.id}-instance-${existingInstanceCount + 1}`;
+    
     const newTransaction: Transaction = {
       ...transaction,
-      id: `trans-${Date.now()}`, // Generate new ID
+      id: newInstanceId,
       date: nextOccurrence,
-      description: `${transaction.description} (Recorrência)`,
-      isRecurring: false, // This instance is not recurring anymore
+      description: `${transaction.description}`,
+      isRecurring: false, // This instance is not recurring
       recurrenceInterval: undefined,
       recurrenceMonths: undefined,
-      status: transaction.status || 'not_paid' // Default to "Not paid" if no status
+      status: 'not_paid', // Default status is "Not paid"
+      attachments: [], // No attachments for the new instance
     };
     
     // Add to mockTransactions
@@ -85,8 +108,8 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
       description: "Uma nova instância da transação recorrente foi criada."
     });
     
-    // Navigate to refresh the page instead of using window.location.reload()
-    navigate('/financas');
+    // Navigate to refresh the page
+    window.location.href = window.location.href;
   };
 
   const handleStopRecurring = (id: string) => {
@@ -107,8 +130,8 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
         description: "A transação não será mais recorrente."
       });
       
-      // Navigate to refresh the page instead of using window.location.reload()
-      navigate('/financas');
+      // Refresh the page
+      window.location.href = window.location.href;
     }
   };
   
@@ -195,16 +218,18 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                               <span>Ver Detalhes</span>
                             </Button>
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Button 
-                              variant="ghost" 
-                              className="w-full justify-start" 
-                              onClick={() => handleCreateInstance(transaction)}
-                            >
-                              <Calendar className="h-4 w-4 mr-2" />
-                              <span>Criar Instância</span>
-                            </Button>
-                          </DropdownMenuItem>
+                          {getRemainingOccurrences(transaction) > 0 && (
+                            <DropdownMenuItem>
+                              <Button 
+                                variant="ghost" 
+                                className="w-full justify-start" 
+                                onClick={() => handleCreateInstance(transaction)}
+                              >
+                                <Calendar className="h-4 w-4 mr-2" />
+                                <span>Criar Instância</span>
+                              </Button>
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem asChild>
                             <Button variant="ghost" className="w-full justify-start" asChild>
                               <a href={`/editar-transacao/${transaction.id}`}>
@@ -219,7 +244,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                               className="w-full justify-start text-red-500 hover:text-red-500" 
                               onClick={() => handleStopRecurring(transaction.id)}
                             >
-                              <Trash2 className="h-4 w-4 mr-2" />
+                              <X className="h-4 w-4 mr-2" />
                               <span>Interromper Recorrência</span>
                             </Button>
                           </DropdownMenuItem>

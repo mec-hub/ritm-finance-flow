@@ -15,36 +15,6 @@ import { Transaction } from '@/types';
 import { mockTransactions } from '@/data/mockData';
 import { formatCurrency } from '@/utils/formatters';
 
-// Helper function to expand recurring transactions
-const expandRecurringTransactions = (transactions: Transaction[]): Transaction[] => {
-  const expandedTransactions: Transaction[] = [];
-  
-  transactions.forEach(transaction => {
-    // Add the original transaction
-    expandedTransactions.push(transaction);
-    
-    // If it's recurring, add future occurrences
-    if (transaction.isRecurring && transaction.recurrenceMonths) {
-      const originalDate = new Date(transaction.date);
-      
-      // Start from 1 because we already added the original transaction (month 0)
-      for (let i = 1; i < transaction.recurrenceMonths; i++) {
-        const nextDate = new Date(originalDate);
-        nextDate.setMonth(originalDate.getMonth() + i);
-        
-        expandedTransactions.push({
-          ...transaction,
-          id: `${transaction.id}-recur-${i}`,
-          date: nextDate,
-          description: `${transaction.description} (Recorrência ${i+1})`
-        });
-      }
-    }
-  });
-  
-  return expandedTransactions;
-};
-
 const Financas = () => {
   const [activeTab, setActiveTab] = useState('transactions');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -60,18 +30,16 @@ const Financas = () => {
 
   useEffect(() => {
     // This ensures we always have the latest data from mockTransactions
-    setTransactions(mockTransactions);
+    setTransactions([...mockTransactions]); // Create a shallow copy to ensure state changes
   }, []);
   
-  // Expand recurring transactions for calculations
-  const expandedTransactions = expandRecurringTransactions(transactions);
-  
-  // Calculate financial summary data
-  const totalIncome = expandedTransactions
+  // Calculate financial summary data using all transactions (recurring and instances)
+  // No need to expand the transactions anymore
+  const totalIncome = transactions
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
   
-  const totalExpenses = expandedTransactions
+  const totalExpenses = transactions
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
     
@@ -79,7 +47,7 @@ const Financas = () => {
 
   // Apply filters to transactions
   const applyFilters = (filterOptions: typeof filters) => {
-    let filtered = [...mockTransactions]; // Use mockTransactions directly
+    let filtered = [...mockTransactions]; // Use mockTransactions directly and create a copy
     
     if (filterOptions.type !== 'all') {
       filtered = filtered.filter(t => t.type === filterOptions.type);
@@ -224,7 +192,7 @@ const Financas = () => {
           </TabsContent>
 
           <TabsContent value="budget" className="space-y-4">
-            <BudgetManager transactions={expandedTransactions} />
+            <BudgetManager transactions={transactions} />
           </TabsContent>
         </Tabs>
       </div>

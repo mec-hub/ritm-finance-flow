@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Transaction } from '@/types';
-import { ArrowDownIcon, ArrowUpIcon, Check, X } from 'lucide-react';
+import { ArrowDownIcon, ArrowUpIcon, Check, X, Paperclip } from 'lucide-react';
 
 interface RecentTransactionsProps {
   transactions: Transaction[];
@@ -33,6 +33,16 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
     }
   };
 
+  const getAttachmentCount = (attachments?: string[]) => {
+    if (!attachments || attachments.length === 0) return null;
+    return (
+      <div className="flex items-center text-gray-500 ml-2">
+        <Paperclip className="h-3 w-3 mr-1" />
+        <span className="text-xs">{attachments.length}</span>
+      </div>
+    );
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -52,7 +62,17 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
             {transactions.map((transaction) => (
               <TableRow key={transaction.id}>
                 <TableCell>{formatDate(transaction.date)}</TableCell>
-                <TableCell className="font-medium">{transaction.description}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex items-center">
+                    {transaction.description}
+                    {getAttachmentCount(transaction.attachments)}
+                    {transaction.isRecurring && (
+                      <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">
+                        Recorrente
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>{getStatusBadge(transaction.status) || <Badge variant="outline">Não Definido</Badge>}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end space-x-1">
