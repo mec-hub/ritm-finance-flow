@@ -1,12 +1,12 @@
-
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockTransactions, mockEvents } from '@/data/mockData';
+import { mockTransactions, mockEvents, mockClients } from '@/data/mockData';
 import { formatCurrency } from '@/utils/formatters';
-import { ArrowDownIcon, ArrowUpIcon, CalendarIcon, UsersIcon, BarChart3 } from 'lucide-react';
+import { ArrowDownIcon, ArrowUpIcon, CalendarIcon, UsersIcon } from 'lucide-react';
 import { EventsCalendar } from '@/components/events/EventsCalendar';
 import { ClientStats } from '@/components/clients/ClientStats';
 import { FinancialBarChart } from '@/components/ui/dashboard/BarChart';
+import { RecentTransactions } from '@/components/ui/dashboard/RecentTransactions';
 
 // Components
 const StatCards = () => {
@@ -148,7 +148,7 @@ const UpcomingEventsList = () => {
   );
 };
 
-// Events by Month Component
+// Events by Month Component - Updated to show event count instead of financial values
 const EventsByMonth = () => {
   // Get current year
   const currentYear = new Date().getFullYear();
@@ -175,54 +175,19 @@ const EventsByMonth = () => {
     <Card>
       <CardHeader>
         <CardTitle>Eventos por Mês</CardTitle>
-        <CardDescription>Distribuição de eventos em {currentYear}</CardDescription>
+        <CardDescription>Número de eventos em {currentYear}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-[300px]">
           <FinancialBarChart
             data={eventsByMonth}
-            title=""
+            title="Número de Eventos"
             dataKeys={['events']}
             colors={['#ffbf00']}
           />
         </div>
       </CardContent>
     </Card>
-  );
-};
-
-const RecentTransactions = ({ transactions }) => {
-  return (
-    <div className="space-y-4">
-      {transactions.length > 0 ? (
-        transactions.map((transaction) => (
-          <div key={transaction.id} className="flex items-center">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
-              transaction.type === 'income' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
-            }`}>
-              {transaction.type === 'income' ? (
-                <ArrowUpIcon className="h-5 w-5" />
-              ) : (
-                <ArrowDownIcon className="h-5 w-5" />
-              )}
-            </div>
-            <div className="flex-1">
-              <h3 className="text-sm font-medium">{transaction.description}</h3>
-              <p className="text-xs text-muted-foreground">
-                {new Date(transaction.date).toLocaleDateString()} - {transaction.category}
-              </p>
-            </div>
-            <div className={`text-sm font-medium ${
-              transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-            }`}>
-              {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-            </div>
-          </div>
-        ))
-      ) : (
-        <p className="text-muted-foreground text-center py-4">Nenhuma transação recente.</p>
-      )}
-    </div>
   );
 };
 
@@ -296,7 +261,7 @@ export default function Dashboard() {
               <CardTitle>Total de Clientes</CardTitle>
             </CardHeader>
             <CardContent>
-              <ClientStats clients={[]} events={mockEvents} />
+              <ClientStats clients={mockClients} events={mockEvents} />
             </CardContent>
           </Card>
           

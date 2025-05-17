@@ -8,6 +8,15 @@ import { ClientsDataTable } from '@/components/clients/ClientsDataTable';
 import { ClientStats } from '@/components/clients/ClientStats';
 import { ClientEventChart } from '@/components/clients/ClientEventChart';
 import { Link } from 'react-router-dom';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Card } from '@/components/ui/card';
 
 const Clientes = () => {
   const [clients] = useState(mockClients);
@@ -38,9 +47,65 @@ const Clientes = () => {
           <ClientEventChart clients={clients} events={mockEvents} />
         </div>
         
+        {/* Client List with Number of Clients Column */}
         <div className="dashboard-card">
           <h2 className="dashboard-card-title mb-4">Lista de Clientes</h2>
-          <ClientsDataTable clients={clients} />
+          
+          <Card>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Contato</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead>Número de Eventos</TableHead>
+                    <TableHead>Última Interação</TableHead>
+                    <TableHead className="text-right">Total Faturado</TableHead>
+                    <TableHead className="w-[80px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {clients.length > 0 ? (
+                    clients.map((client) => {
+                      // Count events for this client
+                      const clientEvents = mockEvents.filter(event => event.client === client.name);
+                      
+                      return (
+                        <TableRow key={client.id}>
+                          <TableCell className="font-medium">{client.name}</TableCell>
+                          <TableCell>{client.contact}</TableCell>
+                          <TableCell>{client.email}</TableCell>
+                          <TableCell>{client.phone || '-'}</TableCell>
+                          <TableCell>{clientEvents.length}</TableCell>
+                          <TableCell>
+                            {client.lastEvent ? new Date(client.lastEvent).toLocaleDateString() : 'Nenhuma'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(client.totalRevenue)}
+                          </TableCell>
+                          <TableCell>
+                            <Link to={`/editar-cliente/${client.id}`}>
+                              <Button variant="ghost" size="sm">
+                                Editar
+                              </Button>
+                            </Link>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-4">
+                        Nenhum cliente encontrado.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
         </div>
       </div>
     </Layout>

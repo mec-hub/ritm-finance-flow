@@ -1,4 +1,3 @@
-
 import { useState, useEffect, ChangeEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
@@ -39,8 +38,8 @@ import { CalendarIcon, ArrowLeft, FileText, X, Paperclip } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { Transaction } from '@/types';
-import { mockTransactions } from '@/data/mockData';
+import { Transaction, Event } from '@/types';
+import { mockTransactions, mockEvents } from '@/data/mockData';
 import { toast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
@@ -86,12 +85,12 @@ const EditarTransacao = () => {
   });
 
   useEffect(() => {
-    // In a real app, fetch the transaction from an API
     const fetchTransaction = () => {
       setLoading(true);
+      
       try {
-        // Find the transaction by ID - make sure to search in the actual array
-        const foundTransaction = mockTransactions.find((t) => t.id === id);
+        // Find the transaction by ID in mockTransactions
+        const foundTransaction = [...mockTransactions].find((t) => t.id === id);
         
         if (foundTransaction) {
           setTransaction(foundTransaction);
@@ -121,6 +120,7 @@ const EditarTransacao = () => {
           navigate('/financas');
         }
       } catch (error) {
+        console.error("Error fetching transaction:", error);
         toast({
           title: "Erro",
           description: "Ocorreu um erro ao buscar os dados da transação.",
@@ -131,7 +131,9 @@ const EditarTransacao = () => {
       }
     };
 
-    fetchTransaction();
+    if (id) {
+      fetchTransaction();
+    }
   }, [id, navigate, form]);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -150,18 +152,19 @@ const EditarTransacao = () => {
   };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    if (!id) return;
+    
     try {
-      // Find the index of the transaction
-      const index = mockTransactions.findIndex(t => t.id === id);
+      // Find the transaction in the array
+      const transactionIndex = mockTransactions.findIndex(t => t.id === id);
       
-      if (index !== -1) {
+      if (transactionIndex !== -1) {
         // Process new files (in a real app, you would upload these to a server)
-        // For mock purposes, we'll create fake URLs
-        const fakeFileUrls = newFiles.map(file => URL.createObjectURL(file));
+        const fakeFileUrls = newFiles.map(file => `attachment-${Date.now()}-${file.name}`);
         
-        // Update the transaction in the mockTransactions array
+        // Create an updated transaction object
         const updatedTransaction: Transaction = {
-          ...mockTransactions[index],
+          ...mockTransactions[transactionIndex], // Keep the original transaction ID
           description: values.description,
           amount: values.amount,
           date: values.date,
@@ -169,7 +172,7 @@ const EditarTransacao = () => {
           subcategory: values.subcategory || undefined,
           type: values.type,
           isRecurring: values.isRecurring,
-          recurrenceInterval: values.isRecurring ? 'monthly' : undefined, // Default to monthly
+          recurrenceInterval: values.isRecurring ? 'monthly' : undefined,
           recurrenceMonths: values.isRecurring ? values.recurrenceMonths : undefined,
           notes: values.notes || undefined,
           clientId: values.clientId || undefined,
@@ -178,16 +181,16 @@ const EditarTransacao = () => {
           attachments: [...attachments, ...fakeFileUrls],
         };
         
-        // Replace the transaction in the array
-        mockTransactions[index] = updatedTransaction;
+        // Update transaction in the mockTransactions array
+        mockTransactions[transactionIndex] = updatedTransaction;
         
         toast({
           title: "Transação atualizada",
           description: "A transação foi atualizada com sucesso.",
         });
         
-        // Navigate after a short delay to make toast visible
-        setTimeout(() => navigate('/financas'), 500);
+        // Navigate after a short delay to show toast
+        setTimeout(() => navigate('/financas'), 1000);
       } else {
         toast({
           title: "Erro",

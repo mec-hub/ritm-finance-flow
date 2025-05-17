@@ -23,13 +23,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Trash2, Calendar, Eye, X } from 'lucide-react';
+import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Calendar, Eye, X } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Transaction } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { mockTransactions } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
-import { Badge } from '@/components/ui/badge';
 
 interface RecurringTransactionsProps {
   transactions: Transaction[];
@@ -38,13 +37,11 @@ interface RecurringTransactionsProps {
 export function RecurringTransactions({ transactions }: RecurringTransactionsProps) {
   const navigate = useNavigate();
   
-  // Helper function to get next occurrence date
+  // Helper function to get next occurrence date - one month after the original date
   const getNextOccurrenceDate = (transaction: Transaction): Date => {
-    const today = new Date();
-    // Find the latest instance of this recurring transaction
+    // Find all instances of this recurring transaction
     const allInstancesOfThisTransaction = mockTransactions.filter(t => 
-      t.description.includes(transaction.description) && 
-      (t.id === transaction.id || t.id.startsWith(`${transaction.id}-instance-`))
+      t.id.startsWith(`${transaction.id}-instance-`) || t.id === transaction.id
     );
     
     // Sort by date to find the latest one
@@ -52,6 +49,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
     
+    // Get the latest date
     const lastDate = sortedInstances.length > 0 
       ? new Date(sortedInstances[0].date) 
       : new Date(transaction.date);
@@ -73,7 +71,6 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
     ).length;
     
     // Original transaction plus instances created minus total allowed recurrences
-    // Add 1 to include the original transaction
     return Math.max(0, transaction.recurrenceMonths - instanceCount - 1);
   };
 
@@ -92,11 +89,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
       ...transaction,
       id: newInstanceId,
       date: nextOccurrence,
-      description: `${transaction.description}`,
-      isRecurring: false, // This instance is not recurring
-      recurrenceInterval: undefined,
-      recurrenceMonths: undefined,
-      status: 'not_paid', // Default status is "Not paid"
+      status: 'not_paid', // Default status is "Not paid" for new instances
       attachments: [], // No attachments for the new instance
     };
     
@@ -105,11 +98,11 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
     
     toast({
       title: "Instância criada",
-      description: "Uma nova instância da transação recorrente foi criada."
+      description: "Uma nova instância da transação recorrente foi criada com sucesso."
     });
     
-    // Navigate to refresh the page
-    window.location.href = window.location.href;
+    // Refresh the page to show the changes
+    window.location.reload();
   };
 
   const handleStopRecurring = (id: string) => {
@@ -131,7 +124,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
       });
       
       // Refresh the page
-      window.location.href = window.location.href;
+      window.location.reload();
     }
   };
   

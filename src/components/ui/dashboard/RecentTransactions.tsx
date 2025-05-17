@@ -55,6 +55,7 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
               <TableHead>Data</TableHead>
               <TableHead>Descrição</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Anexos</TableHead>
               <TableHead className="text-right">Valor</TableHead>
             </TableRow>
           </TableHeader>
@@ -65,7 +66,6 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
                 <TableCell className="font-medium">
                   <div className="flex items-center">
                     {transaction.description}
-                    {getAttachmentCount(transaction.attachments)}
                     {transaction.isRecurring && (
                       <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">
                         Recorrente
@@ -74,6 +74,16 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
                   </div>
                 </TableCell>
                 <TableCell>{getStatusBadge(transaction.status) || <Badge variant="outline">Não Definido</Badge>}</TableCell>
+                <TableCell>
+                  {transaction.attachments && transaction.attachments.length > 0 ? (
+                    <div className="flex items-center">
+                      <Paperclip className="h-4 w-4 mr-1 text-gray-400" />
+                      <span>{transaction.attachments.length}</span>
+                    </div>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end space-x-1">
                     {transaction.type === 'income' ? (
