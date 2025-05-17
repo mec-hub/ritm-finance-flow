@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -26,16 +27,27 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatDate } from '@/utils/formatters';
-import { Client } from '@/types';
+import { Client, Event, Transaction } from '@/types';
 import { MoreHorizontal, Search, Eye, Edit, Trash2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { mockEvents, mockTransactions } from '@/data/mockData';
 
 interface ClientsDataTableProps {
   clients: Client[];
 }
 
 export function ClientsDataTable({ clients: initialClients }: ClientsDataTableProps) {
-  const [clients, setClients] = useState(initialClients);
+  const [clients, setClients] = useState(() => {
+    // Calculate revenue for each client based on transactions linked to events
+    return initialClients.map(client => {
+      const clientRevenue = calculateClientRevenue(client);
+      return {
+        ...client,
+        totalRevenue: clientRevenue
+      };
+    });
+  });
+  
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   
@@ -43,6 +55,28 @@ export function ClientsDataTable({ clients: initialClients }: ClientsDataTablePr
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  
+  // Calculate client revenue based on transactions linked to events
+  function calculateClientRevenue(client: Client): number {
+    let revenue = 0;
+    
+    // Find all events for this client
+    const clientEvents = mockEvents.filter(event => event.client === client.name);
+    
+    // For each event, find related transactions
+    clientEvents.forEach(event => {
+      const eventTransactions = mockTransactions.filter(
+        transaction => transaction.eventId === event.id && transaction.type === 'income'
+      );
+      
+      // Sum up transaction amounts
+      eventTransactions.forEach(transaction => {
+        revenue += transaction.amount;
+      });
+    });
+    
+    return revenue;
+  }
   
   const filteredClients = clients.filter(client => 
     client.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -102,6 +136,7 @@ export function ClientsDataTable({ clients: initialClients }: ClientsDataTablePr
               <TableHead>Contato</TableHead>
               <TableHead>E-mail</TableHead>
               <TableHead>Receita Total</TableHead>
+              <TableHead>Número de Eventos</TableHead>
               <TableHead>Último Evento</TableHead>
               <TableHead className="w-[80px]"></TableHead>
             </TableRow>
@@ -109,49 +144,55 @@ export function ClientsDataTable({ clients: initialClients }: ClientsDataTablePr
           <TableBody>
             {filteredClients.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-4">
+                <TableCell colSpan={7} className="text-center py-4">
                   Nenhum cliente encontrado
                 </TableCell>
               </TableRow>
             ) : (
-              filteredClients.map((client) => (
-                <TableRow key={client.id}>
-                  <TableCell className="font-medium">{client.name}</TableCell>
-                  <TableCell>{client.contact}</TableCell>
-                  <TableCell>{client.email}</TableCell>
-                  <TableCell>R$ {client.totalRevenue.toFixed(2)}</TableCell>
-                  <TableCell>{client.lastEvent ? formatDate(client.lastEvent) : 'N/A'}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleViewDetails(client)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Ver detalhes
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEdit(client)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => {
-                            setSelectedClient(client);
-                            setDeleteDialogOpen(true);
-                          }}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
+              filteredClients.map((client) => {
+                // Count events for this client
+                const clientEvents = mockEvents.filter(event => event.client === client.name);
+                
+                return (
+                  <TableRow key={client.id}>
+                    <TableCell className="font-medium">{client.name}</TableCell>
+                    <TableCell>{client.contact}</TableCell>
+                    <TableCell>{client.email}</TableCell>
+                    <TableCell>R$ {client.totalRevenue.toFixed(2)}</TableCell>
+                    <TableCell>{clientEvents.length}</TableCell>
+                    <TableCell>{client.lastEvent ? formatDate(client.lastEvent) : 'N/A'}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleViewDetails(client)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Ver detalhes
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEdit(client)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              setSelectedClient(client);
+                              setDeleteDialogOpen(true);
+                            }}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -186,6 +227,10 @@ export function ClientsDataTable({ clients: initialClients }: ClientsDataTablePr
                   <div>
                     <div className="text-sm font-medium">Último Evento</div>
                     <div className="text-sm">{selectedClient.lastEvent ? formatDate(selectedClient.lastEvent) : 'N/A'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">Número de Eventos</div>
+                    <div className="text-sm">{mockEvents.filter(event => event.client === selectedClient.name).length}</div>
                   </div>
                 </div>
                 

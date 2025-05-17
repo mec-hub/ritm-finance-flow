@@ -29,14 +29,14 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
       case 'canceled':
         return <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20"><X className="h-3 w-3 mr-1" /> Cancelado</Badge>;
       default:
-        return null;
+        return <Badge variant="outline">Não Definido</Badge>;
     }
   };
 
   const getAttachmentCount = (attachments?: string[]) => {
     if (!attachments || attachments.length === 0) return null;
     return (
-      <div className="flex items-center text-gray-500 ml-2">
+      <div className="flex items-center text-gray-500">
         <Paperclip className="h-3 w-3 mr-1" />
         <span className="text-xs">{attachments.length}</span>
       </div>
@@ -73,7 +73,7 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
                     )}
                   </div>
                 </TableCell>
-                <TableCell>{getStatusBadge(transaction.status) || <Badge variant="outline">Não Definido</Badge>}</TableCell>
+                <TableCell>{getStatusBadge(transaction.status)}</TableCell>
                 <TableCell>
                   {transaction.attachments && transaction.attachments.length > 0 ? (
                     <div className="flex items-center">

@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Calendar, Eye, X } from 'lucide-react';
+import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Calendar, Eye, X, Paperclip } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Transaction } from '@/types';
 import { toast } from '@/hooks/use-toast';
@@ -41,7 +41,8 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
   const getNextOccurrenceDate = (transaction: Transaction): Date => {
     // Find all instances of this recurring transaction
     const allInstancesOfThisTransaction = mockTransactions.filter(t => 
-      t.id.startsWith(`${transaction.id}-instance-`) || t.id === transaction.id
+      (t.id.startsWith(`${transaction.id}-instance-`) || t.id === transaction.id) && 
+      t.description === transaction.description
     );
     
     // Sort by date to find the latest one
@@ -67,7 +68,8 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
     
     // Count how many instances of this transaction already exist
     const instanceCount = mockTransactions.filter(t => 
-      t.id.startsWith(`${transaction.id}-instance-`)
+      t.id.startsWith(`${transaction.id}-instance-`) && 
+      t.description === transaction.description
     ).length;
     
     // Original transaction plus instances created minus total allowed recurrences
@@ -80,7 +82,8 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
     
     // Count existing instances to create a proper ID
     const existingInstanceCount = mockTransactions.filter(t => 
-      t.id.startsWith(`${transaction.id}-instance-`)
+      t.id.startsWith(`${transaction.id}-instance-`) &&
+      t.description === transaction.description
     ).length;
     
     const newInstanceId = `${transaction.id}-instance-${existingInstanceCount + 1}`;
@@ -101,13 +104,13 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
       description: "Uma nova instância da transação recorrente foi criada com sucesso."
     });
     
-    // Refresh the page to show the changes
-    window.location.reload();
+    // Force a refresh by re-navigating to the current page
+    navigate('/financas');
   };
 
-  const handleStopRecurring = (id: string) => {
+  const handleStopRecurring = (transaction: Transaction) => {
     // Find the transaction in the array
-    const index = mockTransactions.findIndex(t => t.id === id);
+    const index = mockTransactions.findIndex(t => t.id === transaction.id);
     
     if (index !== -1) {
       // Update the transaction to not be recurring
@@ -123,8 +126,8 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
         description: "A transação não será mais recorrente."
       });
       
-      // Refresh the page
-      window.location.reload();
+      // Force a refresh by re-navigating to the current page
+      navigate('/financas');
     }
   };
   
@@ -150,6 +153,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                 <TableHead>Restam</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead>Tipo</TableHead>
+                <TableHead>Anexos</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
                 <TableHead className="w-[80px]"></TableHead>
               </TableRow>
@@ -179,6 +183,16 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                           <ArrowDownIcon className="h-4 w-4 text-red-500 mr-1" />
                           <span>Despesa</span>
                         </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {transaction.attachments && transaction.attachments.length > 0 ? (
+                        <div className="flex items-center">
+                          <Paperclip className="h-4 w-4 mr-1 text-gray-400" />
+                          <span>{transaction.attachments.length}</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
@@ -235,7 +249,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                             <Button 
                               variant="ghost" 
                               className="w-full justify-start text-red-500 hover:text-red-500" 
-                              onClick={() => handleStopRecurring(transaction.id)}
+                              onClick={() => handleStopRecurring(transaction)}
                             >
                               <X className="h-4 w-4 mr-2" />
                               <span>Interromper Recorrência</span>
@@ -248,7 +262,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-4">
+                  <TableCell colSpan={8} className="text-center py-4">
                     Nenhuma transação recorrente encontrada.
                   </TableCell>
                 </TableRow>

@@ -21,15 +21,15 @@ export function ClientStats({ clients, events }: ClientStatsProps) {
     
     // Find transactions linked to events
     mockTransactions.forEach(transaction => {
-      if (transaction.eventId) {
+      if (transaction.eventId && transaction.type === 'income') {
         // Find the event linked to this transaction
         const linkedEvent = events.find(event => event.id === transaction.eventId);
         
         if (linkedEvent) {
-          // Find client by name (in a real app, this would be by ID)
+          // Find client by name
           const client = clients.find(c => c.name === linkedEvent.client);
           
-          if (client && transaction.type === 'income') {
+          if (client) {
             // Add transaction amount to client's revenue
             const currentRevenue = clientRevenueMap.get(client.id) || 0;
             clientRevenueMap.set(client.id, currentRevenue + transaction.amount);

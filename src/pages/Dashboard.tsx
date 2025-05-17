@@ -1,3 +1,4 @@
+
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { mockTransactions, mockEvents, mockClients } from '@/data/mockData';
@@ -195,7 +196,7 @@ const EventsByMonth = () => {
 const IncomeVsExpensesChart = () => {
   const currentYear = new Date().getFullYear();
   
-  // Get all transactions for the current year
+  // Get all transactions for the current year (without considering recurrence months)
   const yearTransactions = mockTransactions.filter(
     transaction => transaction.date.getFullYear() === currentYear
   );
@@ -208,7 +209,7 @@ const IncomeVsExpensesChart = () => {
     expenses: 0
   }));
   
-  // Calculate income and expenses by month
+  // Calculate income and expenses by month - based only on actual transactions
   yearTransactions.forEach(transaction => {
     const month = transaction.date.getMonth();
     if (transaction.type === 'income') {

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
-import { mockClients, mockEvents } from '@/data/mockData';
+import { mockClients, mockEvents, mockTransactions } from '@/data/mockData';
 import { ClientsDataTable } from '@/components/clients/ClientsDataTable';
 import { ClientStats } from '@/components/clients/ClientStats';
 import { ClientEventChart } from '@/components/clients/ClientEventChart';
@@ -19,7 +19,35 @@ import {
 import { Card } from '@/components/ui/card';
 
 const Clientes = () => {
-  const [clients] = useState(mockClients);
+  // Calculate client revenue based on events and transactions
+  const calculateClientRevenue = (clientName: string) => {
+    // Find all events for this client
+    const clientEvents = mockEvents.filter(event => event.client === clientName);
+    
+    let totalRevenue = 0;
+    
+    // For each event, find related transactions
+    clientEvents.forEach(event => {
+      const eventTransactions = mockTransactions.filter(
+        transaction => transaction.eventId === event.id && transaction.type === 'income'
+      );
+      
+      // Sum up transaction amounts
+      eventTransactions.forEach(transaction => {
+        totalRevenue += transaction.amount;
+      });
+    });
+    
+    return totalRevenue;
+  };
+
+  const [clients] = useState(() => {
+    // Update client data with actual revenue calculations
+    return mockClients.map(client => ({
+      ...client,
+      totalRevenue: calculateClientRevenue(client.name)
+    }));
+  });
   
   return (
     <Layout>
@@ -50,62 +78,7 @@ const Clientes = () => {
         {/* Client List with Number of Clients Column */}
         <div className="dashboard-card">
           <h2 className="dashboard-card-title mb-4">Lista de Clientes</h2>
-          
-          <Card>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Contato</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead>Número de Eventos</TableHead>
-                    <TableHead>Última Interação</TableHead>
-                    <TableHead className="text-right">Total Faturado</TableHead>
-                    <TableHead className="w-[80px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {clients.length > 0 ? (
-                    clients.map((client) => {
-                      // Count events for this client
-                      const clientEvents = mockEvents.filter(event => event.client === client.name);
-                      
-                      return (
-                        <TableRow key={client.id}>
-                          <TableCell className="font-medium">{client.name}</TableCell>
-                          <TableCell>{client.contact}</TableCell>
-                          <TableCell>{client.email}</TableCell>
-                          <TableCell>{client.phone || '-'}</TableCell>
-                          <TableCell>{clientEvents.length}</TableCell>
-                          <TableCell>
-                            {client.lastEvent ? new Date(client.lastEvent).toLocaleDateString() : 'Nenhuma'}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(client.totalRevenue)}
-                          </TableCell>
-                          <TableCell>
-                            <Link to={`/editar-cliente/${client.id}`}>
-                              <Button variant="ghost" size="sm">
-                                Editar
-                              </Button>
-                            </Link>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-4">
-                        Nenhum cliente encontrado.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </Card>
+          <ClientsDataTable clients={clients} />
         </div>
       </div>
     </Layout>
