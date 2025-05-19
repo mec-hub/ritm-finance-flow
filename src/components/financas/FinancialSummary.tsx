@@ -21,6 +21,7 @@ import { Transaction } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
 import { FinancialBarChart } from '@/components/ui/dashboard/BarChart';
 import { CategoryPieChart } from '@/components/ui/dashboard/PieChart';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface FinancialSummaryProps {
   transactions: Transaction[];
@@ -32,57 +33,17 @@ export function FinancialSummary({ transactions }: FinancialSummaryProps) {
   )].sort((a, b) => b - a);
 
   const currentYear = new Date().getFullYear();
-  const [selectedYear, setSelectedYear] = useState(
+  const [year, setYear] = useState(
     availableYears.includes(currentYear) ? currentYear : availableYears[0] || currentYear
   );
 
-  const [selectedPeriod, setSelectedPeriod] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
+  const [viewType, setViewType] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
 
-  // Filter transactions by year
-  const yearTransactions = transactions.filter((t) => t.date.getFullYear() === selectedYear);
+  // Filter transactions by year - WITHOUT expanding recurring transactions
+  // Only use actual transactions from the transactions array
+  const yearTransactions = transactions.filter((t) => t.date.getFullYear() === year);
 
-  // Income transactions for the selected year
-  const incomeTransactions = yearTransactions.filter((t) => t.type === 'income');
-  // Expense transactions for the selected year
-  const expenseTransactions = yearTransactions.filter((t) => t.type === 'expense');
-
-  // Calculate income by category
-  const incomeByCategory = incomeTransactions.reduce((acc, t) => {
-    acc[t.category] = (acc[t.category] || 0) + t.amount;
-    return acc;
-  }, {} as Record<string, number>);
-
-  // Calculate expenses by category
-  const expensesByCategory = expenseTransactions.reduce((acc, t) => {
-    acc[t.category] = (acc[t.category] || 0) + t.amount;
-    return acc;
-  }, {} as Record<string, number>);
-
-  // Convert to category data format
-  const totalIncome = Object.values(incomeByCategory).reduce((a, b) => a + b, 0);
-  const totalExpenses = Object.values(expensesByCategory).reduce((a, b) => a + b, 0);
-
-  const incomeCategoryData = Object.entries(incomeByCategory).map(([name, value]) => ({
-    name,
-    value,
-    percentage: totalIncome > 0 ? (value / totalIncome) * 100 : 0,
-  }));
-
-  const expenseCategoryData = Object.entries(expensesByCategory).map(([name, value]) => ({
-    name,
-    value,
-    percentage: totalExpenses > 0 ? (value / totalExpenses) * 100 : 0,
-  }));
-
-  // Prepare monthly data for charts
-    
-    return expandedTransactions;
-  };
-
-  // Expand recurring transactions
-  const expandedTransactions = expandRecurringTransactions(yearTransactions);
-  
-  // Get monthly data with expanded recurring transactions
+  // Process data for charts using only actual transactions
   const getMonthlyData = () => {
     const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     const monthlyData = months.map(month => ({
@@ -92,7 +53,8 @@ export function FinancialSummary({ transactions }: FinancialSummaryProps) {
       profit: 0
     }));
     
-    expandedTransactions.forEach(transaction => {
+    // Use only actual transactions - DO NOT expand recurring transactions
+    yearTransactions.forEach(transaction => {
       const month = transaction.date.getMonth();
       if (transaction.type === 'income') {
         monthlyData[month].income += transaction.amount;
@@ -119,7 +81,8 @@ export function FinancialSummary({ transactions }: FinancialSummaryProps) {
       profit: 0
     }));
     
-    expandedTransactions.forEach(transaction => {
+    // Use only actual transactions - DO NOT expand recurring transactions
+    yearTransactions.forEach(transaction => {
       const month = transaction.date.getMonth();
       const quarter = Math.floor(month / 3);
       if (transaction.type === 'income') {
@@ -146,7 +109,8 @@ export function FinancialSummary({ transactions }: FinancialSummaryProps) {
       profit: 0
     }];
     
-    expandedTransactions.forEach(transaction => {
+    // Use only actual transactions - DO NOT expand recurring transactions
+    yearTransactions.forEach(transaction => {
       if (transaction.type === 'income') {
         yearData[0].income += transaction.amount;
       } else {
@@ -159,11 +123,11 @@ export function FinancialSummary({ transactions }: FinancialSummaryProps) {
     return yearData;
   };
   
-  // Calculate category distributions
+  // Calculate category distributions - using only actual transactions
   const getCategoryDistribution = (type: 'income' | 'expense') => {
     const categories: Record<string, number> = {};
     
-    expandedTransactions
+    yearTransactions
       .filter(t => t.type === type)
       .forEach(transaction => {
         const category = transaction.category;
@@ -191,34 +155,15 @@ export function FinancialSummary({ transactions }: FinancialSummaryProps) {
     viewType === 'quarterly' ? getQuarterlyData() : 
     getAnnualData();
 
-  // Get years for the select
-  const getAvailableYears = () => {
-    const years = new Set<number>();
-    
-    transactions.forEach(transaction => {
-      years.add(transaction.date.getFullYear());
-      
-      // Add years for recurring transactions
-      if (transaction.isRecurring && transaction.recurrenceMonths) {
-        const lastDate = new Date(transaction.date);
-        lastDate.setMonth(lastDate.getMonth() + transaction.recurrenceMonths - 1);
-        years.add(lastDate.getFullYear());
-      }
-    });
-    
-    return Array.from(years).sort();
-  };
-  
-  const availableYears = getAvailableYears();
   const incomeCategories = getCategoryDistribution('income');
   const expenseCategories = getCategoryDistribution('expense');
 
-  // Calculate summary stats with expanded transactions
-  const totalIncome = expandedTransactions
+  // Calculate summary stats with actual transactions only
+  const totalIncome = yearTransactions
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
   
-  const totalExpenses = expandedTransactions
+  const totalExpenses = yearTransactions
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
   
@@ -238,7 +183,7 @@ export function FinancialSummary({ transactions }: FinancialSummaryProps) {
               <option key={y} value={y}>{y}</option>
             ))}
           </select>
-          <Tabs value={viewType} onValueChange={setViewType} className="w-fit">
+          <Tabs value={viewType} onValueChange={setViewType as any} className="w-fit">
             <TabsList>
               <TabsTrigger value="monthly">Mensal</TabsTrigger>
               <TabsTrigger value="quarterly">Trimestral</TabsTrigger>

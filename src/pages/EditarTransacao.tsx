@@ -108,7 +108,7 @@ const EditarTransacao = () => {
         recurrenceMonths: foundTransaction.recurrenceMonths || 1,
         notes: foundTransaction.notes || '',
         clientId: foundTransaction.clientId || '',
-        eventId: foundTransaction.eventId || '',
+        eventId: foundTransaction.eventId || undefined,
         status: foundTransaction.status || 'not_paid',
       });
     } else {
@@ -131,16 +131,14 @@ const EditarTransacao = () => {
     if (!id || !transaction) return;
     
     try {
-      // Make a safe copy of the entire transactions array first
-      const updatedTransactions = [...mockTransactions];
-      
-      // Find the transaction index in the array
-      const transactionIndex = updatedTransactions.findIndex(t => t.id === id);
+      // Important: We need to update the transaction directly in the mockTransactions array 
+      // without creating a new array to avoid data loss
+      const transactionIndex = mockTransactions.findIndex(t => t.id === id);
       
       if (transactionIndex !== -1) {
-        // Create an updated transaction object
-        const updatedTransaction: Transaction = {
-          ...transaction, // Keep original properties
+        // Update the transaction in place
+        mockTransactions[transactionIndex] = {
+          ...mockTransactions[transactionIndex], // Keep any properties we aren't explicitly changing
           description: values.description,
           amount: values.amount,
           date: values.date,
@@ -156,15 +154,6 @@ const EditarTransacao = () => {
           status: values.status,
           attachments: [...attachments],
         };
-        
-        // Update the transaction in the copy
-        updatedTransactions[transactionIndex] = updatedTransaction;
-        
-        // Safely replace the original array contents
-        // Clear the original array
-        mockTransactions.length = 0;
-        // Add all items from the updated array
-        updatedTransactions.forEach(t => mockTransactions.push(t));
         
         toast({
           title: "Transação atualizada",
