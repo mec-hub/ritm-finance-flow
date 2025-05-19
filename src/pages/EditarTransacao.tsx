@@ -186,17 +186,17 @@ const EditarTransacao = () => {
 
   // Sample categories
   const categories = [
-    { value: 'Shows', label: 'Shows' },
-    { value: 'Eventos', label: 'Eventos' },
-    { value: 'Publicidade', label: 'Publicidade' },
-    { value: 'Equipamento', label: 'Equipamento' },
-    { value: 'Transporte', label: 'Transporte' },
-    { value: 'Alimentação', label: 'Alimentação' },
-    { value: 'Hospedagem', label: 'Hospedagem' },
-    { value: 'Pessoal', label: 'Pessoal' },
-    { value: 'Marketing', label: 'Marketing' },
-    { value: 'Outras Receitas', label: 'Outras Receitas' },
-    { value: 'Outras Despesas', label: 'Outras Despesas' },
+    { value: "Shows", label: "Shows" },
+    { value: "Eventos", label: "Eventos" },
+    { value: "Publicidade", label: "Publicidade" },
+    { value: "Equipamento", label: "Equipamento" },
+    { value: "Transporte", label: "Transporte" },
+    { value: "Alimentação", label: "Alimentação" },
+    { value: "Hospedagem", label: "Hospedagem" },
+    { value: "Pessoal", label: "Pessoal" },
+    { value: "Marketing", label: "Marketing" },
+    { value: "Outras Receitas", label: "Outras Receitas" },
+    { value: "Outras Despesas", label: "Outras Despesas" },
   ];
 
   // Filter only upcoming and completed events for selection
@@ -461,7 +461,8 @@ const EditarTransacao = () => {
                           <FormLabel>Evento Relacionado (opcional)</FormLabel>
                           <Select
                             onValueChange={field.onChange}
-                            value={field.value || ""}
+                            value={field.value || "none"}
+                            defaultValue="none"
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -469,7 +470,7 @@ const EditarTransacao = () => {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">Nenhum evento</SelectItem>
+                              <SelectItem value="none">Nenhum evento</SelectItem>
                               {availableEvents.map((event) => (
                                 <SelectItem key={event.id} value={event.id}>
                                   {event.title} ({new Date(event.date).toLocaleDateString()})
