@@ -8,15 +8,6 @@ import { ClientsDataTable } from '@/components/clients/ClientsDataTable';
 import { ClientStats } from '@/components/clients/ClientStats';
 import { ClientEventChart } from '@/components/clients/ClientEventChart';
 import { Link } from 'react-router-dom';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Card } from '@/components/ui/card';
 
 const Clientes = () => {
   // Calculate client revenue based on events and transactions

@@ -1,4 +1,5 @@
 
+import { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -27,7 +28,7 @@ import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Calendar, Eye, X, Paper
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Transaction } from '@/types';
 import { toast } from '@/hooks/use-toast';
-import { mockTransactions } from '@/data/mockData';
+import { mockTransactions, mockEvents } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
 
 interface RecurringTransactionsProps {
@@ -36,8 +37,9 @@ interface RecurringTransactionsProps {
 
 export function RecurringTransactions({ transactions }: RecurringTransactionsProps) {
   const navigate = useNavigate();
+  const [refreshKey, setRefreshKey] = useState(0); // Add a key to force re-render when needed
   
-  // Helper function to get next occurrence date - one month after the original date
+  // Helper function to get next occurrence date - one month after the last instance
   const getNextOccurrenceDate = (transaction: Transaction): Date => {
     // Find all instances of this recurring transaction
     const allInstancesOfThisTransaction = mockTransactions.filter(t => 
@@ -104,8 +106,8 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
       description: "Uma nova instância da transação recorrente foi criada com sucesso."
     });
     
-    // Force a refresh by re-navigating to the current page
-    navigate('/financas');
+    // Force a refresh
+    setRefreshKey(prevKey => prevKey + 1);
   };
 
   const handleStopRecurring = (transaction: Transaction) => {
@@ -126,8 +128,8 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
         description: "A transação não será mais recorrente."
       });
       
-      // Force a refresh by re-navigating to the current page
-      navigate('/financas');
+      // Force a refresh
+      setRefreshKey(prevKey => prevKey + 1);
     }
   };
   
@@ -136,7 +138,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
   };
 
   return (
-    <Card>
+    <Card key={refreshKey}>
       <CardHeader>
         <CardTitle>Transações Recorrentes</CardTitle>
         <CardDescription>

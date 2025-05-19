@@ -1,6 +1,5 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Table,
   TableBody,
@@ -9,273 +8,114 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { formatDate } from '@/utils/formatters';
-import { Client, Event, Transaction } from '@/types';
-import { MoreHorizontal, Search, Eye, Edit, Trash2 } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
-import { mockEvents, mockTransactions } from '@/data/mockData';
+import { formatCurrency, formatDate } from '@/utils/formatters';
+import { Client, Event } from '@/types';
+import { Card, CardContent } from '@/components/ui/card';
+import { mockEvents } from '@/data/mockData';
 
 interface ClientsDataTableProps {
   clients: Client[];
 }
 
-export function ClientsDataTable({ clients: initialClients }: ClientsDataTableProps) {
-  const [clients, setClients] = useState(() => {
-    // Calculate revenue for each client based on transactions linked to events
-    return initialClients.map(client => {
-      const clientRevenue = calculateClientRevenue(client);
-      return {
-        ...client,
-        totalRevenue: clientRevenue
-      };
-    });
-  });
-  
-  const [searchQuery, setSearchQuery] = useState('');
-  const navigate = useNavigate();
-  
-  // For details, edit, delete modals
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  
-  // Calculate client revenue based on transactions linked to events
-  function calculateClientRevenue(client: Client): number {
-    let revenue = 0;
-    
-    // Find all events for this client
-    const clientEvents = mockEvents.filter(event => event.client === client.name);
-    
-    // For each event, find related transactions
-    clientEvents.forEach(event => {
-      const eventTransactions = mockTransactions.filter(
-        transaction => transaction.eventId === event.id && transaction.type === 'income'
-      );
-      
-      // Sum up transaction amounts
-      eventTransactions.forEach(transaction => {
-        revenue += transaction.amount;
-      });
-    });
-    
-    return revenue;
-  }
-  
-  const filteredClients = clients.filter(client => 
-    client.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    client.contact.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  
-  const handleViewDetails = (client: Client) => {
-    setSelectedClient(client);
-    setViewDetailsOpen(true);
+export function ClientsDataTable({ clients }: ClientsDataTableProps) {
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof Client;
+    direction: 'ascending' | 'descending';
+  }>({ key: 'name', direction: 'ascending' });
+
+  // Get client events count 
+  const getClientEventsCount = (clientName: string): number => {
+    return mockEvents.filter(event => event.client === clientName).length;
   };
-  
-  const handleEdit = (client: Client) => {
-    // Navigate to edit page with client data
-    navigate(`/editar-cliente/${client.id}`, { state: { clientData: client } });
+
+  // Get last event date
+  const getLastEventDate = (clientName: string): Date | null => {
+    const clientEvents = mockEvents.filter(event => event.client === clientName);
+    if (clientEvents.length === 0) return null;
+    
+    // Sort by date descending and get the first one
+    const sortedEvents = [...clientEvents].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    
+    return new Date(sortedEvents[0].date);
   };
-  
-  const handleDelete = () => {
-    if (selectedClient) {
-      // Filter out the client we want to delete
-      const updatedClients = clients.filter(client => client.id !== selectedClient.id);
-      setClients(updatedClients);
-      
-      // Close dialog
-      setDeleteDialogOpen(false);
-      
-      // Show toast notification
-      toast({
-        title: "Cliente excluído",
-        description: `O cliente "${selectedClient.name}" foi excluído com sucesso.`,
-      });
-      
-      // Clear selection
-      setSelectedClient(null);
+
+  const requestSort = (key: keyof Client) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
     }
+    setSortConfig({ key, direction });
   };
-  
+
+  const sortedClients = [...clients].sort((a, b) => {
+    if (a[sortConfig.key] < b[sortConfig.key]) {
+      return sortConfig.direction === 'ascending' ? -1 : 1;
+    }
+    if (a[sortConfig.key] > b[sortConfig.key]) {
+      return sortConfig.direction === 'ascending' ? 1 : -1;
+    }
+    return 0;
+  });
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Buscar clientes..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
-      
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Contato</TableHead>
-              <TableHead>E-mail</TableHead>
-              <TableHead>Receita Total</TableHead>
-              <TableHead>Número de Eventos</TableHead>
-              <TableHead>Último Evento</TableHead>
-              <TableHead className="w-[80px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredClients.length === 0 ? (
+    <Card>
+      <CardContent className="p-0">
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-4">
-                  Nenhum cliente encontrado
-                </TableCell>
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => requestSort('name')}
+                >
+                  Nome
+                  {sortConfig.key === 'name' && (
+                    <span>{sortConfig.direction === 'ascending' ? ' ↑' : ' ↓'}</span>
+                  )}
+                </TableHead>
+                <TableHead>Contato</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Telefone</TableHead>
+                <TableHead>Número de Eventos</TableHead>
+                <TableHead>Último Evento</TableHead>
+                <TableHead 
+                  className="cursor-pointer text-right"
+                  onClick={() => requestSort('totalRevenue')}
+                >
+                  Faturamento Total
+                  {sortConfig.key === 'totalRevenue' && (
+                    <span>{sortConfig.direction === 'ascending' ? ' ↑' : ' ↓'}</span>
+                  )}
+                </TableHead>
               </TableRow>
-            ) : (
-              filteredClients.map((client) => {
-                // Count events for this client
-                const clientEvents = mockEvents.filter(event => event.client === client.name);
+            </TableHeader>
+            <TableBody>
+              {sortedClients.map((client) => {
+                const eventCount = getClientEventsCount(client.name);
+                const lastEventDate = getLastEventDate(client.name);
                 
                 return (
                   <TableRow key={client.id}>
                     <TableCell className="font-medium">{client.name}</TableCell>
                     <TableCell>{client.contact}</TableCell>
                     <TableCell>{client.email}</TableCell>
-                    <TableCell>R$ {client.totalRevenue.toFixed(2)}</TableCell>
-                    <TableCell>{clientEvents.length}</TableCell>
-                    <TableCell>{client.lastEvent ? formatDate(client.lastEvent) : 'N/A'}</TableCell>
+                    <TableCell>{client.phone || '-'}</TableCell>
+                    <TableCell>{eventCount}</TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleViewDetails(client)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Ver detalhes
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEdit(client)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              setSelectedClient(client);
-                              setDeleteDialogOpen(true);
-                            }}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {lastEventDate ? formatDate(lastEventDate) : '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(client.totalRevenue)}
                     </TableCell>
                   </TableRow>
                 );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      
-      {/* View Details Dialog */}
-      <Dialog open={viewDetailsOpen} onOpenChange={setViewDetailsOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          {selectedClient && (
-            <>
-              <DialogHeader>
-                <DialogTitle>{selectedClient.name}</DialogTitle>
-                <DialogDescription>
-                  Detalhes completos do cliente
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-sm font-medium">Contato Principal</div>
-                    <div className="text-sm">{selectedClient.contact}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">E-mail</div>
-                    <div className="text-sm">{selectedClient.email}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">Receita Total</div>
-                    <div className="text-sm">R$ {selectedClient.totalRevenue.toFixed(2)}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">Último Evento</div>
-                    <div className="text-sm">{selectedClient.lastEvent ? formatDate(selectedClient.lastEvent) : 'N/A'}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">Número de Eventos</div>
-                    <div className="text-sm">{mockEvents.filter(event => event.client === selectedClient.name).length}</div>
-                  </div>
-                </div>
-                
-                {selectedClient.notes && (
-                  <div>
-                    <div className="text-sm font-medium">Observações</div>
-                    <div className="text-sm mt-1">{selectedClient.notes}</div>
-                  </div>
-                )}
-              </div>
-              
-              <DialogFooter>
-                <Button onClick={() => handleEdit(selectedClient)} className="mr-2">
-                  <Edit className="mr-2 h-4 w-4" />
-                  Editar
-                </Button>
-                <DialogClose asChild>
-                  <Button variant="outline">Fechar</Button>
-                </DialogClose>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-      
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Confirmar Exclusão</DialogTitle>
-            <DialogDescription>
-              Você tem certeza que deseja excluir o cliente "{selectedClient?.name}"? Esta ação não pode ser desfeita.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Excluir
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

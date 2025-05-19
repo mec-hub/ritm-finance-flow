@@ -33,8 +33,8 @@ const Financas = () => {
     setTransactions([...mockTransactions]); // Create a shallow copy to ensure state changes
   }, []);
   
-  // Calculate financial summary data using all transactions (recurring and instances)
-  // No need to expand the transactions anymore
+  // Calculate financial summary data using only the visible transactions
+  // NOT expanding recurring transactions anymore - only what's in the actual transactions array
   const totalIncome = transactions
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);

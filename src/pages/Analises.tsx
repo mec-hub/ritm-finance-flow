@@ -1,5 +1,5 @@
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { 
   Card, 
@@ -18,17 +18,23 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { FinancialAreaChart } from '@/components/ui/dashboard/AreaChart';
-import { FinancialBarChart } from '@/components/ui/dashboard/BarChart';
-import { CategoryPieChart } from '@/components/ui/dashboard/PieChart';
 import { 
-  mockMonthlyData, 
+  FinancialAreaChart,
+  FinancialBarChart,
+  CategoryPieChart,
+  ComparisonBarChart,
+  PerformanceTracker,
+  ProjectionChart 
+} from '@/components/analises';
+import { 
   mockTransactions,
-  mockIncomeCategories,
-  mockExpenseCategories
+  mockEvents,
+  mockClients,
 } from '@/data/mockData';
 import { formatCurrency } from '@/utils/formatters';
-import { Transaction, CategoryData } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { CalendarIcon, ChartBarIcon, ChartPieIcon, ArrowUpDown, Percent, TrendingUp, FileText } from 'lucide-react';
 
 // Pre-defined team members for analysis
 const teamMembers = [
@@ -37,387 +43,448 @@ const teamMembers = [
   { id: '3', name: 'Maria Clara', role: 'Lider de Marketing' },
 ];
 
-
 const Analises = () => {
-  const [chartType, setChartType] = useState<'area' | 'bar' | 'pie'>('area');
-  const [showContributorAnalysis, setShowContributorAnalysis] = useState(false);
   const [selectedContributor, setSelectedContributor] = useState<string>('all');
+  const [selectedTimeRange, setSelectedTimeRange] = useState('6months');
+  const [selectedAnalysisType, setSelectedAnalysisType] = useState('revenue');
 
-  // Get filtered transactions based on selected contributor
-  const filteredTransactions = useMemo(() => {
-    if (selectedContributor === 'all') {
-      return mockTransactions;
-    }
-    
-    return mockTransactions.filter(transaction => {
-      // Check if transaction has the teamMemberId property (legacy)
-      if (transaction.teamMemberId === selectedContributor) {
-        return true;
-      }
-      
-      // Check if transaction has teamPercentages with the selected contributor
-      if (transaction.teamPercentages?.some(tp => tp.teamMemberId === selectedContributor)) {
-        return true;
-      }
-      
-      // Check notes as fallback (for older data)
-      if (transaction.notes?.toLowerCase().includes(
-        teamMembers.find(m => m.id === selectedContributor)?.name.toLowerCase() || ''
-      )) {
-        return true;
-      }
-      
-      return false;
-    });
-  }, [selectedContributor]);
+  // Process the transactions based on filters
+  const processTransactions = () => {
+    let filtered = [...mockTransactions];
 
-  // Process monthly data based on filtered transactions
-  const processedMonthlyData = useMemo(() => {
-    if (selectedContributor === 'all') {
-      return mockMonthlyData;
-    }
-    
-    // Create a map of months to initialize the data structure
-    const monthsMap = mockMonthlyData.reduce((acc, item) => {
-      acc[item.month] = { month: item.month, income: 0, expenses: 0, profit: 0 };
-      return acc;
-    }, {} as Record<string, { month: string; income: number; expenses: number; profit: number }>);
-    
-    // Process filtered transactions
-    filteredTransactions.forEach(transaction => {
-      const month = transaction.date.toLocaleString('default', { month: 'short' });
-      
-      if (monthsMap[month]) {
-        if (transaction.type === 'income') {
-          // For income, calculate the percentage if assigned to the contributor
-          if (transaction.teamPercentages?.some(tp => tp.teamMemberId === selectedContributor)) {
-            const contributorPercentage = transaction.teamPercentages.find(
-              tp => tp.teamMemberId === selectedContributor
-            )?.percentageValue || 0;
-            monthsMap[month].income += (transaction.amount * contributorPercentage) / 100;
-          } 
-          else if (transaction.teamMemberId === selectedContributor && transaction.percentageValue) {
-            monthsMap[month].income += (transaction.amount * transaction.percentageValue) / 100;
-          }
-          // If no percentage specified but directly assigned to contributor, count full amount
-          else if (transaction.teamMemberId === selectedContributor) {
-            monthsMap[month].income += transaction.amount;
-          }
-        } else {
-          // For expenses, handle similarly
-          if (transaction.teamPercentages?.some(tp => tp.teamMemberId === selectedContributor)) {
-            const contributorPercentage = transaction.teamPercentages.find(
-              tp => tp.teamMemberId === selectedContributor
-            )?.percentageValue || 0;
-            monthsMap[month].expenses += (transaction.amount * contributorPercentage) / 100;
-          }
-          else if (transaction.teamMemberId === selectedContributor && transaction.percentageValue) {
-            monthsMap[month].expenses += (transaction.amount * transaction.percentageValue) / 100;
-          }
-          else if (transaction.teamMemberId === selectedContributor) {
-            monthsMap[month].expenses += transaction.amount;
-          }
-        }
+    // Filter by contributor if selected
+    if (selectedContributor !== 'all') {
+      filtered = filtered.filter(transaction => {
+        // Check if transaction is assigned to this contributor
+        if (transaction.teamMemberId === selectedContributor) return true;
         
-        // Recalculate profit
-        monthsMap[month].profit = monthsMap[month].income - monthsMap[month].expenses;
-      }
-    });
-    
-    return Object.values(monthsMap);
-  }, [selectedContributor, filteredTransactions]);
-
-  // Process category data for pie charts based on filtered transactions
-  const processedCategories = useMemo(() => {
-    if (selectedContributor === 'all') {
-      return {
-        income: mockIncomeCategories,
-        expense: mockExpenseCategories
-      };
-    }
-    
-    // Create maps to track category totals
-    const incomeByCategory: Record<string, number> = {};
-    const expensesByCategory: Record<string, number> = {};
-    let totalIncome = 0;
-    let totalExpenses = 0;
-    
-    // Process filtered transactions
-    filteredTransactions.forEach(transaction => {
-      const category = transaction.category;
-      let amount = transaction.amount;
-      
-      // Adjust amount if percentage-based
-      if (transaction.teamPercentages?.some(tp => tp.teamMemberId === selectedContributor)) {
-        const contributorPercentage = transaction.teamPercentages.find(
-          tp => tp.teamMemberId === selectedContributor
-        )?.percentageValue || 0;
-        amount = (amount * contributorPercentage) / 100;
-      }
-      else if (transaction.teamMemberId === selectedContributor && transaction.percentageValue) {
-        amount = (amount * transaction.percentageValue) / 100;
-      }
-      else if (transaction.teamMemberId !== selectedContributor && !transaction.notes?.toLowerCase().includes(
-        teamMembers.find(m => m.id === selectedContributor)?.name.toLowerCase() || ''
-      )) {
-        // Skip if not related to the selected contributor
-        return;
-      }
-      
-      if (transaction.type === 'income') {
-        incomeByCategory[category] = (incomeByCategory[category] || 0) + amount;
-        totalIncome += amount;
-      } else {
-        expensesByCategory[category] = (expensesByCategory[category] || 0) + amount;
-        totalExpenses += amount;
-      }
-    });
-    
-    // Convert to CategoryData format
-    const incomeCategories: CategoryData[] = Object.entries(incomeByCategory).map(([name, value]) => ({
-      name,
-      value,
-      percentage: totalIncome > 0 ? (value / totalIncome) * 100 : 0
-    }));
-    
-    const expenseCategories: CategoryData[] = Object.entries(expensesByCategory).map(([name, value]) => ({
-      name,
-      value,
-      percentage: totalExpenses > 0 ? (value / totalExpenses) * 100 : 0
-    }));
-    
-    return {
-      income: incomeCategories,
-      expense: expenseCategories
-    };
-  }, [selectedContributor, filteredTransactions]);
-
-  // Convert MonthlyData to ChartData format for charts
-  const chartData = processedMonthlyData.map(item => ({
-    name: item.month,
-    income: item.income,
-    expenses: item.expenses,
-    profit: item.profit
-  }));
-
-  // Calculate contributor statistics based on transactions with percentage notes
-  const getContributorStats = () => {
-    // Group by contributor
-    const contributorTotals = teamMembers.map(member => {
-      // Filter transactions for this team member
-      const relatedTransactions = mockTransactions.filter(transaction => {
-        // Check direct assignment
-        if (transaction.teamMemberId === member.id) {
-          return true;
-        }
-        
-        // Check through teamPercentages
-        if (transaction.teamPercentages?.some(tp => tp.teamMemberId === member.id)) {
-          return true;
-        }
-        
-        // Check notes as fallback
-        if (transaction.notes && transaction.notes.toLowerCase().includes(member.name.toLowerCase())) {
+        // Check if transaction has teamPercentages with the selected contributor
+        if (transaction.teamPercentages?.some(tp => tp.teamMemberId === selectedContributor)) {
           return true;
         }
         
         return false;
       });
+    }
 
-      // Calculate income and expenses based on percentages when applicable
-      let income = 0;
-      let expenses = 0;
-      
-      relatedTransactions.forEach(transaction => {
-        let amount = transaction.amount;
-        // Adjust for percentage if applicable
-        if (transaction.teamPercentages?.some(tp => tp.teamMemberId === member.id)) {
-          const percentage = transaction.teamPercentages.find(
-            tp => tp.teamMemberId === member.id
-          )?.percentageValue || 0;
-          amount = (amount * percentage) / 100;
-        }
-        else if (transaction.teamMemberId === member.id && transaction.percentageValue) {
-          amount = (amount * transaction.percentageValue) / 100;
-        }
-        
-        if (transaction.type === 'income') {
-          income += amount;
-        } else {
-          expenses += amount;
-        }
-      });
+    // Filter by time range
+    const now = new Date();
+    const cutoffDate = new Date();
 
-      return {
-        id: member.id,
-        name: member.name,
-        role: member.role,
-        income,
-        expenses,
-        profit: income - expenses,
-        transactionCount: relatedTransactions.length,
-      };
-    });
+    switch (selectedTimeRange) {
+      case '30days':
+        cutoffDate.setDate(now.getDate() - 30);
+        break;
+      case '3months':
+        cutoffDate.setMonth(now.getMonth() - 3);
+        break;
+      case '6months':
+        cutoffDate.setMonth(now.getMonth() - 6);
+        break;
+      case '1year':
+        cutoffDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default:
+        // No time filter for 'all'
+        break;
+    }
 
-    return contributorTotals;
+    if (selectedTimeRange !== 'all') {
+      filtered = filtered.filter(transaction => 
+        new Date(transaction.date) >= cutoffDate
+      );
+    }
+
+    return filtered;
   };
 
-  const contributorStats = getContributorStats();
+  // Get filtered transactions
+  const filteredTransactions = processTransactions();
+
+  // Calculate summary stats
+  const totalIncome = filteredTransactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
+  
+  const totalExpenses = filteredTransactions
+    .filter(t => t.type === 'expense')
+    .reduce((sum, t) => sum + t.amount, 0);
+  
+  const netProfit = totalIncome - totalExpenses;
+  const profitMargin = totalIncome > 0 ? ((netProfit / totalIncome) * 100).toFixed(1) : '0';
+
+  // Find most profitable category
+  const incomeByCategory: Record<string, number> = {};
+  filteredTransactions
+    .filter(t => t.type === 'income')
+    .forEach(t => {
+      incomeByCategory[t.category] = (incomeByCategory[t.category] || 0) + t.amount;
+    });
+  
+  const mostProfitableCategory = Object.entries(incomeByCategory)
+    .sort((a, b) => b[1] - a[1])[0] || ['Nenhum', 0];
+
+  // Calculate event stats
+  const filteredEvents = mockEvents.filter(event => {
+    if (selectedTimeRange === 'all') return true;
+    
+    const eventDate = new Date(event.date);
+    const cutoffDate = new Date();
+    
+    switch (selectedTimeRange) {
+      case '30days':
+        cutoffDate.setDate(cutoffDate.getDate() - 30);
+        break;
+      case '3months':
+        cutoffDate.setMonth(cutoffDate.getMonth() - 3);
+        break;
+      case '6months':
+        cutoffDate.setMonth(cutoffDate.getMonth() - 6);
+        break;
+      case '1year':
+        cutoffDate.setFullYear(cutoffDate.getFullYear() - 1);
+        break;
+    }
+    
+    return eventDate >= cutoffDate;
+  });
+  
+  const totalEvents = filteredEvents.length;
+  const averageRevenuePerEvent = totalEvents > 0 
+    ? (totalIncome / totalEvents).toFixed(2) 
+    : '0';
+
+  // Calculate active client stats
+  const clientsWithEvents = new Set();
+  filteredEvents.forEach(event => {
+    clientsWithEvents.add(event.client);
+  });
+  
+  const activeClients = clientsWithEvents.size;
 
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Análises</h1>
-          <p className="text-muted-foreground">
-            Visualize dados e tendências do seu negócio.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Análises</h1>
+            <p className="text-muted-foreground">
+              Insights detalhados sobre seu negócio
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap gap-2">
+            <Select
+              value={selectedTimeRange}
+              onValueChange={setSelectedTimeRange}
+            >
+              <SelectTrigger className="w-[150px]">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="30days">Últimos 30 dias</SelectItem>
+                <SelectItem value="3months">Últimos 3 meses</SelectItem>
+                <SelectItem value="6months">Últimos 6 meses</SelectItem>
+                <SelectItem value="1year">Último ano</SelectItem>
+                <SelectItem value="all">Todo o período</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Select
+              value={selectedContributor}
+              onValueChange={setSelectedContributor}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Colaborador" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos colaboradores</SelectItem>
+                {teamMembers.map(member => (
+                  <SelectItem key={member.id} value={member.id}>
+                    {member.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         
-        <div className="flex flex-wrap gap-4 items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="grid gap-2">
-              <Label htmlFor="chart-type">Tipo de Gráfico</Label>
-              <Select 
-                value={chartType} 
-                onValueChange={(value) => setChartType(value as 'area' | 'bar' | 'pie')}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Escolha o gráfico" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="area">Área</SelectItem>
-                  <SelectItem value="bar">Barras</SelectItem>
-                  <SelectItem value="pie">Pizza</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="contributor-analysis"
-              checked={showContributorAnalysis}
-              onCheckedChange={setShowContributorAnalysis}
-            />
-            <Label htmlFor="contributor-analysis">Análise por Colaborador</Label>
-          </div>
-        </div>
-
-        {showContributorAnalysis && (
+        {/* Key Performance Indicators */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Análise por Colaborador</CardTitle>
-              <CardDescription>
-                Visualize as finanças atribuídas a cada colaborador.
-              </CardDescription>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="mb-4">
-                <Label htmlFor="contributor-select">Selecione um Colaborador</Label>
-                <Select 
-                  value={selectedContributor} 
-                  onValueChange={setSelectedContributor}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Todos os colaboradores" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os colaboradores</SelectItem>
-                    {teamMembers.map(member => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.name} - {member.role}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="text-2xl font-bold text-green-500">
+                {formatCurrency(totalIncome)}
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                {contributorStats.map(stat => (
-                  <Card key={stat.id} className={`p-4 ${selectedContributor === stat.id ? 'border-primary' : ''}`}>
-                    <CardTitle className="text-base">{stat.name}</CardTitle>
-                    <CardDescription>{stat.role}</CardDescription>
-                    <div className="space-y-2 mt-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm">Receitas:</span>
-                        <span className="text-green-500 font-medium">{formatCurrency(stat.income)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Despesas:</span>
-                        <span className="text-red-500 font-medium">{formatCurrency(stat.expenses)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Lucro:</span>
-                        <span className={`font-medium ${stat.profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                          {formatCurrency(stat.profit)}
-                        </span>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
+              <div className="text-xs text-muted-foreground">
+                {selectedTimeRange === 'all' ? 'Total acumulado' : `Nos últimos ${
+                  selectedTimeRange === '30days' ? '30 dias' : 
+                  selectedTimeRange === '3months' ? '3 meses' : 
+                  selectedTimeRange === '6months' ? '6 meses' : '12 meses'
+                }`}
               </div>
             </CardContent>
           </Card>
-        )}
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Lucro Líquido</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${netProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {formatCurrency(netProfit)}
+              </div>
+              <div className="flex items-center text-xs">
+                <span className="text-muted-foreground">Margem:</span>
+                <span className={`ml-1 ${parseFloat(profitMargin) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {profitMargin}%
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Eventos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalEvents}</div>
+              <div className="text-xs text-muted-foreground">
+                {activeClients} clientes ativos
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Receita por Evento</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(parseFloat(averageRevenuePerEvent))}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Média por evento
+              </div>
+            </CardContent>
+          </Card>
+        </div>
         
-        <Tabs defaultValue="financeiro" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
-            <TabsTrigger value="categorias">Categorias</TabsTrigger>
-            <TabsTrigger value="tendencias">Tendências</TabsTrigger>
+        <Tabs defaultValue="revenue" value={selectedAnalysisType} onValueChange={setSelectedAnalysisType}>
+          <TabsList className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 mb-6">
+            <TabsTrigger value="revenue" className="flex items-center">
+              <ChartBarIcon className="mr-2 h-4 w-4" /> 
+              Receitas & Despesas
+            </TabsTrigger>
+            <TabsTrigger value="categories" className="flex items-center">
+              <ChartPieIcon className="mr-2 h-4 w-4" />
+              Categorias
+            </TabsTrigger>
+            <TabsTrigger value="performance" className="flex items-center">
+              <TrendingUp className="mr-2 h-4 w-4" />
+              Performance
+            </TabsTrigger>
+            <TabsTrigger value="comparisons" className="flex items-center">
+              <ArrowUpDown className="mr-2 h-4 w-4" />
+              Comparações
+            </TabsTrigger>
+            <TabsTrigger value="projections" className="flex items-center">
+              <Percent className="mr-2 h-4 w-4" />
+              Projeções
+            </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="financeiro" className="space-y-4">
-            <div className="grid grid-cols-1 gap-4">
-              {chartType === 'area' && (
-                <FinancialAreaChart data={chartData} title="Visão Financeira Mensal" />
-              )}
-              {chartType === 'bar' && (
-                <FinancialBarChart data={chartData} title="Receitas vs Despesas" />
-              )}
-              {chartType === 'pie' && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <CategoryPieChart
-                    data={processedCategories.income}
-                    title="Distribuição de Receitas"
-                  />
-                  <CategoryPieChart
-                    data={processedCategories.expense}
-                    title="Distribuição de Despesas"
-                  />
-                </div>
-              )}
+          <TabsContent value="revenue" className="space-y-4">
+            {/* Financial Charts */}
+            <FinancialAreaChart 
+              transactions={filteredTransactions} 
+              timeRange={selectedTimeRange}
+            />
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top 5 Receitas</CardTitle>
+                  <CardDescription>Maiores transações de receita</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {filteredTransactions
+                      .filter(t => t.type === 'income')
+                      .sort((a, b) => b.amount - a.amount)
+                      .slice(0, 5)
+                      .map((t, i) => (
+                        <div 
+                          key={t.id} 
+                          className="flex justify-between items-center p-2 rounded-md even:bg-muted/50"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="font-medium flex-shrink-0 w-5 text-center">{i + 1}</div>
+                            <div className="truncate">{t.description}</div>
+                          </div>
+                          <div className="font-medium text-green-500">
+                            {formatCurrency(t.amount)}
+                          </div>
+                        </div>
+                      ))}
+                    
+                    {filteredTransactions.filter(t => t.type === 'income').length === 0 && (
+                      <div className="text-center py-4 text-muted-foreground">
+                        Nenhuma receita no período selecionado
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top 5 Despesas</CardTitle>
+                  <CardDescription>Maiores transações de despesa</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {filteredTransactions
+                      .filter(t => t.type === 'expense')
+                      .sort((a, b) => b.amount - a.amount)
+                      .slice(0, 5)
+                      .map((t, i) => (
+                        <div 
+                          key={t.id} 
+                          className="flex justify-between items-center p-2 rounded-md even:bg-muted/50"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="font-medium flex-shrink-0 w-5 text-center">{i + 1}</div>
+                            <div className="truncate">{t.description}</div>
+                          </div>
+                          <div className="font-medium text-red-500">
+                            {formatCurrency(t.amount)}
+                          </div>
+                        </div>
+                      ))}
+                    
+                    {filteredTransactions.filter(t => t.type === 'expense').length === 0 && (
+                      <div className="text-center py-4 text-muted-foreground">
+                        Nenhuma despesa no período selecionado
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
           
-          <TabsContent value="categorias">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TabsContent value="categories" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <CategoryPieChart
-                data={processedCategories.income}
-                title="Distribuição de Receitas"
+                transactions={filteredTransactions.filter(t => t.type === 'income')}
+                title="Receitas por Categoria"
+                type="income"
               />
+              
               <CategoryPieChart
-                data={processedCategories.expense}
-                title="Distribuição de Despesas"
+                transactions={filteredTransactions.filter(t => t.type === 'expense')}
+                title="Despesas por Categoria"
+                type="expense"
               />
             </div>
           </TabsContent>
           
-          <TabsContent value="tendencias">
+          <TabsContent value="performance" className="space-y-4">
+            <PerformanceTracker 
+              transactions={filteredTransactions}
+              events={filteredEvents}
+              clients={mockClients}
+              timeRange={selectedTimeRange}
+            />
+          </TabsContent>
+          
+          <TabsContent value="comparisons" className="space-y-4">
+            <ComparisonBarChart 
+              transactions={filteredTransactions}
+              events={filteredEvents}
+              timeRange={selectedTimeRange}
+              selectedContributor={selectedContributor}
+              teamMembers={teamMembers}
+            />
+          </TabsContent>
+          
+          <TabsContent value="projections" className="space-y-4">
+            <ProjectionChart 
+              transactions={mockTransactions}
+              timeRange={selectedTimeRange}
+            />
+            
             <Card>
               <CardHeader>
-                <CardTitle>Análise de Tendências</CardTitle>
+                <CardTitle>Recomendações</CardTitle>
                 <CardDescription>
-                  Visão de tendências financeiras ao longo do tempo.
+                  Baseadas nos dados históricos e projeções
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <FinancialAreaChart 
-                  data={chartData} 
-                  title="Tendências Financeiras" 
-                />
+              <CardContent className="space-y-4">
+                <div className="bg-muted rounded-lg p-4">
+                  <h3 className="font-medium mb-2">Oportunidades de Crescimento</h3>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start">
+                      <span className="mr-2">•</span>
+                      <span>
+                        {mostProfitableCategory[0] !== 'Nenhum'
+                          ? `Invista mais em "${mostProfitableCategory[0]}" - sua categoria mais rentável (${formatCurrency(mostProfitableCategory[1])}).`
+                          : 'Ainda não há dados suficientes para análise de categorias.'}
+                      </span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">•</span>
+                      <span>
+                        {filteredEvents.length > 0
+                          ? `A média de ${formatCurrency(parseFloat(averageRevenuePerEvent))} por evento pode ser melhorada com estratégias de cross-selling.`
+                          : 'Não há eventos no período selecionado para análise.'}
+                      </span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">•</span>
+                      <span>
+                        {activeClients > 0
+                          ? `Concentre esforços em fidelizar os ${activeClients} clientes ativos que geraram eventos no período.`
+                          : 'Considere estratégias para atrair novos clientes e eventos.'}
+                      </span>
+                    </li>
+                  </ul>
+                </div>
+                
+                <div className="bg-muted rounded-lg p-4">
+                  <h3 className="font-medium mb-2">Áreas de Otimização</h3>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start">
+                      <span className="mr-2">•</span>
+                      <span>
+                        {parseFloat(profitMargin) < 20
+                          ? `Margem de lucro atual (${profitMargin}%) está abaixo do ideal. Considere revisar custos operacionais.`
+                          : `Sua margem de lucro (${profitMargin}%) está saudável. Continue monitorando custos.`}
+                      </span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">•</span>
+                      <span>
+                        Analise a sazonalidade de vendas para otimizar a alocação de recursos durante os períodos de pico.
+                      </span>
+                    </li>
+                  </ul>
+                </div>
               </CardContent>
+              <div className="px-6 py-4 border-t">
+                <Button variant="outline" className="w-full" asChild>
+                  <a href="#" className="flex items-center justify-center">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Gerar Relatório Completo
+                  </a>
+                </Button>
+              </div>
             </Card>
           </TabsContent>
         </Tabs>

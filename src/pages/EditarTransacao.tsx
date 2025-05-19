@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Form,
   FormControl,
@@ -30,18 +31,18 @@ import {
 } from '@/components/ui/form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Checkbox } from '@/components/ui/checkbox';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, ArrowLeft, FileText, X, Paperclip } from 'lucide-react';
+import { CalendarIcon, ArrowLeft, Paperclip, X } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { Transaction, Event } from '@/types';
+import { Transaction } from '@/types';
 import { mockTransactions, mockEvents } from '@/data/mockData';
 import { toast } from '@/hooks/use-toast';
 
+// Define the form schema
 const formSchema = z.object({
   description: z.string().min(1, 'Descrição é obrigatória'),
   amount: z.coerce.number().positive('Valor deve ser positivo'),
@@ -59,16 +60,16 @@ const formSchema = z.object({
   status: z.enum(['paid', 'not_paid', 'canceled']).default('not_paid'),
 });
 
+type FormValues = z.infer<typeof formSchema>;
+
 const EditarTransacao = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [attachments, setAttachments] = useState<string[]>([]);
-  const [newFiles, setNewFiles] = useState<File[]>([]);
-  const [selectedAttachmentIndex, setSelectedAttachmentIndex] = useState<number | null>(null);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       description: '',
@@ -85,86 +86,57 @@ const EditarTransacao = () => {
   });
 
   useEffect(() => {
-    const fetchTransaction = () => {
-      setLoading(true);
-      
-      try {
-        // Find the transaction by ID in mockTransactions
-        const foundTransaction = [...mockTransactions].find((t) => t.id === id);
-        
-        if (foundTransaction) {
-          setTransaction(foundTransaction);
-          setAttachments(foundTransaction.attachments || []);
-          
-          // Set form values
-          form.reset({
-            description: foundTransaction.description,
-            amount: foundTransaction.amount,
-            date: new Date(foundTransaction.date),
-            category: foundTransaction.category,
-            subcategory: foundTransaction.subcategory || '',
-            type: foundTransaction.type,
-            isRecurring: foundTransaction.isRecurring,
-            recurrenceMonths: foundTransaction.recurrenceMonths || 1,
-            notes: foundTransaction.notes || '',
-            clientId: foundTransaction.clientId || '',
-            eventId: foundTransaction.eventId || '',
-            status: foundTransaction.status || 'not_paid',
-          });
-        } else {
-          toast({
-            title: "Transação não encontrada",
-            description: "A transação que você está tentando editar não foi encontrada.",
-            variant: "destructive",
-          });
-          navigate('/financas');
-        }
-      } catch (error) {
-        console.error("Error fetching transaction:", error);
-        toast({
-          title: "Erro",
-          description: "Ocorreu um erro ao buscar os dados da transação.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!id) return;
 
-    if (id) {
-      fetchTransaction();
+    // Find the transaction by ID
+    const foundTransaction = mockTransactions.find(t => t.id === id);
+    
+    if (foundTransaction) {
+      setTransaction(foundTransaction);
+      setAttachments(foundTransaction.attachments || []);
+      
+      // Set form values
+      form.reset({
+        description: foundTransaction.description,
+        amount: foundTransaction.amount,
+        date: new Date(foundTransaction.date),
+        category: foundTransaction.category,
+        subcategory: foundTransaction.subcategory || '',
+        type: foundTransaction.type,
+        isRecurring: foundTransaction.isRecurring,
+        recurrenceMonths: foundTransaction.recurrenceMonths || 1,
+        notes: foundTransaction.notes || '',
+        clientId: foundTransaction.clientId || '',
+        eventId: foundTransaction.eventId || '',
+        status: foundTransaction.status || 'not_paid',
+      });
+    } else {
+      toast({
+        title: "Transação não encontrada",
+        description: "A transação que você está tentando editar não foi encontrada.",
+        variant: "destructive",
+      });
+      navigate('/financas');
     }
+    
+    setLoading(false);
   }, [id, navigate, form]);
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const filesArray = Array.from(e.target.files);
-      setNewFiles((prev) => [...prev, ...filesArray]);
-    }
-  };
-
-  const removeNewFile = (index: number) => {
-    setNewFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
   const removeAttachment = (index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index));
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    if (!id) return;
+  const onSubmit = (values: FormValues) => {
+    if (!id || !transaction) return;
     
     try {
-      // Find the transaction in the array
+      // Find the transaction index in the array
       const transactionIndex = mockTransactions.findIndex(t => t.id === id);
       
       if (transactionIndex !== -1) {
-        // Process new files (in a real app, you would upload these to a server)
-        const fakeFileUrls = newFiles.map(file => `attachment-${Date.now()}-${file.name}`);
-        
         // Create an updated transaction object
         const updatedTransaction: Transaction = {
-          ...mockTransactions[transactionIndex], // Keep the original transaction ID
+          ...transaction, // Keep all original properties
           description: values.description,
           amount: values.amount,
           date: values.date,
@@ -178,7 +150,8 @@ const EditarTransacao = () => {
           clientId: values.clientId || undefined,
           eventId: values.eventId || undefined,
           status: values.status,
-          attachments: [...attachments, ...fakeFileUrls],
+          attachments: [...attachments],
+          // Keep any other properties that were in the original transaction
         };
         
         // Update transaction in the mockTransactions array
@@ -191,12 +164,6 @@ const EditarTransacao = () => {
         
         // Navigate after a short delay to show toast
         setTimeout(() => navigate('/financas'), 1000);
-      } else {
-        toast({
-          title: "Erro",
-          description: "Transação não encontrada para atualização.",
-          variant: "destructive",
-        });
       }
     } catch (error) {
       console.error("Error updating transaction:", error);
@@ -222,6 +189,11 @@ const EditarTransacao = () => {
     { value: 'Outras Receitas', label: 'Outras Receitas' },
     { value: 'Outras Despesas', label: 'Outras Despesas' },
   ];
+
+  // Filter only upcoming and completed events for selection
+  const availableEvents = mockEvents.filter(event => 
+    event.status === 'upcoming' || event.status === 'completed'
+  );
 
   return (
     <Layout>
@@ -426,24 +398,28 @@ const EditarTransacao = () => {
                       control={form.control}
                       name="isRecurring"
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 py-4">
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                           <FormControl>
-                            <Checkbox
+                            <input
+                              type="checkbox"
                               checked={field.value}
-                              onCheckedChange={field.onChange}
+                              onChange={field.onChange}
+                              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">
-                            <FormLabel>Transação Recorrente Mensal</FormLabel>
+                            <FormLabel>
+                              Transação Recorrente
+                            </FormLabel>
                             <FormDescription>
-                              Marque esta opção se for uma transação que se repete mensalmente.
+                              Esta é uma transação mensal recorrente.
                             </FormDescription>
                           </div>
                         </FormItem>
                       )}
                     />
 
-                    {form.watch('isRecurring') && (
+                    {form.watch("isRecurring") && (
                       <FormField
                         control={form.control}
                         name="recurrenceMonths"
@@ -451,16 +427,16 @@ const EditarTransacao = () => {
                           <FormItem>
                             <FormLabel>Número de Meses</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
-                                min="1" 
-                                max="60" 
-                                placeholder="Número de meses" 
-                                {...field} 
+                              <Input
+                                type="number"
+                                placeholder="Número de meses"
+                                min={1}
+                                max={60}
+                                {...field}
                               />
                             </FormControl>
                             <FormDescription>
-                              Por quantos meses esta transação se repetirá (incluindo este mês)
+                              Por quantos meses esta transação se repetirá
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -470,92 +446,89 @@ const EditarTransacao = () => {
 
                     <FormField
                       control={form.control}
+                      name="eventId"
+                      render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>Evento Relacionado (opcional)</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || ""}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione um evento" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="">Nenhum evento</SelectItem>
+                              {availableEvents.map((event) => (
+                                <SelectItem key={event.id} value={event.id}>
+                                  {event.title} ({new Date(event.date).toLocaleDateString()})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
                       name="notes"
                       render={({ field }) => (
-                        <FormItem className="col-span-full">
+                        <FormItem className="col-span-2">
                           <FormLabel>Observações (opcional)</FormLabel>
                           <FormControl>
-                            <Input placeholder="Observações adicionais" {...field} />
+                            <Textarea
+                              placeholder="Observações sobre esta transação"
+                              className="min-h-[100px]"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
-                    <div className="col-span-full">
-                      <Label>Anexos</Label>
-                      <div className="mt-2">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
-                          {attachments.map((attachment, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 border rounded-md">
-                              <div className="flex items-center">
-                                <FileText className="h-4 w-4 mr-2" />
-                                <a href={attachment} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline truncate">
-                                  Anexo {index + 1}
-                                </a>
-                              </div>
-                              <Button 
-                                type="button" 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={() => removeAttachment(index)}
-                                className="text-red-500 hover:bg-red-50"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-                          
-                          {newFiles.map((file, index) => (
-                            <div key={`new-${index}`} className="flex items-center justify-between p-2 border rounded-md bg-blue-50">
-                              <div className="flex items-center">
-                                <FileText className="h-4 w-4 mr-2" />
-                                <span className="truncate">{file.name}</span>
-                              </div>
-                              <Button 
-                                type="button" 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={() => removeNewFile(index)}
-                                className="text-red-500 hover:bg-red-50"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                        
-                        <div className="flex items-center justify-center w-full">
-                          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                              <Paperclip className="w-8 h-8 mb-3 text-gray-400" />
-                              <p className="mb-1 text-sm text-gray-500">
-                                <span className="font-medium">Clique para enviar</span> ou arraste um arquivo
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                Imagens ou documentos PDF (máx. 10MB)
-                              </p>
-                            </div>
-                            <input 
-                              type="file" 
-                              className="hidden" 
-                              accept="image/*, application/pdf" 
-                              onChange={handleFileChange}
-                              multiple
-                            />
-                          </label>
-                        </div>
+                  </div>
+
+                  {/* Attachments Section */}
+                  <div className="space-y-2">
+                    <Label>Anexos</Label>
+                    {attachments.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {attachments.map((attachment, index) => (
+                          <div key={index} className="flex items-center gap-2 border rounded-md p-2">
+                            <Paperclip className="h-4 w-4" />
+                            <span className="text-sm truncate max-w-[200px]">
+                              {attachment.split('/').pop()}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeAttachment(index)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
                       </div>
-                    </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Nenhum anexo</p>
+                    )}
                   </div>
                 </CardContent>
+
                 <CardFooter className="flex justify-between">
-                  <Button variant="outline" onClick={() => navigate('/financas')}>
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={() => navigate('/financas')}
+                  >
                     Cancelar
                   </Button>
-                  <Button type="submit">
-                    Salvar Alterações
-                  </Button>
+                  <Button type="submit">Salvar Alterações</Button>
                 </CardFooter>
               </form>
             </Form>
