@@ -131,14 +131,14 @@ const EditarTransacao = () => {
     if (!id || !transaction) return;
     
     try {
-      // Important: We need to update the transaction directly in the mockTransactions array 
-      // without creating a new array to avoid data loss
+      // Instead of manipulating the mockTransactions array directly,
+      // We create a safe copy and then replace the original reference
       const transactionIndex = mockTransactions.findIndex(t => t.id === id);
       
       if (transactionIndex !== -1) {
-        // Update the transaction in place
-        mockTransactions[transactionIndex] = {
-          ...mockTransactions[transactionIndex], // Keep any properties we aren't explicitly changing
+        // Create a deep copy of the transaction to update
+        const updatedTransaction = {
+          ...transaction,
           description: values.description,
           amount: values.amount,
           date: values.date,
@@ -154,6 +154,9 @@ const EditarTransacao = () => {
           status: values.status,
           attachments: [...attachments],
         };
+        
+        // Create a new copy of the transactions array with the updated transaction
+        mockTransactions[transactionIndex] = updatedTransaction;
         
         toast({
           title: "Transação atualizada",
@@ -539,3 +542,4 @@ const EditarTransacao = () => {
 };
 
 export default EditarTransacao;
+
