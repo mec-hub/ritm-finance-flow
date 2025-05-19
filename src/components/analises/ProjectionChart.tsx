@@ -15,7 +15,7 @@ import {
 import { Transaction } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
 import { Button } from '@/components/ui/button';
-import { CaretUpIcon, CaretDownIcon } from 'lucide-react';
+import { ArrowUp, ArrowDown } from 'lucide-react';
 import { useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -303,9 +303,9 @@ export function ProjectionChart({
                     </div>
                     <div className={`flex items-center ${profitChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                       {profitChange >= 0 ? (
-                        <CaretUpIcon className="h-4 w-4 mr-1" />
+                        <ArrowUp className="h-4 w-4 mr-1" />
                       ) : (
-                        <CaretDownIcon className="h-4 w-4 mr-1" />
+                        <ArrowDown className="h-4 w-4 mr-1" />
                       )}
                       <span>{Math.abs(profitChange).toFixed(1)}%</span>
                     </div>
@@ -320,9 +320,9 @@ export function ProjectionChart({
                     </div>
                     <div className={`flex items-center ${incomeChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                       {incomeChange >= 0 ? (
-                        <CaretUpIcon className="h-4 w-4 mr-1" />
+                        <ArrowUp className="h-4 w-4 mr-1" />
                       ) : (
-                        <CaretDownIcon className="h-4 w-4 mr-1" />
+                        <ArrowDown className="h-4 w-4 mr-1" />
                       )}
                       <span>{Math.abs(incomeChange).toFixed(1)}%</span>
                     </div>
@@ -337,9 +337,9 @@ export function ProjectionChart({
                     </div>
                     <div className={`flex items-center ${expenseChange <= 0 ? 'text-green-500' : 'text-red-500'}`}>
                       {expenseChange >= 0 ? (
-                        <CaretUpIcon className="h-4 w-4 mr-1" />
+                        <ArrowUp className="h-4 w-4 mr-1" />
                       ) : (
-                        <CaretDownIcon className="h-4 w-4 mr-1" />
+                        <ArrowDown className="h-4 w-4 mr-1" />
                       )}
                       <span>{Math.abs(expenseChange).toFixed(1)}%</span>
                     </div>

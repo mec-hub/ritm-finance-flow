@@ -168,11 +168,15 @@ export function PerformanceTracker({
                   <YAxis 
                     yAxisId="right" 
                     orientation="right"
-                    tickFormatter={(value) => `${value}%`}
+                    tickFormatter={(value) => {
+                      return typeof value === 'number' ? `${value.toFixed(1)}%` : `${value}%`;
+                    }}
                   />
                   <Tooltip 
                     formatter={(value, name) => {
-                      if (name === 'margin') return [`${value.toFixed(1)}%`, 'Margem'];
+                      if (name === 'margin') {
+                        return [typeof value === 'number' ? `${value.toFixed(1)}%` : value, 'Margem'];
+                      }
                       return [formatCurrency(value as number), name];
                     }}
                   />
@@ -277,7 +281,7 @@ export function PerformanceTracker({
                   <div className="text-sm font-medium">Tendência de Eventos</div>
                   <div className="text-xs text-muted-foreground">Comparado ao período anterior</div>
                 </div>
-                <Badge variant={eventsTrend.isPositive ? "success" : "destructive"}>
+                <Badge variant={eventsTrend.isPositive ? "default" : "destructive"} className={eventsTrend.isPositive ? "bg-green-500" : ""}>
                   {eventsTrend.value.toFixed(0)}%
                 </Badge>
               </div>
