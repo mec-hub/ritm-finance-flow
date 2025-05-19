@@ -131,13 +131,13 @@ const EditarTransacao = () => {
     if (!id || !transaction) return;
     
     try {
+      // Make a safe copy of the entire transactions array first
+      const updatedTransactions = [...mockTransactions];
+      
       // Find the transaction index in the array
-      const transactionIndex = mockTransactions.findIndex(t => t.id === id);
+      const transactionIndex = updatedTransactions.findIndex(t => t.id === id);
       
       if (transactionIndex !== -1) {
-        // Create a copy of the mockTransactions array
-        const updatedTransactions = [...mockTransactions];
-        
         // Create an updated transaction object
         const updatedTransaction: Transaction = {
           ...transaction, // Keep original properties
@@ -157,13 +157,13 @@ const EditarTransacao = () => {
           attachments: [...attachments],
         };
         
-        // Update transaction in the updatedTransactions array
+        // Update the transaction in the copy
         updatedTransactions[transactionIndex] = updatedTransaction;
         
-        // Replace the mockTransactions array
-        while (mockTransactions.length > 0) {
-          mockTransactions.pop();
-        }
+        // Safely replace the original array contents
+        // Clear the original array
+        mockTransactions.length = 0;
+        // Add all items from the updated array
         updatedTransactions.forEach(t => mockTransactions.push(t));
         
         toast({

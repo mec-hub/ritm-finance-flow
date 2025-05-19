@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import {
   Table,
@@ -39,43 +38,37 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
   const navigate = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0); // Add a key to force re-render when needed
   
-  // Helper function to get next occurrence date - one month after the last instance
+  // Helper function to get the next occurrence date
   const getNextOccurrenceDate = (transaction: Transaction): Date => {
-    // Find all instances of this recurring transaction
-    const allInstancesOfThisTransaction = mockTransactions.filter(t => 
-      (t.id.startsWith(`${transaction.id}-instance-`) || t.id === transaction.id) && 
-      t.description === transaction.description
-    );
-    
-    // Sort by date to find the latest one
-    const sortedInstances = allInstancesOfThisTransaction.sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+    // Find the latest instance of this transaction
+    const instances = mockTransactions.filter(t => 
+      t.id === transaction.id || t.id.startsWith(`${transaction.id}-instance-`)
+    ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
     // Get the latest date
-    const lastDate = sortedInstances.length > 0 
-      ? new Date(sortedInstances[0].date) 
+    const latestDate = instances.length > 0 
+      ? new Date(instances[0].date)
       : new Date(transaction.date);
     
-    // Calculate next occurrence - one month after the latest instance
-    const nextDate = new Date(lastDate);
-    nextDate.setMonth(nextDate.getMonth() + 1);
+    // Add one month to that date
+    const nextDate = new Date(latestDate);
+    nextDate.setMonth(latestDate.getMonth() + 1);
     
     return nextDate;
   };
   
-  // Helper function to calculate remaining occurrences
-  const getRemainingOccurrences = (transaction: Transaction): number => {
-    if (!transaction.recurrenceMonths) return 0;
-    
-    // Count how many instances of this transaction already exist
-    const instanceCount = mockTransactions.filter(t => 
-      t.id.startsWith(`${transaction.id}-instance-`) && 
-      t.description === transaction.description
+  // Helper function to get the number of remaining instances
+  const getRemainingInstances = (transaction: Transaction): number => {
+    // Count existing instances
+    const instanceCount = mockTransactions.filter(
+      t => t.id !== transaction.id && 
+      t.id.startsWith(`${transaction.id}-instance-`)
     ).length;
     
-    // Original transaction plus instances created minus total allowed recurrences
-    return Math.max(0, transaction.recurrenceMonths - instanceCount - 1);
+    // Return remaining instances count
+    return transaction.recurrenceMonths && transaction.recurrenceMonths > 0 
+      ? Math.max(0, transaction.recurrenceMonths - instanceCount - 1)
+      : 0;
   };
 
   // Helper function to get month name
@@ -87,15 +80,15 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
     // Create a new instance of the recurring transaction
     const nextOccurrence = getNextOccurrenceDate(transaction);
     
-    // Count existing instances to create a proper ID
-    const existingInstanceCount = mockTransactions.filter(t => 
-      t.id.startsWith(`${transaction.id}-instance-`) &&
-      t.description === transaction.description
+    // Count existing instances to generate the next ID
+    const existingInstanceCount = mockTransactions.filter(
+      t => t.id !== transaction.id && 
+      t.id.startsWith(`${transaction.id}-instance-`)
     ).length;
     
     const newInstanceId = `${transaction.id}-instance-${existingInstanceCount + 1}`;
     
-    // Add month to description
+    // Add month to description - but preserve original description
     const monthName = getMonthName(nextOccurrence);
     const baseDescription = transaction.description;
     const newDescription = `${baseDescription} - ${monthName.charAt(0).toUpperCase() + monthName.slice(1)}`;
@@ -115,13 +108,11 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
     // Add to mockTransactions
     mockTransactions.push(newTransaction);
     
+    // Show toast
     toast({
       title: "Instância criada",
-      description: "Uma nova instância da transação recorrente foi criada com sucesso."
+      description: `Nova instância para ${transaction.description} criada para ${nextOccurrence.toLocaleDateString()}.`,
     });
-    
-    // Force a refresh
-    setRefreshKey(prevKey => prevKey + 1);
   };
 
   const handleStopRecurring = (transaction: Transaction) => {
@@ -184,7 +175,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                     <TableCell>{formatDate(getNextOccurrenceDate(transaction))}</TableCell>
                     <TableCell>
                       {transaction.recurrenceMonths 
-                        ? `${getRemainingOccurrences(transaction)} de ${transaction.recurrenceMonths}`
+                        ? `${getRemainingInstances(transaction)} de ${transaction.recurrenceMonths}`
                         : 'Indefinido'}
                     </TableCell>
                     <TableCell>{transaction.category}</TableCell>
@@ -241,7 +232,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                               <span>Ver Detalhes</span>
                             </Button>
                           </DropdownMenuItem>
-                          {getRemainingOccurrences(transaction) > 0 && (
+                          {getRemainingInstances(transaction) > 0 && (
                             <DropdownMenuItem>
                               <Button 
                                 variant="ghost" 

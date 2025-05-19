@@ -14,9 +14,9 @@ interface FinancialAreaChartProps {
 export function FinancialAreaChart({ transactions, timeRange }: FinancialAreaChartProps) {
   const [showNet, setShowNet] = useState(true);
 
-  // Process data for chart
+  // Process data for chart - ONLY USING ACTUAL TRANSACTIONS
   const processChartData = () => {
-    // Important: Only use actually existing transactions from the transactions array
+    // Only use actually existing transactions from the transactions array
     // Do not project or calculate additional months based on recurrence settings
     const monthlyData: Record<string, { month: string; income: number; expenses: number; net: number }> = {};
     

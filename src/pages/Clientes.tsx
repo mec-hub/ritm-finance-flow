@@ -66,7 +66,7 @@ const Clientes = () => {
           <ClientEventChart clients={clients} events={mockEvents} />
         </div>
         
-        {/* Client List with Number of Clients Column */}
+        {/* Client List with Number of Events Column */}
         <div className="dashboard-card">
           <h2 className="dashboard-card-title mb-4">Lista de Clientes</h2>
           <ClientsDataTable clients={clients} />

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { 
@@ -34,7 +33,7 @@ import {
 import { formatCurrency } from '@/utils/formatters';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { CalendarIcon, ChartBarIcon, ChartPieIcon, ArrowUpDown, Percent, TrendingUp, FileText } from 'lucide-react';
+import { Calendar as CalendarIcon, ChartBar, PieChart, ArrowUpDown, Percent, TrendingUp, FileText } from 'lucide-react';
 
 // Pre-defined team members for analysis
 const teamMembers = [
@@ -48,7 +47,7 @@ const Analises = () => {
   const [selectedTimeRange, setSelectedTimeRange] = useState('6months');
   const [selectedAnalysisType, setSelectedAnalysisType] = useState('revenue');
 
-  // Process the transactions based on filters
+  // Process the transactions based on filters - Fix for 30 days view
   const processTransactions = () => {
     let filtered = [...mockTransactions];
 
@@ -67,31 +66,28 @@ const Analises = () => {
       });
     }
 
-    // Filter by time range
+    // Filter by time range - FIX for 30 days view
     const now = new Date();
-    const cutoffDate = new Date();
-
-    switch (selectedTimeRange) {
-      case '30days':
-        cutoffDate.setDate(now.getDate() - 30);
-        break;
-      case '3months':
-        cutoffDate.setMonth(now.getMonth() - 3);
-        break;
-      case '6months':
-        cutoffDate.setMonth(now.getMonth() - 6);
-        break;
-      case '1year':
-        cutoffDate.setFullYear(now.getFullYear() - 1);
-        break;
-      default:
-        // No time filter for 'all'
-        break;
-    }
-
     if (selectedTimeRange !== 'all') {
+      let cutoffDate = new Date();
+      
+      switch (selectedTimeRange) {
+        case '30days':
+          cutoffDate.setDate(now.getDate() - 30);
+          break;
+        case '3months':
+          cutoffDate.setMonth(now.getMonth() - 3);
+          break;
+        case '6months':
+          cutoffDate.setMonth(now.getMonth() - 6);
+          break;
+        case '1year':
+          cutoffDate.setFullYear(now.getFullYear() - 1);
+          break;
+      }
+      
       filtered = filtered.filter(transaction => 
-        new Date(transaction.date) >= cutoffDate
+        new Date(transaction.date) >= cutoffDate && new Date(transaction.date) <= now
       );
     }
 
@@ -124,35 +120,31 @@ const Analises = () => {
   const mostProfitableCategory = Object.entries(incomeByCategory)
     .sort((a, b) => b[1] - a[1])[0] || ['Nenhum', 0];
 
-  // Calculate event stats
+  // Calculate event stats - Fix for 30 days filter
   const filteredEvents = mockEvents.filter(event => {
     if (selectedTimeRange === 'all') return true;
     
     const eventDate = new Date(event.date);
-    const cutoffDate = new Date();
+    const now = new Date();
+    let cutoffDate = new Date();
     
     switch (selectedTimeRange) {
       case '30days':
-        cutoffDate.setDate(cutoffDate.getDate() - 30);
+        cutoffDate.setDate(now.getDate() - 30);
         break;
       case '3months':
-        cutoffDate.setMonth(cutoffDate.getMonth() - 3);
+        cutoffDate.setMonth(now.getMonth() - 3);
         break;
       case '6months':
-        cutoffDate.setMonth(cutoffDate.getMonth() - 6);
+        cutoffDate.setMonth(now.getMonth() - 6);
         break;
       case '1year':
-        cutoffDate.setFullYear(cutoffDate.getFullYear() - 1);
+        cutoffDate.setFullYear(now.getFullYear() - 1);
         break;
     }
     
-    return eventDate >= cutoffDate;
+    return eventDate >= cutoffDate && eventDate <= now;
   });
-  
-  const totalEvents = filteredEvents.length;
-  const averageRevenuePerEvent = totalEvents > 0 
-    ? (totalIncome / totalEvents).toFixed(2) 
-    : '0';
 
   // Calculate active client stats
   const clientsWithEvents = new Set();
@@ -277,11 +269,11 @@ const Analises = () => {
         <Tabs defaultValue="revenue" value={selectedAnalysisType} onValueChange={setSelectedAnalysisType}>
           <TabsList className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 mb-6">
             <TabsTrigger value="revenue" className="flex items-center">
-              <ChartBarIcon className="mr-2 h-4 w-4" /> 
+              <ChartBar className="mr-2 h-4 w-4" /> 
               Receitas & Despesas
             </TabsTrigger>
             <TabsTrigger value="categories" className="flex items-center">
-              <ChartPieIcon className="mr-2 h-4 w-4" />
+              <PieChart className="mr-2 h-4 w-4" />
               Categorias
             </TabsTrigger>
             <TabsTrigger value="performance" className="flex items-center">
