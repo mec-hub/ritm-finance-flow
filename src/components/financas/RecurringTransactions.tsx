@@ -78,6 +78,11 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
     return Math.max(0, transaction.recurrenceMonths - instanceCount - 1);
   };
 
+  // Helper function to get month name
+  const getMonthName = (date: Date): string => {
+    return date.toLocaleString('pt-BR', { month: 'long' });
+  };
+
   const handleCreateInstance = (transaction: Transaction) => {
     // Create a new instance of the recurring transaction
     const nextOccurrence = getNextOccurrenceDate(transaction);
@@ -90,12 +95,21 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
     
     const newInstanceId = `${transaction.id}-instance-${existingInstanceCount + 1}`;
     
+    // Add month to description
+    const monthName = getMonthName(nextOccurrence);
+    const baseDescription = transaction.description;
+    const newDescription = `${baseDescription} - ${monthName.charAt(0).toUpperCase() + monthName.slice(1)}`;
+    
     const newTransaction: Transaction = {
       ...transaction,
       id: newInstanceId,
       date: nextOccurrence,
       status: 'not_paid', // Default status is "Not paid" for new instances
       attachments: [], // No attachments for the new instance
+      description: newDescription,
+      isRecurring: false, // Important: instance is NOT recurring
+      recurrenceInterval: undefined,
+      recurrenceMonths: undefined
     };
     
     // Add to mockTransactions

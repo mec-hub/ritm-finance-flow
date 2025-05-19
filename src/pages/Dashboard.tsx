@@ -1,4 +1,3 @@
-
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { mockTransactions, mockEvents, mockClients } from '@/data/mockData';

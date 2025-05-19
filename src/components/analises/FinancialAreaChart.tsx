@@ -16,6 +16,8 @@ export function FinancialAreaChart({ transactions, timeRange }: FinancialAreaCha
 
   // Process data for chart
   const processChartData = () => {
+    // Important: Only use actually existing transactions from the transactions array
+    // Do not project or calculate additional months based on recurrence settings
     const monthlyData: Record<string, { month: string; income: number; expenses: number; net: number }> = {};
     
     // Determine date range based on timeRange
@@ -78,7 +80,7 @@ export function FinancialAreaChart({ transactions, timeRange }: FinancialAreaCha
       };
     });
     
-    // Aggregate transaction data
+    // Aggregate transaction data - ONLY using actual transactions in the array
     transactions.forEach(transaction => {
       const date = new Date(transaction.date);
       let periodKey;
