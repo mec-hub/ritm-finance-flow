@@ -5,49 +5,80 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FinancialBarChart } from '@/components/ui/dashboard/BarChart';
 import { formatCurrency } from '@/utils/formatters';
 import { Transaction } from '@/types';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Transaction } from '@/types';
+import { formatCurrency } from '@/utils/formatters';
+import { FinancialBarChart } from '@/components/ui/dashboard/BarChart';
+import { CategoryPieChart } from '@/components/ui/dashboard/PieChart';
 
 interface FinancialSummaryProps {
   transactions: Transaction[];
 }
 
 export function FinancialSummary({ transactions }: FinancialSummaryProps) {
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [viewType, setViewType] = useState('monthly');
+  const availableYears = [...new Set(
+    transactions.map((t) => t.date.getFullYear())
+  )].sort((a, b) => b - a);
 
-  // Filter transactions by the selected year
-  const yearTransactions = transactions.filter(
-    transaction => transaction.date.getFullYear() === year
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(
+    availableYears.includes(currentYear) ? currentYear : availableYears[0] || currentYear
   );
 
-  // Helper function to expand recurring transactions
-  const expandRecurringTransactions = (transactions: Transaction[]): Transaction[] => {
-    const expandedTransactions: Transaction[] = [];
-    
-    transactions.forEach(transaction => {
-      // Add the original transaction
-      expandedTransactions.push(transaction);
-      
-      // If it's recurring, add future occurrences
-      if (transaction.isRecurring && transaction.recurrenceMonths) {
-        const originalDate = new Date(transaction.date);
-        
-        // Start from 1 because we already added the original transaction (month 0)
-        for (let i = 1; i < transaction.recurrenceMonths; i++) {
-          const nextDate = new Date(originalDate);
-          nextDate.setMonth(originalDate.getMonth() + i);
-          
-          // Only add future occurrences that are within the selected year
-          if (nextDate.getFullYear() === year) {
-            expandedTransactions.push({
-              ...transaction,
-              id: `${transaction.id}-recur-${i}`,
-              date: nextDate,
-              description: `${transaction.description} (Recorrência ${i+1})`
-            });
-          }
-        }
-      }
-    });
+  const [selectedPeriod, setSelectedPeriod] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
+
+  // Filter transactions by year
+  const yearTransactions = transactions.filter((t) => t.date.getFullYear() === selectedYear);
+
+  // Income transactions for the selected year
+  const incomeTransactions = yearTransactions.filter((t) => t.type === 'income');
+  // Expense transactions for the selected year
+  const expenseTransactions = yearTransactions.filter((t) => t.type === 'expense');
+
+  // Calculate income by category
+  const incomeByCategory = incomeTransactions.reduce((acc, t) => {
+    acc[t.category] = (acc[t.category] || 0) + t.amount;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Calculate expenses by category
+  const expensesByCategory = expenseTransactions.reduce((acc, t) => {
+    acc[t.category] = (acc[t.category] || 0) + t.amount;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Convert to category data format
+  const totalIncome = Object.values(incomeByCategory).reduce((a, b) => a + b, 0);
+  const totalExpenses = Object.values(expensesByCategory).reduce((a, b) => a + b, 0);
+
+  const incomeCategoryData = Object.entries(incomeByCategory).map(([name, value]) => ({
+    name,
+    value,
+    percentage: totalIncome > 0 ? (value / totalIncome) * 100 : 0,
+  }));
+
+  const expenseCategoryData = Object.entries(expensesByCategory).map(([name, value]) => ({
+    name,
+    value,
+    percentage: totalExpenses > 0 ? (value / totalExpenses) * 100 : 0,
+  }));
+
+  // Prepare monthly data for charts
     
     return expandedTransactions;
   };
