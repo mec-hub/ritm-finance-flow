@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { 
@@ -153,6 +154,14 @@ const Analises = () => {
   });
   
   const activeClients = clientsWithEvents.size;
+  
+  // Calculate the total number of events
+  const totalEvents = filteredEvents.length;
+  
+  // Calculate average revenue per event
+  const averageRevenuePerEvent = totalEvents > 0 
+    ? (totalIncome / totalEvents).toFixed(2) 
+    : '0';
 
   return (
     <Layout>
