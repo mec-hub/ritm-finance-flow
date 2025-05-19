@@ -1,8 +1,9 @@
-
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Client, Event } from '@/types';
-import { mockEvents } from '@/data/mockData';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface ClientEventChartProps {
   clients: Client[];
@@ -10,57 +11,122 @@ interface ClientEventChartProps {
 }
 
 export function ClientEventChart({ clients, events }: ClientEventChartProps) {
-  // Group events by month and count them
-  const getEventsByMonth = () => {
-    const eventCounts: Record<string, number> = {};
-    
-    // Initialize all months with 0 events
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    months.forEach(month => {
-      eventCounts[month] = 0;
-    });
-    
-    // Count events per month
-    events.forEach(event => {
-      const eventDate = new Date(event.date);
-      const month = eventDate.toLocaleString('pt-BR', { month: 'short' });
-      eventCounts[month] = (eventCounts[month] || 0) + 1;
-    });
-    
-    // Convert to array for chart
-    return months.map(month => ({
-      month,
-      events: eventCounts[month] || 0
-    }));
-  };
+  // Get list of available years from events
+  const availableYears = [...new Set(events.map(event => 
+    new Date(event.date).getFullYear()
+  ))].sort((a, b) => b - a); // Sort descending
   
-  const eventsByMonth = getEventsByMonth();
-  
-  return (
-    <Card className="col-span-2">
-      <CardHeader>
-        <CardTitle>Eventos por Mês</CardTitle>
-        <CardDescription>Distribuição de eventos ao longo do ano</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={eventsByMonth}
-              margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis
-                label={{ value: 'Número de Eventos', angle: -90, position: 'insideLeft' }}
-              />
-              <Tooltip formatter={(value) => [`${value} eventos`, 'Eventos']} />
-              <Legend />
-              <Bar dataKey="events" fill="#8884d8" name="Eventos" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(
+    availableYears.includes(currentYear) ? currentYear : availableYears[0] || currentYear
   );
+  
+  const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  
+  // Prepare data for events per month chart
+  const eventsPerMonth = monthNames.map(month => ({
+    month,
+    eventos: 0
+  }));
+  
+  events.forEach(event => {
+    const eventDate = new Date(event.date);
+    if (eventDate.getFullYear() === selectedYear) {
+      eventsPerMonth[eventDate.getMonth()].eventos++;
+    }
+  });
+  
+  // Prepare data for top clients chart
+  const eventsPerClient = clients.map(client => {
+    const clientEvents = events.filter(event => event.client === client.name).length;
+    return {
+      name: client.name,
+      eventos: clientEvents
+    };
+  }).sort((a, b) => b.eventos - a.eventos).slice(0, 5);
+
+  const navigateYear = (direction: 'next' | 'prev') => {
+    const currentIndex = availableYears.indexOf(selectedYear);
+    
+    if (direction === 'next' && currentIndex > 0) {
+      setSelectedYear(availableYears[currentIndex - 1]);
+    } else if (direction === 'prev' && currentIndex < availableYears.length - 1) {
+      setSelectedYear(availableYears[currentIndex + 1]);
+    }
+  };
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle>Eventos por Mês</CardTitle>
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => navigateYear('prev')}
+              disabled={availableYears.indexOf(selectedYear) === availableYears.length - 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm font-medium">{selectedYear}</span>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => navigateYear('next')}
+              disabled={availableYears.indexOf(selectedYear) === 0}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={eventsPerMonth}>
+                <XAxis dataKey="month" />
+                <YAxis allowDecimals={false} />
+                <Tooltip
+                  formatter={(value) => [`${value} eventos`, 'Quantidade']}
+                  contentStyle={{
+                    backgroundColor: '#121212',
+                    borderColor: '#333',
+                    borderRadius: 6,
+                    fontSize: 12
+                  }}
+                />
+                <Bar dataKey="eventos" fill="#2563eb" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Principais Clientes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={eventsPerClient} layout="vertical">
+                <XAxis type="number" />
+                <YAxis type="category" dataKey="name" width={120} />
+                <Tooltip
+                  formatter={(value) => [`${value} eventos`, 'Quantidade']}
+                  contentStyle={{
+                    backgroundColor: '#121212',
+                    borderColor: '#333',
+                    borderRadius: 6,
+                    fontSize: 12
+                  }}
+                />
+                <Bar dataKey="eventos" fill="#f59e0b" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+    </>
+     );
 }
