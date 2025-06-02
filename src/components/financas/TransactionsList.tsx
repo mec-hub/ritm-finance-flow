@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import {
   Table,
@@ -37,12 +36,14 @@ import { Transaction } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { mockTransactions, mockEvents } from '@/data/mockData';
 import { Badge } from '@/components/ui/badge';
+import { useTransactions } from '@/contexts/TransactionContext';
 
 interface TransactionsListProps {
   transactions: Transaction[];
 }
 
 export function TransactionsList({ transactions }: TransactionsListProps) {
+  const { deleteTransaction } = useTransactions();
   const [page, setPage] = useState(1);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const itemsPerPage = 10;
@@ -62,18 +63,11 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
   };
 
   const handleDelete = (id: string) => {
-    // Find the index of the transaction to remove
-    const index = mockTransactions.findIndex(t => t.id === id);
-    if (index !== -1) {
-      // Remove the transaction from the array
-      mockTransactions.splice(index, 1);
-      toast({
-        title: "Transação excluída",
-        description: "A transação foi excluída com sucesso."
-      });
-      // Force re-render by refreshing the page (avoiding window reload)
-      window.location.href = window.location.href;
-    }
+    deleteTransaction(id);
+    toast({
+      title: "Transação excluída",
+      description: "A transação foi excluída com sucesso."
+    });
   };
 
   const getStatusBadge = (status?: string) => {

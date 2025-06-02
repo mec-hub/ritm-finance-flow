@@ -12,12 +12,13 @@ import { TransactionFilters } from '@/components/financas/TransactionFilters';
 import { Link } from 'react-router-dom';
 import { Filter, PlusCircle } from 'lucide-react';
 import { Transaction } from '@/types';
-import { mockTransactions } from '@/data/mockData';
 import { formatCurrency } from '@/utils/formatters';
+import { useTransactions } from '@/contexts/TransactionContext';
 
 const Financas = () => {
+  const { transactions: allTransactions } = useTransactions();
   const [activeTab, setActiveTab] = useState('transactions');
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     type: 'all',
@@ -29,17 +30,16 @@ const Financas = () => {
   });
 
   useEffect(() => {
-    // This ensures we always have the latest data from mockTransactions
-    setTransactions([...mockTransactions]); // Create a shallow copy to ensure state changes
-  }, []);
+    // Initialize filtered transactions with all transactions
+    setFilteredTransactions([...allTransactions]);
+  }, [allTransactions]);
   
-  // Calculate financial summary data using only the visible transactions
-  // NOT expanding recurring transactions anymore - only what's in the actual transactions array
-  const totalIncome = transactions
+  // Calculate financial summary data using filtered transactions
+  const totalIncome = filteredTransactions
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
   
-  const totalExpenses = transactions
+  const totalExpenses = filteredTransactions
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
     
@@ -47,7 +47,7 @@ const Financas = () => {
 
   // Apply filters to transactions
   const applyFilters = (filterOptions: typeof filters) => {
-    let filtered = [...mockTransactions]; // Use mockTransactions directly and create a copy
+    let filtered = [...allTransactions];
     
     if (filterOptions.type !== 'all') {
       filtered = filtered.filter(t => t.type === filterOptions.type);
@@ -81,7 +81,7 @@ const Financas = () => {
       }
     }
     
-    setTransactions(filtered);
+    setFilteredTransactions(filtered);
     setFilters(filterOptions);
   };
 
@@ -180,19 +180,19 @@ const Financas = () => {
           </TabsList>
 
           <TabsContent value="transactions" className="space-y-4">
-            <TransactionsList transactions={transactions} />
+            <TransactionsList transactions={filteredTransactions} />
           </TabsContent>
 
           <TabsContent value="summary" className="space-y-4">
-            <FinancialSummary transactions={transactions} />
+            <FinancialSummary transactions={filteredTransactions} />
           </TabsContent>
 
           <TabsContent value="recurring" className="space-y-4">
-            <RecurringTransactions transactions={transactions.filter(t => t.isRecurring)} />
+            <RecurringTransactions transactions={filteredTransactions.filter(t => t.isRecurring)} />
           </TabsContent>
 
           <TabsContent value="budget" className="space-y-4">
-            <BudgetManager transactions={transactions} />
+            <BudgetManager transactions={filteredTransactions} />
           </TabsContent>
         </Tabs>
       </div>

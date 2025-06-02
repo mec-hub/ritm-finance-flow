@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -26,6 +25,7 @@ import { ArrowLeft, PlusCircle, Trash2, CalendarDays } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Transaction, Event } from '@/types';
 import { mockTransactions, mockEvents } from '@/data/mockData';
+import { useTransactions } from '@/contexts/TransactionContext';
 
 // Team members for percentage allocation
 const teamMembers = [
@@ -33,7 +33,6 @@ const teamMembers = [
   { id: '2', name: 'Rian Dultra', role: 'CEO' },
   { id: '3', name: 'Maria Clara', role: 'Lider de Marketing' },
 ];
-
 
 interface TeamPercentage {
   teamMemberId: string;
@@ -55,6 +54,7 @@ interface TransactionFormData {
 }
 
 const NovaTransacao = () => {
+  const { addTransaction } = useTransactions();
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   
@@ -158,10 +158,9 @@ const NovaTransacao = () => {
       }
     }
 
-    // In a real app, this would be an API call
-    // For now, we'll add it to our mock data
+    // Use the context to add the transaction
     setTimeout(() => {
-      mockTransactions.push(newTransaction);
+      addTransaction(newTransaction);
       setIsLoading(false);
       toast({
         title: "Transação adicionada",

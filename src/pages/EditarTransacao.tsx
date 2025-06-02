@@ -41,6 +41,7 @@ import * as z from 'zod';
 import { Transaction } from '@/types';
 import { mockTransactions, mockEvents } from '@/data/mockData';
 import { toast } from '@/hooks/use-toast';
+import { useTransactions } from '@/contexts/TransactionContext';
 
 // Define the form schema
 const formSchema = z.object({
@@ -63,6 +64,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const EditarTransacao = () => {
+  const { transactions, updateTransaction } = useTransactions();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -88,8 +90,8 @@ const EditarTransacao = () => {
   useEffect(() => {
     if (!id) return;
 
-    // Find the transaction by ID
-    const foundTransaction = mockTransactions.find(t => t.id === id);
+    // Find the transaction by ID from context
+    const foundTransaction = transactions.find(t => t.id === id);
     
     if (foundTransaction) {
       setTransaction(foundTransaction);
@@ -120,7 +122,7 @@ const EditarTransacao = () => {
     }
     
     setLoading(false);
-  }, [id, navigate, form]);
+  }, [id, navigate, form, transactions]);
 
   const removeAttachment = (index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
@@ -130,39 +132,35 @@ const EditarTransacao = () => {
     if (!id || !transaction) return;
     
     try {
-      const transactionIndex = mockTransactions.findIndex(t => t.id === id);
+      // Create updated transaction
+      const updatedTransaction: Transaction = {
+        ...transaction,
+        description: values.description,
+        amount: values.amount,
+        date: values.date,
+        category: values.category,
+        subcategory: values.subcategory || undefined,
+        type: values.type,
+        isRecurring: values.isRecurring,
+        recurrenceInterval: values.isRecurring ? 'monthly' as const : undefined,
+        recurrenceMonths: values.isRecurring ? values.recurrenceMonths : undefined,
+        notes: values.notes || undefined,
+        clientId: values.clientId || undefined,
+        eventId: values.eventId || undefined,
+        status: values.status,
+        attachments: [...attachments],
+      };
       
-      if (transactionIndex !== -1) {
-        // Create updated transaction
-        const updatedTransaction: Transaction = {
-          ...transaction,
-          description: values.description,
-          amount: values.amount,
-          date: values.date,
-          category: values.category,
-          subcategory: values.subcategory || undefined,
-          type: values.type,
-          isRecurring: values.isRecurring,
-          recurrenceInterval: values.isRecurring ? 'monthly' as const : undefined,
-          recurrenceMonths: values.isRecurring ? values.recurrenceMonths : undefined,
-          notes: values.notes || undefined,
-          clientId: values.clientId || undefined,
-          eventId: values.eventId || undefined,
-          status: values.status,
-          attachments: [...attachments],
-        };
-        
-        // Update the transaction
-        mockTransactions[transactionIndex] = updatedTransaction;
-        
-        toast({
-          title: "Transação atualizada",
-          description: "A transação foi atualizada com sucesso.",
-        });
-        
-        // Use navigate with replace to avoid going back to stale data
-        navigate('/financas', { replace: true });
-      }
+      // Update the transaction using context
+      updateTransaction(id, updatedTransaction);
+      
+      toast({
+        title: "Transação atualizada",
+        description: "A transação foi atualizada com sucesso.",
+      });
+      
+      // Navigate back to finances
+      navigate('/financas', { replace: true });
     } catch (error) {
       console.error("Error updating transaction:", error);
       toast({
