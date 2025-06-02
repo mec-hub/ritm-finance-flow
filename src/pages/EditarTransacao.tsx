@@ -1,4 +1,3 @@
-
 import { useState, useEffect, ChangeEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
@@ -131,13 +130,11 @@ const EditarTransacao = () => {
     if (!id || !transaction) return;
     
     try {
-      // Instead of manipulating the mockTransactions array directly,
-      // We create a safe copy and then replace the original reference
       const transactionIndex = mockTransactions.findIndex(t => t.id === id);
       
       if (transactionIndex !== -1) {
-        // Create a deep copy of the transaction to update
-        const updatedTransaction = {
+        // Create updated transaction with proper typing
+        const updatedTransaction: Transaction = {
           ...transaction,
           description: values.description,
           amount: values.amount,
@@ -146,7 +143,7 @@ const EditarTransacao = () => {
           subcategory: values.subcategory || undefined,
           type: values.type,
           isRecurring: values.isRecurring,
-          recurrenceInterval: values.isRecurring ? 'monthly' : undefined,
+          recurrenceInterval: values.isRecurring ? 'monthly' as const : undefined,
           recurrenceMonths: values.isRecurring ? values.recurrenceMonths : undefined,
           notes: values.notes || undefined,
           clientId: values.clientId || undefined,
@@ -155,7 +152,7 @@ const EditarTransacao = () => {
           attachments: [...attachments],
         };
         
-        // Create a new copy of the transactions array with the updated transaction
+        // Update the transaction in place
         mockTransactions[transactionIndex] = updatedTransaction;
         
         toast({
@@ -163,8 +160,7 @@ const EditarTransacao = () => {
           description: "A transação foi atualizada com sucesso.",
         });
         
-        // Navigate after a short delay to show toast
-        setTimeout(() => navigate('/financas'), 1000);
+        navigate('/financas');
       }
     } catch (error) {
       console.error("Error updating transaction:", error);
@@ -542,4 +538,3 @@ const EditarTransacao = () => {
 };
 
 export default EditarTransacao;
-
