@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import {
   Table,
@@ -27,8 +28,8 @@ import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Calendar, Eye, X, Paper
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Transaction } from '@/types';
 import { toast } from '@/hooks/use-toast';
-import { mockTransactions, mockEvents } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
+import { useTransactions } from '@/contexts/TransactionContext';
 
 interface RecurringTransactionsProps {
   transactions: Transaction[];
@@ -36,12 +37,12 @@ interface RecurringTransactionsProps {
 
 export function RecurringTransactions({ transactions }: RecurringTransactionsProps) {
   const navigate = useNavigate();
-  const [refreshKey, setRefreshKey] = useState(0); // Add a key to force re-render when needed
+  const { transactions: allTransactions, addTransaction, updateTransaction } = useTransactions();
   
   // Helper function to get the next occurrence date
   const getNextOccurrenceDate = (transaction: Transaction): Date => {
     // Find the latest instance of this transaction
-    const instances = mockTransactions.filter(t => 
+    const instances = allTransactions.filter(t => 
       t.id === transaction.id || t.id.startsWith(`${transaction.id}-instance-`)
     ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
@@ -60,7 +61,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
   // Helper function to get the number of remaining instances
   const getRemainingInstances = (transaction: Transaction): number => {
     // Count existing instances
-    const instanceCount = mockTransactions.filter(
+    const instanceCount = allTransactions.filter(
       t => t.id !== transaction.id && 
       t.id.startsWith(`${transaction.id}-instance-`)
     ).length;
@@ -81,7 +82,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
     const nextOccurrence = getNextOccurrenceDate(transaction);
     
     // Count existing instances to generate the next ID
-    const existingInstanceCount = mockTransactions.filter(
+    const existingInstanceCount = allTransactions.filter(
       t => t.id !== transaction.id && 
       t.id.startsWith(`${transaction.id}-instance-`)
     ).length;
@@ -105,8 +106,8 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
       recurrenceMonths: undefined
     };
     
-    // Add to mockTransactions
-    mockTransactions.push(newTransaction);
+    // Add using the context
+    addTransaction(newTransaction);
     
     // Show toast
     toast({
@@ -116,26 +117,20 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
   };
 
   const handleStopRecurring = (transaction: Transaction) => {
-    // Find the transaction in the array
-    const index = mockTransactions.findIndex(t => t.id === transaction.id);
+    // Update the transaction to not be recurring using the context
+    const updatedTransaction = {
+      ...transaction,
+      isRecurring: false,
+      recurrenceInterval: undefined,
+      recurrenceMonths: undefined
+    };
     
-    if (index !== -1) {
-      // Update the transaction to not be recurring
-      mockTransactions[index] = {
-        ...mockTransactions[index],
-        isRecurring: false,
-        recurrenceInterval: undefined,
-        recurrenceMonths: undefined
-      };
-      
-      toast({
-        title: "Recorrência interrompida",
-        description: "A transação não será mais recorrente."
-      });
-      
-      // Force a refresh
-      setRefreshKey(prevKey => prevKey + 1);
-    }
+    updateTransaction(transaction.id, updatedTransaction);
+    
+    toast({
+      title: "Recorrência interrompida",
+      description: "A transação não será mais recorrente."
+    });
   };
   
   const handleViewDetails = (id: string) => {
@@ -143,7 +138,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
   };
 
   return (
-    <Card key={refreshKey}>
+    <Card>
       <CardHeader>
         <CardTitle>Transações Recorrentes</CardTitle>
         <CardDescription>
