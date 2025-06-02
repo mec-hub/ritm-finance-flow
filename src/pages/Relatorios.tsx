@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -94,26 +93,188 @@ const Relatorios = () => {
     };
   }, []);
 
-  // Client metrics
+  // Calculate actual client revenue from transactions
   const clientMetrics = useMemo(() => {
-    const topClients = mockClients
+    // Calculate client revenues from transactions linked to events
+    const calculateClientRevenue = (clientName: string): number => {
+      // Find all events for this client
+      const clientEvents = mockEvents.filter(event => event.client === clientName);
+      
+      let totalRevenue = 0;
+      
+      // For each event, find related income transactions
+      clientEvents.forEach(event => {
+        const eventTransactions = mockTransactions.filter(
+          transaction => transaction.eventId === event.id && transaction.type === 'income'
+        );
+        
+        // Sum up transaction amounts
+        eventTransactions.forEach(transaction => {
+          totalRevenue += transaction.amount;
+        });
+      });
+      
+      return totalRevenue;
+    };
+
+    // Update clients with actual calculated revenues
+    const clientsWithRevenue = mockClients.map(client => ({
+      ...client,
+      totalRevenue: calculateClientRevenue(client.name)
+    }));
+
+    const topClients = clientsWithRevenue
       .sort((a, b) => b.totalRevenue - a.totalRevenue)
       .slice(0, 5);
     
-    const totalRevenue = mockClients.reduce((sum, c) => sum + c.totalRevenue, 0);
+    const totalRevenue = clientsWithRevenue.reduce((sum, c) => sum + c.totalRevenue, 0);
     
     return {
-      total: mockClients.length,
+      total: clientsWithRevenue.length,
       topClients,
-      totalRevenue
+      totalRevenue,
+      allClients: clientsWithRevenue
     };
   }, []);
 
   const exportReport = (reportType: string) => {
-    // In a real app, this would generate and download a PDF/Excel file
-    console.log(`Exporting ${reportType} report...`);
-    // Placeholder for export functionality
-    alert(`Relatório de ${reportType} seria exportado aqui. Funcionalidade em desenvolvimento.`);
+    let reportContent = '';
+    
+    switch(reportType) {
+      case 'financeiro':
+        reportContent = generateFinancialReport();
+        break;
+      case 'eventos':
+        reportContent = generateEventsReport();
+        break;
+      case 'clientes':
+        reportContent = generateClientsReport();
+        break;
+      case 'completo':
+        reportContent = generateCompleteReport();
+        break;
+      default:
+        reportContent = generateCompleteReport();
+    }
+    
+    // Create and download the report
+    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `relatorio-${reportType}-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const generateFinancialReport = () => {
+    let report = `RELATÓRIO FINANCEIRO\n`;
+    report += `Data de Geração: ${formatDate(new Date())}\n`;
+    report += `Período: ${dateFilter === 'all' ? 'Todos os períodos' : 
+                dateFilter === 'thisMonth' ? 'Este mês' :
+                dateFilter === 'lastMonth' ? 'Mês passado' : 'Este ano'}\n\n`;
+    
+    report += `RESUMO FINANCEIRO:\n`;
+    report += `Receitas: ${formatCurrency(financialMetrics.income)}\n`;
+    report += `Despesas: ${formatCurrency(financialMetrics.expenses)}\n`;
+    report += `Lucro Líquido: ${formatCurrency(financialMetrics.profit)}\n`;
+    report += `Margem de Lucro: ${financialMetrics.income > 0 ? ((financialMetrics.profit / financialMetrics.income) * 100).toFixed(1) : 0}%\n\n`;
+    
+    report += `TRANSAÇÕES DETALHADAS:\n`;
+    filteredTransactions
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .forEach((transaction, index) => {
+        report += `${index + 1}. ${transaction.description}\n`;
+        report += `   Data: ${formatDate(transaction.date)}\n`;
+        report += `   Categoria: ${transaction.category}\n`;
+        report += `   Tipo: ${transaction.type === 'income' ? 'Receita' : 'Despesa'}\n`;
+        report += `   Valor: ${formatCurrency(transaction.amount)}\n`;
+        report += `   Status: ${transaction.status === 'paid' ? 'Pago' : 
+                     transaction.status === 'not_paid' ? 'Não Pago' : 'Cancelado'}\n`;
+        if (transaction.notes) {
+          report += `   Observações: ${transaction.notes}\n`;
+        }
+        report += `\n`;
+      });
+    
+    return report;
+  };
+
+  const generateEventsReport = () => {
+    let report = `RELATÓRIO DE EVENTOS\n`;
+    report += `Data de Geração: ${formatDate(new Date())}\n\n`;
+    
+    report += `RESUMO DE EVENTOS:\n`;
+    report += `Eventos Realizados: ${eventMetrics.completed}\n`;
+    report += `Eventos Futuros: ${eventMetrics.upcoming}\n`;
+    report += `Eventos Cancelados: ${eventMetrics.cancelled}\n`;
+    report += `Receita Total de Eventos: ${formatCurrency(eventMetrics.totalRevenue)}\n\n`;
+    
+    report += `DETALHES DOS EVENTOS:\n`;
+    mockEvents.forEach((event, index) => {
+      report += `${index + 1}. ${event.title}\n`;
+      report += `   Data: ${formatDate(event.date)}\n`;
+      report += `   Local: ${event.location}\n`;
+      report += `   Cliente: ${event.client}\n`;
+      report += `   Status: ${event.status === 'completed' ? 'Realizado' : 
+                   event.status === 'upcoming' ? 'Próximo' : 'Cancelado'}\n`;
+      report += `   Receita: ${formatCurrency(event.actualRevenue || event.estimatedRevenue)}\n`;
+      report += `   Despesas: ${formatCurrency(event.actualExpenses || event.estimatedExpenses)}\n`;
+      if (event.notes) {
+        report += `   Observações: ${event.notes}\n`;
+      }
+      report += `\n`;
+    });
+    
+    return report;
+  };
+
+  const generateClientsReport = () => {
+    let report = `RELATÓRIO DE CLIENTES\n`;
+    report += `Data de Geração: ${formatDate(new Date())}\n\n`;
+    
+    report += `RESUMO DE CLIENTES:\n`;
+    report += `Total de Clientes: ${clientMetrics.total}\n`;
+    report += `Receita Total: ${formatCurrency(clientMetrics.totalRevenue)}\n`;
+    report += `Ticket Médio: ${formatCurrency(clientMetrics.totalRevenue / clientMetrics.total)}\n\n`;
+    
+    report += `TOP 5 CLIENTES:\n`;
+    clientMetrics.topClients.forEach((client, index) => {
+      report += `${index + 1}. ${client.name} - ${formatCurrency(client.totalRevenue)}\n`;
+    });
+    report += `\n`;
+    
+    report += `TODOS OS CLIENTES:\n`;
+    clientMetrics.allClients.forEach((client, index) => {
+      report += `${index + 1}. ${client.name}\n`;
+      report += `   Contato: ${client.contact}\n`;
+      report += `   Email: ${client.email}\n`;
+      report += `   Receita Total: ${formatCurrency(client.totalRevenue)}\n`;
+      if (client.lastEvent) {
+        report += `   Último Evento: ${formatDate(client.lastEvent)}\n`;
+      }
+      if (client.notes) {
+        report += `   Observações: ${client.notes}\n`;
+      }
+      report += `\n`;
+    });
+    
+    return report;
+  };
+
+  const generateCompleteReport = () => {
+    let report = `RELATÓRIO COMPLETO DO SISTEMA\n`;
+    report += `Data de Geração: ${formatDate(new Date())}\n\n`;
+    
+    report += generateFinancialReport();
+    report += `\n${'='.repeat(50)}\n\n`;
+    report += generateEventsReport();
+    report += `\n${'='.repeat(50)}\n\n`;
+    report += generateClientsReport();
+    
+    return report;
   };
 
   return (
@@ -129,7 +290,7 @@ const Relatorios = () => {
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => exportReport('completo')}>
               <Download className="h-4 w-4 mr-2" />
-              Exportar Relatório
+              Exportar Relatório Completo
             </Button>
           </div>
         </div>
@@ -419,7 +580,7 @@ const Relatorios = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {formatCurrency(clientMetrics.totalRevenue / clientMetrics.total)}
+                    {formatCurrency(clientMetrics.total > 0 ? clientMetrics.totalRevenue / clientMetrics.total : 0)}
                   </div>
                 </CardContent>
               </Card>
@@ -430,7 +591,7 @@ const Relatorios = () => {
               <CardHeader>
                 <CardTitle>Top 5 Clientes</CardTitle>
                 <CardDescription>
-                  Clientes com maior receita gerada
+                  Clientes com maior receita gerada (baseado em transações)
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -469,18 +630,19 @@ const Relatorios = () => {
               <CardHeader>
                 <CardTitle>Todos os Clientes</CardTitle>
                 <CardDescription>
-                  Lista completa de clientes e suas métricas
+                  Lista completa de clientes e suas receitas (calculadas a partir das transações)
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mockClients.map((client) => (
+                  {clientMetrics.allClients.map((client) => (
                     <div key={client.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1">
                         <h4 className="font-medium">{client.name}</h4>
                         <div className="text-sm text-muted-foreground mt-1">
                           <p>Contato: {client.contact}</p>
                           <p>Email: {client.email}</p>
+                          {client.phone && <p>Telefone: {client.phone}</p>}
                           {client.lastEvent && (
                             <p>Último evento: {formatDate(client.lastEvent)}</p>
                           )}
@@ -490,6 +652,9 @@ const Relatorios = () => {
                       <div className="text-right">
                         <div className="text-lg font-semibold text-green-500">
                           {formatCurrency(client.totalRevenue)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {mockEvents.filter(e => e.client === client.name).length} eventos
                         </div>
                       </div>
                     </div>

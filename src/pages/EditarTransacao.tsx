@@ -133,7 +133,7 @@ const EditarTransacao = () => {
       const transactionIndex = mockTransactions.findIndex(t => t.id === id);
       
       if (transactionIndex !== -1) {
-        // Create updated transaction with proper typing
+        // Create updated transaction
         const updatedTransaction: Transaction = {
           ...transaction,
           description: values.description,
@@ -152,7 +152,7 @@ const EditarTransacao = () => {
           attachments: [...attachments],
         };
         
-        // Update the transaction in place
+        // Update the transaction
         mockTransactions[transactionIndex] = updatedTransaction;
         
         toast({
@@ -160,7 +160,8 @@ const EditarTransacao = () => {
           description: "A transação foi atualizada com sucesso.",
         });
         
-        navigate('/financas');
+        // Use navigate with replace to avoid going back to stale data
+        navigate('/financas', { replace: true });
       }
     } catch (error) {
       console.error("Error updating transaction:", error);
