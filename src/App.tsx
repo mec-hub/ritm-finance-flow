@@ -8,7 +8,6 @@ import { TransactionProvider } from "@/contexts/TransactionContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 // Pages
-import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Financas from "./pages/Financas";
 import Eventos from "./pages/Eventos";
@@ -31,17 +30,19 @@ function AppRoutes() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-yellow-500"></div>
       </div>
     );
   }
 
   return (
     <Routes>
-      {/* Public routes */}
+      {/* Authentication route */}
       <Route path="/auth" element={!user ? <Auth /> : <Navigate to="/dashboard" />} />
-      <Route path="/" element={!user ? <Index /> : <Navigate to="/dashboard" />} />
+      
+      {/* Redirect root to auth if not authenticated, dashboard if authenticated */}
+      <Route path="/" element={!user ? <Navigate to="/auth" /> : <Navigate to="/dashboard" />} />
       
       {/* Protected routes */}
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
