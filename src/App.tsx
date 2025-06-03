@@ -3,59 +3,93 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { TransactionProvider } from "@/contexts/TransactionContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+
+// Pages
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Financas from "./pages/Financas";
-import NovaTransacao from "./pages/NovaTransacao";
-import EditarTransacao from "./pages/EditarTransacao";
-import DetalhesTransacao from "./pages/DetalhesTransacao";
 import Eventos from "./pages/Eventos";
-import NovoEvento from "./pages/NovoEvento";
-import EditarEvento from "./pages/EditarEvento";
 import Clientes from "./pages/Clientes";
-import NovoCliente from "./pages/NovoCliente";
-import EditarCliente from "./pages/EditarCliente";
 import Analises from "./pages/Analises";
 import Relatorios from "./pages/Relatorios";
 import Configuracoes from "./pages/Configuracoes";
+import Auth from "./pages/Auth";
+import NovaTransacao from "./pages/NovaTransacao";
+import EditarTransacao from "./pages/EditarTransacao";
+import DetalhesTransacao from "./pages/DetalhesTransacao";
+import NovoEvento from "./pages/NovoEvento";
+import EditarEvento from "./pages/EditarEvento";
+import NovoCliente from "./pages/NovoCliente";
+import EditarCliente from "./pages/EditarCliente";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <SidebarProvider>
-      <TransactionProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/financas" element={<Financas />} />
-              <Route path="/nova-transacao" element={<NovaTransacao />} />
-              <Route path="/editar-transacao/:id" element={<EditarTransacao />} />
-              <Route path="/detalhes-transacao/:id" element={<DetalhesTransacao />} />
-              <Route path="/eventos" element={<Eventos />} />
-              <Route path="/novo-evento" element={<NovoEvento />} />
-              <Route path="/editar-evento/:id" element={<EditarEvento />} />
-              <Route path="/clientes" element={<Clientes />} />
-              <Route path="/novo-cliente" element={<NovoCliente />} />
-              <Route path="/editar-cliente/:id" element={<EditarCliente />} />
-              <Route path="/analises" element={<Analises />} />
-              <Route path="/relatorios" element={<Relatorios />} />
-              <Route path="/configuracoes" element={<Configuracoes />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </TransactionProvider>
-    </SidebarProvider>
-  </QueryClientProvider>
-);
+function AppRoutes() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route path="/auth" element={!user ? <Auth /> : <Navigate to="/dashboard" />} />
+      <Route path="/" element={!user ? <Index /> : <Navigate to="/dashboard" />} />
+      
+      {/* Protected routes */}
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/financas" element={<ProtectedRoute><Financas /></ProtectedRoute>} />
+      <Route path="/eventos" element={<ProtectedRoute><Eventos /></ProtectedRoute>} />
+      <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+      <Route path="/analises" element={<ProtectedRoute><Analises /></ProtectedRoute>} />
+      <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
+      <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
+      
+      {/* Transaction routes */}
+      <Route path="/financas/nova" element={<ProtectedRoute><NovaTransacao /></ProtectedRoute>} />
+      <Route path="/financas/editar/:id" element={<ProtectedRoute><EditarTransacao /></ProtectedRoute>} />
+      <Route path="/financas/detalhes/:id" element={<ProtectedRoute><DetalhesTransacao /></ProtectedRoute>} />
+      
+      {/* Event routes */}
+      <Route path="/eventos/novo" element={<ProtectedRoute><NovoEvento /></ProtectedRoute>} />
+      <Route path="/eventos/editar/:id" element={<ProtectedRoute><EditarEvento /></ProtectedRoute>} />
+      
+      {/* Client routes */}
+      <Route path="/clientes/novo" element={<ProtectedRoute><NovoCliente /></ProtectedRoute>} />
+      <Route path="/clientes/editar/:id" element={<ProtectedRoute><EditarCliente /></ProtectedRoute>} />
+      
+      {/* Catch all route */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TransactionProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </TooltipProvider>
+        </TransactionProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;

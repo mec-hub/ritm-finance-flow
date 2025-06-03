@@ -9,16 +9,375 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      clients: {
+        Row: {
+          contact: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          last_event: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          total_revenue: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          contact?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          last_event?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          total_revenue?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          contact?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          last_event?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          total_revenue?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      events: {
+        Row: {
+          actual_expenses: number | null
+          actual_revenue: number | null
+          client_id: string | null
+          created_at: string | null
+          date: string
+          estimated_expenses: number | null
+          estimated_revenue: number | null
+          id: string
+          location: string | null
+          notes: string | null
+          status: Database["public"]["Enums"]["event_status"] | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          actual_expenses?: number | null
+          actual_revenue?: number | null
+          client_id?: string | null
+          created_at?: string | null
+          date: string
+          estimated_expenses?: number | null
+          estimated_revenue?: number | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["event_status"] | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          actual_expenses?: number | null
+          actual_revenue?: number | null
+          client_id?: string | null
+          created_at?: string | null
+          date?: string
+          estimated_expenses?: number | null
+          estimated_revenue?: number | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["event_status"] | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          company: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          location: string | null
+          phone: string | null
+          position: string | null
+          role: Database["public"]["Enums"]["app_role"] | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          company?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          location?: string | null
+          phone?: string | null
+          position?: string | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          company?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          location?: string | null
+          phone?: string | null
+          position?: string | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
+      recurring_transactions: {
+        Row: {
+          created_at: string | null
+          generated_transaction_id: string | null
+          id: string
+          is_generated: boolean | null
+          parent_transaction_id: string
+          scheduled_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          generated_transaction_id?: string | null
+          id?: string
+          is_generated?: boolean | null
+          parent_transaction_id: string
+          scheduled_date: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          generated_transaction_id?: string | null
+          id?: string
+          is_generated?: boolean | null
+          parent_transaction_id?: string
+          scheduled_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_transactions_generated_transaction_id_fkey"
+            columns: ["generated_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transactions_parent_transaction_id_fkey"
+            columns: ["parent_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          pending_amount: number | null
+          percentage_share: number | null
+          role: string | null
+          total_paid: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          pending_amount?: number | null
+          percentage_share?: number | null
+          role?: string | null
+          total_paid?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          pending_amount?: number | null
+          percentage_share?: number | null
+          role?: string | null
+          total_paid?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      team_transaction_assignments: {
+        Row: {
+          created_at: string | null
+          id: string
+          percentage_value: number
+          team_member_id: string
+          transaction_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          percentage_value: number
+          team_member_id: string
+          transaction_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          percentage_value?: number
+          team_member_id?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_transaction_assignments_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_transaction_assignments_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount: number
+          attachments: string[] | null
+          category: string
+          client_id: string | null
+          created_at: string | null
+          date: string
+          description: string
+          event_id: string | null
+          id: string
+          is_recurring: boolean | null
+          notes: string | null
+          recurrence_interval:
+            | Database["public"]["Enums"]["recurrence_interval"]
+            | null
+          recurrence_months: number | null
+          status: Database["public"]["Enums"]["transaction_status"] | null
+          subcategory: string | null
+          type: Database["public"]["Enums"]["transaction_type"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          attachments?: string[] | null
+          category: string
+          client_id?: string | null
+          created_at?: string | null
+          date: string
+          description: string
+          event_id?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          notes?: string | null
+          recurrence_interval?:
+            | Database["public"]["Enums"]["recurrence_interval"]
+            | null
+          recurrence_months?: number | null
+          status?: Database["public"]["Enums"]["transaction_status"] | null
+          subcategory?: string | null
+          type: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          attachments?: string[] | null
+          category?: string
+          client_id?: string | null
+          created_at?: string | null
+          date?: string
+          description?: string
+          event_id?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          notes?: string | null
+          recurrence_interval?:
+            | Database["public"]["Enums"]["recurrence_interval"]
+            | null
+          recurrence_months?: number | null
+          status?: Database["public"]["Enums"]["transaction_status"] | null
+          subcategory?: string | null
+          type?: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "manager" | "user"
+      event_status: "upcoming" | "completed" | "cancelled"
+      recurrence_interval: "weekly" | "monthly" | "quarterly" | "yearly"
+      transaction_status: "paid" | "not_paid" | "canceled"
+      transaction_type: "income" | "expense"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +492,12 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "manager", "user"],
+      event_status: ["upcoming", "completed", "cancelled"],
+      recurrence_interval: ["weekly", "monthly", "quarterly", "yearly"],
+      transaction_status: ["paid", "not_paid", "canceled"],
+      transaction_type: ["income", "expense"],
+    },
   },
 } as const

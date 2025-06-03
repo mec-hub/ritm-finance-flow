@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,33 +9,124 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Save, Upload, Camera } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export function ProfileSettings() {
+  const { user, signOut } = useAuth();
+  const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({
-    name: 'João Silva',
-    email: 'joao@empresa.com',
-    phone: '(11) 99999-9999',
-    company: 'Minha Empresa Musical',
-    position: 'Proprietário',
-    bio: 'Especialista em eventos musicais com mais de 10 anos de experiência.',
-    website: 'www.minhaempresa.com',
-    location: 'São Paulo, SP',
-    avatar: ''
+    full_name: '',
+    email: '',
+    phone: '',
+    company: '',
+    position: '',
+    bio: '',
+    website: '',
+    location: '',
+    avatar_url: '',
+    role: 'user' as 'admin' | 'manager' | 'user'
   });
 
-  const handleSave = () => {
-    toast({
-      title: "Perfil atualizado",
-      description: "Suas informações foram salvas com sucesso.",
-    });
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching profile:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar o perfil.",
+        variant: "destructive"
+      });
+    } else if (data) {
+      setProfile({
+        full_name: data.full_name || '',
+        email: data.email || user.email || '',
+        phone: data.phone || '',
+        company: data.company || '',
+        position: data.position || '',
+        bio: data.bio || '',
+        website: data.website || '',
+        location: data.location || '',
+        avatar_url: data.avatar_url || '',
+        role: data.role || 'user'
+      });
+    }
+  };
+
+  const handleSave = async () => {
+    if (!user) return;
+
+    setLoading(true);
+
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        full_name: profile.full_name,
+        email: profile.email,
+        phone: profile.phone,
+        company: profile.company,
+        position: profile.position,
+        bio: profile.bio,
+        website: profile.website,
+        location: profile.location,
+        avatar_url: profile.avatar_url,
+        updated_at: new Date().toISOString()
+      });
+
+    if (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar o perfil.",
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Perfil atualizado",
+        description: "Suas informações foram salvas com sucesso."
+      });
+    }
+
+    setLoading(false);
   };
 
   const handleAvatarUpload = () => {
-    // In a real app, this would open a file picker
     toast({
       title: "Upload de avatar",
-      description: "Funcionalidade em desenvolvimento.",
+      description: "Funcionalidade em desenvolvimento."
     });
+  };
+
+  const getRoleLabel = (role: string) => {
+    const roles = {
+      admin: 'Administrador',
+      manager: 'Gerente',
+      user: 'Usuário'
+    };
+    return roles[role as keyof typeof roles] || role;
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   return (
@@ -50,8 +141,10 @@ export function ProfileSettings() {
         <CardContent className="space-y-6">
           <div className="flex items-center space-x-4">
             <Avatar className="w-20 h-20">
-              <AvatarImage src={profile.avatar} />
-              <AvatarFallback className="text-lg">JS</AvatarFallback>
+              <AvatarImage src={profile.avatar_url} />
+              <AvatarFallback className="text-lg">
+                {profile.full_name ? getInitials(profile.full_name) : 'US'}
+              </AvatarFallback>
             </Avatar>
             <div className="space-y-2">
               <Button variant="outline" onClick={handleAvatarUpload}>
@@ -69,8 +162,8 @@ export function ProfileSettings() {
               <Label htmlFor="name">Nome Completo</Label>
               <Input
                 id="name"
-                value={profile.name}
-                onChange={(e) => setProfile(prev => ({ ...prev, name: e.target.value }))}
+                value={profile.full_name}
+                onChange={(e) => setProfile(prev => ({ ...prev, full_name: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
@@ -136,10 +229,15 @@ export function ProfileSettings() {
             />
           </div>
 
-          <Button onClick={handleSave}>
-            <Save className="h-4 w-4 mr-2" />
-            Salvar Alterações
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleSave} disabled={loading}>
+              <Save className="h-4 w-4 mr-2" />
+              {loading ? 'Salvando...' : 'Salvar Alterações'}
+            </Button>
+            <Button variant="outline" onClick={signOut}>
+              Sair da Conta
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -147,27 +245,36 @@ export function ProfileSettings() {
         <CardHeader>
           <CardTitle>Status da Conta</CardTitle>
           <CardDescription>
-            Informações sobre sua assinatura e uso da plataforma.
+            Informações sobre sua conta e uso da plataforma.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">Plano Atual</p>
-              <p className="text-sm text-muted-foreground">Plano Premium</p>
+              <p className="font-medium">Função</p>
+              <p className="text-sm text-muted-foreground">{getRoleLabel(profile.role)}</p>
             </div>
-            <Badge variant="secondary">Ativo</Badge>
+            <Badge variant="secondary">{getRoleLabel(profile.role)}</Badge>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">Membro desde</p>
-              <p className="text-sm text-muted-foreground">Janeiro 2024</p>
+              <p className="font-medium">Status da Conta</p>
+              <p className="text-sm text-muted-foreground">Conta ativa</p>
+            </div>
+            <Badge variant="default">Ativo</Badge>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">Email</p>
+              <p className="text-sm text-muted-foreground">{user?.email}</p>
             </div>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">Último login</p>
-              <p className="text-sm text-muted-foreground">Hoje às 14:30</p>
+              <p className="font-medium">Última atualização</p>
+              <p className="text-sm text-muted-foreground">
+                {new Date().toLocaleDateString('pt-BR')}
+              </p>
             </div>
           </div>
         </CardContent>
