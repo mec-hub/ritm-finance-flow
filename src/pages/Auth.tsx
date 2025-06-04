@@ -88,7 +88,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-black to-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-black py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex items-center justify-center space-x-3 mb-6">
@@ -104,7 +104,7 @@ const Auth = () => {
           </p>
         </div>
 
-        <Card className="bg-gray-800 border-gray-700">
+        <Card className="bg-gray-900 border-gray-700">
           <CardHeader>
             <CardTitle className="text-white">Acesso ao Sistema</CardTitle>
             <CardDescription className="text-gray-400">
@@ -113,7 +113,7 @@ const Auth = () => {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="login" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-2 bg-gray-700">
+              <TabsList className="grid w-full grid-cols-2 bg-gray-800">
                 <TabsTrigger value="login" className="data-[state=active]:bg-yellow-500 data-[state=active]:text-black">
                   Login
                 </TabsTrigger>
@@ -131,7 +131,7 @@ const Auth = () => {
                       type="email"
                       value={loginData.email}
                       onChange={(e) => setLoginData(prev => ({ ...prev, email: e.target.value }))}
-                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-yellow-500"
+                      className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-yellow-500"
                       placeholder="seu.email@empresa.com"
                       required
                     />
@@ -144,7 +144,7 @@ const Auth = () => {
                         type={showPassword ? "text" : "password"}
                         value={loginData.password}
                         onChange={(e) => setLoginData(prev => ({ ...prev, password: e.target.value }))}
-                        className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-yellow-500"
+                        className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-yellow-500"
                         required
                       />
                       <Button
@@ -177,7 +177,7 @@ const Auth = () => {
                       type="email"
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
-                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-yellow-500"
+                      className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-yellow-500"
                       placeholder="Digite seu email corporativo"
                       required
                     />
