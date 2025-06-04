@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { 
   Form,
   FormControl,
@@ -17,8 +17,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Client } from '@/types';
-import { mockClients } from '@/data/mockData';
+import { ClientService } from '@/services/clientService';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface ClientFormData {
   name: string;
@@ -31,6 +31,7 @@ interface ClientFormData {
 const NovoCliente = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { permissions } = usePermissions();
   
   const form = useForm<ClientFormData>({
     defaultValues: {
@@ -42,33 +43,72 @@ const NovoCliente = () => {
     },
   });
 
-  const onSubmit = (data: ClientFormData) => {
+  const onSubmit = async (data: ClientFormData) => {
+    if (!permissions.canAdd) {
+      toast({
+        title: "Acesso negado",
+        description: "Você não tem permissão para adicionar clientes.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     
-    // Create a new client object
-    const newClient: Client = {
-      id: `client-${Date.now()}`, // Generate unique ID
-      name: data.name,
-      contact: data.contact,
-      email: data.email,
-      phone: data.phone,
-      totalRevenue: 0, // Initial revenue is zero
-      notes: data.notes,
-    };
+    try {
+      await ClientService.create({
+        name: data.name,
+        contact: data.contact,
+        email: data.email,
+        phone: data.phone,
+        totalRevenue: 0,
+        notes: data.notes,
+      });
 
-    // In a real app, this would be an API call
-    setTimeout(() => {
-      mockClients.push(newClient);
-      setIsLoading(false);
       toast({
         title: "Cliente adicionado",
         description: `${data.name} foi adicionado com sucesso!`,
       });
       
-      // Navigate back to clients page
       navigate('/clientes');
-    }, 1000);
+    } catch (error) {
+      console.error('Error creating client:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível adicionar o cliente. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  if (!permissions.canAdd) {
+    return (
+      <Layout>
+        <div className="space-y-6">
+          <div className="flex items-center">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              asChild 
+              className="mr-2"
+            >
+              <Link to="/clientes">
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Acesso Negado</h1>
+              <p className="text-muted-foreground">
+                Você não tem permissão para adicionar clientes.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

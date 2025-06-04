@@ -88,7 +88,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#121212' }}>
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex items-center justify-center space-x-3 mb-6">
@@ -104,7 +104,7 @@ const Auth = () => {
           </p>
         </div>
 
-        <Card className="bg-gray-900 border-gray-700">
+        <Card style={{ backgroundColor: '#191919' }} className="border-gray-700">
           <CardHeader>
             <CardTitle className="text-white">Acesso ao Sistema</CardTitle>
             <CardDescription className="text-gray-400">

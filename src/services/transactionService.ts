@@ -1,0 +1,132 @@
+
+import { supabase } from '@/integrations/supabase/client';
+import { Transaction } from '@/types';
+
+export class TransactionService {
+  static async getAll(): Promise<Transaction[]> {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select(`
+        *,
+        clients (name),
+        events (title)
+      `)
+      .order('date', { ascending: false });
+
+    if (error) throw error;
+
+    return data.map(transaction => ({
+      id: transaction.id,
+      amount: transaction.amount,
+      description: transaction.description,
+      date: new Date(transaction.date),
+      category: transaction.category,
+      subcategory: transaction.subcategory,
+      isRecurring: transaction.is_recurring || false,
+      recurrenceInterval: transaction.recurrence_interval,
+      recurrenceMonths: transaction.recurrence_months,
+      type: transaction.type as 'income' | 'expense',
+      eventId: transaction.event_id,
+      clientId: transaction.client_id,
+      attachments: transaction.attachments || [],
+      notes: transaction.notes,
+      status: transaction.status as 'paid' | 'not_paid' | 'canceled'
+    }));
+  }
+
+  static async create(transaction: Omit<Transaction, 'id'>): Promise<Transaction> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('transactions')
+      .insert({
+        amount: transaction.amount,
+        description: transaction.description,
+        date: transaction.date.toISOString().split('T')[0],
+        category: transaction.category,
+        subcategory: transaction.subcategory,
+        is_recurring: transaction.isRecurring,
+        recurrence_interval: transaction.recurrenceInterval,
+        recurrence_months: transaction.recurrenceMonths,
+        type: transaction.type,
+        event_id: transaction.eventId,
+        client_id: transaction.clientId,
+        attachments: transaction.attachments,
+        notes: transaction.notes,
+        status: transaction.status || 'not_paid',
+        user_id: userData.user.id
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { ...transaction, id: data.id };
+  }
+
+  static async update(id: string, updates: Partial<Transaction>): Promise<void> {
+    const { error } = await supabase
+      .from('transactions')
+      .update({
+        amount: updates.amount,
+        description: updates.description,
+        date: updates.date?.toISOString().split('T')[0],
+        category: updates.category,
+        subcategory: updates.subcategory,
+        is_recurring: updates.isRecurring,
+        recurrence_interval: updates.recurrenceInterval,
+        recurrence_months: updates.recurrenceMonths,
+        type: updates.type,
+        event_id: updates.eventId,
+        client_id: updates.clientId,
+        attachments: updates.attachments,
+        notes: updates.notes,
+        status: updates.status
+      })
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  static async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  static async getById(id: string): Promise<Transaction | null> {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select(`
+        *,
+        clients (name),
+        events (title)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    if (!data) return null;
+
+    return {
+      id: data.id,
+      amount: data.amount,
+      description: data.description,
+      date: new Date(data.date),
+      category: data.category,
+      subcategory: data.subcategory,
+      isRecurring: data.is_recurring || false,
+      recurrenceInterval: data.recurrence_interval,
+      recurrenceMonths: data.recurrence_months,
+      type: data.type as 'income' | 'expense',
+      eventId: data.event_id,
+      clientId: data.client_id,
+      attachments: data.attachments || [],
+      notes: data.notes,
+      status: data.status as 'paid' | 'not_paid' | 'canceled'
+    };
+  }
+}

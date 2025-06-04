@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
-import { TeamSettings } from '@/components/settings/TeamSettings';
+import { NewTeamSettings } from '@/components/settings/NewTeamSettings';
 import { PreferencesSettings } from '@/components/settings/PreferencesSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { SystemSettings } from '@/components/settings/SystemSettings';
+import { usePermissions } from '@/hooks/usePermissions';
 import { 
   User, 
   Users, 
@@ -17,6 +18,7 @@ import {
 
 const Configuracoes = () => {
   const [activeTab, setActiveTab] = useState('profile');
+  const { permissions } = usePermissions();
 
   return (
     <Layout>
@@ -36,10 +38,12 @@ const Configuracoes = () => {
               <User className="h-4 w-4" />
               Perfil
             </TabsTrigger>
-            <TabsTrigger value="team" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Equipe
-            </TabsTrigger>
+            {permissions.canManageTeam && (
+              <TabsTrigger value="team" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Equipe
+              </TabsTrigger>
+            )}
             <TabsTrigger value="preferences" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Preferências
@@ -48,19 +52,23 @@ const Configuracoes = () => {
               <Bell className="h-4 w-4" />
               Notificações
             </TabsTrigger>
-            <TabsTrigger value="system" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              Sistema
-            </TabsTrigger>
+            {permissions.canManageSettings && (
+              <TabsTrigger value="system" className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Sistema
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="profile">
             <ProfileSettings />
           </TabsContent>
 
-          <TabsContent value="team">
-            <TeamSettings />
-          </TabsContent>
+          {permissions.canManageTeam && (
+            <TabsContent value="team">
+              <NewTeamSettings />
+            </TabsContent>
+          )}
 
           <TabsContent value="preferences">
             <PreferencesSettings />
@@ -70,9 +78,11 @@ const Configuracoes = () => {
             <NotificationSettings />
           </TabsContent>
 
-          <TabsContent value="system">
-            <SystemSettings />
-          </TabsContent>
+          {permissions.canManageSettings && (
+            <TabsContent value="system">
+              <SystemSettings />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </Layout>

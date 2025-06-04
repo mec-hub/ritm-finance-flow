@@ -210,6 +210,7 @@ export type Database = {
           name: string
           pending_amount: number | null
           percentage_share: number | null
+          profile_id: string | null
           role: string | null
           total_paid: number | null
           updated_at: string | null
@@ -221,6 +222,7 @@ export type Database = {
           name: string
           pending_amount?: number | null
           percentage_share?: number | null
+          profile_id?: string | null
           role?: string | null
           total_paid?: number | null
           updated_at?: string | null
@@ -232,12 +234,21 @@ export type Database = {
           name?: string
           pending_amount?: number | null
           percentage_share?: number | null
+          profile_id?: string | null
           role?: string | null
           total_paid?: number | null
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "team_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       team_transaction_assignments: {
         Row: {
