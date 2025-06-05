@@ -18,7 +18,6 @@ import { useForm } from 'react-hook-form';
 import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ClientService } from '@/services/clientService';
-import { usePermissions } from '@/hooks/usePermissions';
 
 interface ClientFormData {
   name: string;
@@ -31,7 +30,6 @@ interface ClientFormData {
 const NovoCliente = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { permissions } = usePermissions();
   
   const form = useForm<ClientFormData>({
     defaultValues: {
@@ -44,15 +42,6 @@ const NovoCliente = () => {
   });
 
   const onSubmit = async (data: ClientFormData) => {
-    if (!permissions.canAdd) {
-      toast({
-        title: "Acesso negado",
-        description: "Você não tem permissão para adicionar clientes.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setIsLoading(true);
     
     try {
@@ -82,33 +71,6 @@ const NovoCliente = () => {
       setIsLoading(false);
     }
   };
-
-  if (!permissions.canAdd) {
-    return (
-      <Layout>
-        <div className="space-y-6">
-          <div className="flex items-center">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              asChild 
-              className="mr-2"
-            >
-              <Link to="/clientes">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Acesso Negado</h1>
-              <p className="text-muted-foreground">
-                Você não tem permissão para adicionar clientes.
-              </p>
-            </div>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>

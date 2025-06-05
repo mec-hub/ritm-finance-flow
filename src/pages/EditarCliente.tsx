@@ -16,9 +16,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft } from 'lucide-react';
-import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ClientService } from '@/services/clientService';
 import { Client } from '@/types';
-import { mockClients } from '@/data/mockData';
 
 interface ClientFormData {
   name: string;
@@ -30,69 +30,101 @@ interface ClientFormData {
 
 const EditarCliente = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [client, setClient] = useState<Client | null>(null);
   const navigate = useNavigate();
   const { id } = useParams();
-  const location = useLocation();
-  const clientData = location.state?.clientData;
-  
-  // Find the client if not provided in location state
-  useEffect(() => {
-    if (!clientData && id) {
-      const client = mockClients.find(client => client.id === id);
-      if (!client) {
-        toast({
-          title: "Erro",
-          description: "Cliente não encontrado",
-          variant: "destructive"
-        });
-        navigate('/clientes');
-      }
-    }
-  }, [clientData, id, navigate]);
   
   const form = useForm<ClientFormData>({
     defaultValues: {
-      name: clientData?.name || '',
-      contact: clientData?.contact || '',
-      email: clientData?.email || '',
-      phone: clientData?.phone || '',
-      notes: clientData?.notes || '',
+      name: '',
+      contact: '',
+      email: '',
+      phone: '',
+      notes: '',
     },
   });
 
-  const onSubmit = (data: ClientFormData) => {
-    setIsLoading(true);
-    
-    // Create an updated client object
-    const updatedClient: Client = {
-      id: id || clientData.id,
-      name: data.name,
-      contact: data.contact,
-      email: data.email,
-      phone: data.phone,
-      totalRevenue: clientData?.totalRevenue || 0,
-      lastEvent: clientData?.lastEvent,
-      notes: data.notes,
+  useEffect(() => {
+    const fetchClient = async () => {
+      if (!id) return;
+
+      try {
+        const clientData = await ClientService.getById(id);
+        if (clientData) {
+          setClient(clientData);
+          form.reset({
+            name: clientData.name,
+            contact: clientData.contact,
+            email: clientData.email,
+            phone: clientData.phone,
+            notes: clientData.notes || '',
+          });
+        } else {
+          toast({
+            title: "Erro",
+            description: "Cliente não encontrado",
+            variant: "destructive"
+          });
+          navigate('/clientes');
+        }
+      } catch (error) {
+        console.error('Error fetching client:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar o cliente.",
+          variant: "destructive"
+        });
+        navigate('/clientes');
+      } finally {
+        setLoading(false);
+      }
     };
 
-    // In a real app, this would be an API call
-    setTimeout(() => {
-      // Update the client in the mockClients array
-      const clientIndex = mockClients.findIndex(client => client.id === id || client.id === clientData.id);
-      if (clientIndex !== -1) {
-        mockClients[clientIndex] = updatedClient;
-      }
+    fetchClient();
+  }, [id, navigate, form]);
+
+  const onSubmit = async (data: ClientFormData) => {
+    if (!id) return;
+    
+    setIsLoading(true);
+    
+    try {
+      await ClientService.update(id, {
+        name: data.name,
+        contact: data.contact,
+        email: data.email,
+        phone: data.phone,
+        notes: data.notes,
+      });
       
-      setIsLoading(false);
       toast({
         title: "Cliente atualizado",
         description: `${data.name} foi atualizado com sucesso!`,
       });
       
-      // Navigate back to clients page
       navigate('/clientes');
-    }, 1000);
+    } catch (error) {
+      console.error('Error updating client:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o cliente. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <p>Carregando dados do cliente...</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

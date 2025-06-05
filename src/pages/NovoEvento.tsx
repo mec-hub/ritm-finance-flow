@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
@@ -27,9 +27,11 @@ import { cn } from '@/lib/utils';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft, CalendarIcon } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Event } from '@/types';
 import { format } from 'date-fns';
-import { mockEvents, mockClients } from '@/data/mockData';
+import { ptBR } from 'date-fns/locale';
+import { EventService } from '@/services/eventService';
+import { ClientService } from '@/services/clientService';
+import { Client } from '@/types';
 
 interface EventFormData {
   title: string;
@@ -43,6 +45,7 @@ interface EventFormData {
 
 const NovoEvento = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
   const navigate = useNavigate();
   
   const form = useForm<EventFormData>({
@@ -57,37 +60,55 @@ const NovoEvento = () => {
     },
   });
 
-  const onSubmit = (data: EventFormData) => {
-    setIsLoading(true);
-    
-    // Find client name from client ID
-    const client = mockClients.find(c => c.id === data.clientId);
-    
-    // Create a new event object
-    const newEvent: Event = {
-      id: `event-${Date.now()}`, // Generate unique ID
-      title: data.title,
-      date: data.date,
-      location: data.location,
-      client: client?.name || "Cliente não especificado",
-      estimatedRevenue: parseFloat(data.estimatedRevenue) || 0,
-      estimatedExpenses: parseFloat(data.estimatedExpenses) || 0,
-      status: 'upcoming',
-      notes: data.notes,
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const clientsData = await ClientService.getAll();
+        setClients(clientsData);
+      } catch (error) {
+        console.error('Error fetching clients:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar a lista de clientes.",
+          variant: "destructive"
+        });
+      }
     };
 
-    // In a real app, this would be an API call
-    setTimeout(() => {
-      mockEvents.push(newEvent);
-      setIsLoading(false);
+    fetchClients();
+  }, []);
+
+  const onSubmit = async (data: EventFormData) => {
+    setIsLoading(true);
+    
+    try {
+      await EventService.create({
+        title: data.title,
+        date: data.date,
+        location: data.location,
+        client: '', // This will be set by the service based on clientId
+        estimatedRevenue: parseFloat(data.estimatedRevenue) || 0,
+        estimatedExpenses: parseFloat(data.estimatedExpenses) || 0,
+        status: 'upcoming',
+        notes: data.notes,
+      });
+      
       toast({
         title: "Evento adicionado",
         description: `O evento "${data.title}" foi adicionado com sucesso!`,
       });
       
-      // Navigate back to events page
       navigate('/eventos');
-    }, 1000);
+    } catch (error) {
+      console.error('Error creating event:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível criar o evento. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -147,7 +168,7 @@ const NovoEvento = () => {
                               )}
                             >
                               {field.value ? (
-                                format(field.value, "PPP")
+                                format(field.value, "dd/MM/yyyy", { locale: ptBR })
                               ) : (
                                 <span>Selecione uma data</span>
                               )}
@@ -161,7 +182,7 @@ const NovoEvento = () => {
                             selected={field.value}
                             onSelect={field.onChange}
                             initialFocus
-                            className={"p-3 pointer-events-auto"}
+                            locale={ptBR}
                           />
                         </PopoverContent>
                       </Popover>
@@ -191,14 +212,14 @@ const NovoEvento = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Cliente</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione um cliente" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {mockClients.map((client) => (
+                        {clients.map((client) => (
                           <SelectItem key={client.id} value={client.id}>
                             {client.name}
                           </SelectItem>
@@ -221,7 +242,7 @@ const NovoEvento = () => {
                     <FormItem>
                       <FormLabel>Receita Estimada (R$)</FormLabel>
                       <FormControl>
-                        <Input placeholder="0,00" {...field} />
+                        <Input type="number" step="0.01" placeholder="0,00" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -235,7 +256,7 @@ const NovoEvento = () => {
                     <FormItem>
                       <FormLabel>Despesas Estimadas (R$)</FormLabel>
                       <FormControl>
-                        <Input placeholder="0,00" {...field} />
+                        <Input type="number" step="0.01" placeholder="0,00" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

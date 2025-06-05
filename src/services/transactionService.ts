@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { Transaction } from '@/types';
+import { RecurringTransactionService } from './recurringTransactionService';
 
 export class TransactionService {
   static async getAll(): Promise<Transaction[]> {
@@ -61,6 +62,16 @@ export class TransactionService {
       .single();
 
     if (error) throw error;
+
+    // If this is a recurring transaction, create the recurring schedule
+    if (transaction.isRecurring && transaction.recurrenceMonths) {
+      await RecurringTransactionService.createRecurringSchedule(
+        data.id,
+        transaction.date,
+        transaction.recurrenceMonths
+      );
+    }
+
     return { ...transaction, id: data.id };
   }
 
@@ -86,9 +97,28 @@ export class TransactionService {
       .eq('id', id);
 
     if (error) throw error;
+
+    // Handle recurring transaction updates
+    if (updates.isRecurring !== undefined) {
+      if (updates.isRecurring && updates.recurrenceMonths && updates.date) {
+        // Delete existing recurring transactions and create new ones
+        await RecurringTransactionService.deleteRecurringTransactions(id);
+        await RecurringTransactionService.createRecurringSchedule(
+          id,
+          updates.date,
+          updates.recurrenceMonths
+        );
+      } else if (!updates.isRecurring) {
+        // Remove all recurring transactions if no longer recurring
+        await RecurringTransactionService.deleteRecurringTransactions(id);
+      }
+    }
   }
 
   static async delete(id: string): Promise<void> {
+    // First delete any recurring transactions
+    await RecurringTransactionService.deleteRecurringTransactions(id);
+    
     const { error } = await supabase
       .from('transactions')
       .delete()

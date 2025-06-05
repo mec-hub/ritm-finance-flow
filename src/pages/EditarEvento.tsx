@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -25,10 +26,12 @@ import {
 import { cn } from '@/lib/utils';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft, CalendarIcon } from 'lucide-react';
-import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Event } from '@/types';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
-import { mockEvents, mockClients } from '@/data/mockData';
+import { ptBR } from 'date-fns/locale';
+import { EventService } from '@/services/eventService';
+import { ClientService } from '@/services/clientService';
+import { Event, Client } from '@/types';
 
 interface EventFormData {
   title: string;
@@ -37,93 +40,133 @@ interface EventFormData {
   clientId: string;
   estimatedRevenue: string;
   estimatedExpenses: string;
+  actualRevenue?: string;
+  actualExpenses?: string;
   status: string;
   notes?: string;
 }
 
 const EditarEvento = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [event, setEvent] = useState<Event | null>(null);
+  const [clients, setClients] = useState<Client[]>([]);
   const navigate = useNavigate();
   const { id } = useParams();
-  const location = useLocation();
-  const eventData = location.state?.eventData;
-  
-  // Find the event if not provided in location state
-  useEffect(() => {
-    if (!eventData && id) {
-      const event = mockEvents.find(event => event.id === id);
-      if (!event) {
-        toast({
-          title: "Erro",
-          description: "Evento não encontrado",
-          variant: "destructive"
-        });
-        navigate('/eventos');
-      }
-    }
-  }, [eventData, id, navigate]);
-  
-  // Find the client ID from the client name
-  const findClientId = (clientName: string) => {
-    const client = mockClients.find(c => c.name === clientName);
-    return client?.id || '';
-  };
   
   const form = useForm<EventFormData>({
     defaultValues: {
-      title: eventData?.title || '',
-      date: eventData?.date ? new Date(eventData.date) : new Date(),
-      location: eventData?.location || '',
-      clientId: eventData ? findClientId(eventData.client) : '',
-      estimatedRevenue: eventData?.estimatedRevenue.toString() || '',
-      estimatedExpenses: eventData?.estimatedExpenses.toString() || '',
-      status: eventData?.status || 'upcoming',
-      notes: eventData?.notes || '',
+      title: '',
+      date: new Date(),
+      location: '',
+      clientId: '',
+      estimatedRevenue: '',
+      estimatedExpenses: '',
+      actualRevenue: '',
+      actualExpenses: '',
+      status: 'upcoming',
+      notes: '',
     },
   });
 
-  const onSubmit = (data: EventFormData) => {
-    setIsLoading(true);
-    
-    // Find client name from client ID
-    const client = mockClients.find(c => c.id === data.clientId);
-    
-    // Update the event object
-    const updatedEvent: Event = {
-      id: id || eventData.id,
-      title: data.title,
-      date: data.date,
-      location: data.location,
-      client: client?.name || "Cliente não especificado",
-      estimatedRevenue: parseFloat(data.estimatedRevenue) || 0,
-      estimatedExpenses: parseFloat(data.estimatedExpenses) || 0,
-      status: data.status as 'upcoming' | 'completed' | 'cancelled',
-      notes: data.notes,
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!id) return;
+
+      try {
+        const [eventData, clientsData] = await Promise.all([
+          EventService.getById(id),
+          ClientService.getAll()
+        ]);
+        
+        if (eventData) {
+          setEvent(eventData);
+          setClients(clientsData);
+          
+          // Find client ID by name (since events store client name, not ID)
+          const client = clientsData.find(c => c.name === eventData.client);
+          
+          form.reset({
+            title: eventData.title,
+            date: new Date(eventData.date),
+            location: eventData.location,
+            clientId: client?.id || '',
+            estimatedRevenue: eventData.estimatedRevenue.toString(),
+            estimatedExpenses: eventData.estimatedExpenses.toString(),
+            actualRevenue: eventData.actualRevenue?.toString() || '',
+            actualExpenses: eventData.actualExpenses?.toString() || '',
+            status: eventData.status,
+            notes: eventData.notes || '',
+          });
+        } else {
+          toast({
+            title: "Erro",
+            description: "Evento não encontrado",
+            variant: "destructive"
+          });
+          navigate('/eventos');
+        }
+      } catch (error) {
+        console.error('Error fetching event:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar o evento.",
+          variant: "destructive"
+        });
+        navigate('/eventos');
+      } finally {
+        setLoading(false);
+      }
     };
 
-    // If the event has actual revenue, keep it
-    if (eventData && eventData.actualRevenue !== undefined) {
-      updatedEvent.actualRevenue = eventData.actualRevenue;
-    }
+    fetchData();
+  }, [id, navigate, form]);
 
-    // In a real app, this would be an API call
-    setTimeout(() => {
-      // Update the event in the mockEvents array
-      const eventIndex = mockEvents.findIndex(event => event.id === id || event.id === eventData.id);
-      if (eventIndex !== -1) {
-        mockEvents[eventIndex] = updatedEvent;
-      }
+  const onSubmit = async (data: EventFormData) => {
+    if (!id) return;
+    
+    setIsLoading(true);
+    
+    try {
+      await EventService.update(id, {
+        title: data.title,
+        date: data.date,
+        location: data.location,
+        estimatedRevenue: parseFloat(data.estimatedRevenue) || 0,
+        estimatedExpenses: parseFloat(data.estimatedExpenses) || 0,
+        actualRevenue: data.actualRevenue ? parseFloat(data.actualRevenue) : undefined,
+        actualExpenses: data.actualExpenses ? parseFloat(data.actualExpenses) : undefined,
+        status: data.status as 'upcoming' | 'completed' | 'cancelled',
+        notes: data.notes,
+      });
       
-      setIsLoading(false);
       toast({
         title: "Evento atualizado",
         description: `O evento "${data.title}" foi atualizado com sucesso!`,
       });
       
-      // Navigate back to events page
       navigate('/eventos');
-    }, 1000);
+    } catch (error) {
+      console.error('Error updating event:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o evento. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <p>Carregando dados do evento...</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -182,7 +225,7 @@ const EditarEvento = () => {
                               )}
                             >
                               {field.value ? (
-                                format(field.value, "PPP")
+                                format(field.value, "dd/MM/yyyy", { locale: ptBR })
                               ) : (
                                 <span>Selecione uma data</span>
                               )}
@@ -196,7 +239,7 @@ const EditarEvento = () => {
                             selected={field.value}
                             onSelect={field.onChange}
                             initialFocus
-                            className={"p-3 pointer-events-auto"}
+                            locale={ptBR}
                           />
                         </PopoverContent>
                       </Popover>
@@ -227,14 +270,14 @@ const EditarEvento = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Cliente</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione um cliente" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {mockClients.map((client) => (
+                          {clients.map((client) => (
                             <SelectItem key={client.id} value={client.id}>
                               {client.name}
                             </SelectItem>
@@ -255,7 +298,7 @@ const EditarEvento = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Status do Evento</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione um status" />
@@ -281,7 +324,7 @@ const EditarEvento = () => {
                     <FormItem>
                       <FormLabel>Receita Estimada (R$)</FormLabel>
                       <FormControl>
-                        <Input placeholder="0,00" {...field} />
+                        <Input type="number" step="0.01" placeholder="0,00" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -295,8 +338,44 @@ const EditarEvento = () => {
                     <FormItem>
                       <FormLabel>Despesas Estimadas (R$)</FormLabel>
                       <FormControl>
-                        <Input placeholder="0,00" {...field} />
+                        <Input type="number" step="0.01" placeholder="0,00" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="actualRevenue"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Receita Real (R$)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="0,00" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Preencha após a realização do evento
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="actualExpenses"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Despesas Reais (R$)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="0,00" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Preencha após a realização do evento
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
