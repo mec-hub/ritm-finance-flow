@@ -21,16 +21,16 @@ export class TransactionService {
       description: transaction.description,
       date: new Date(transaction.date),
       category: transaction.category,
-      subcategory: transaction.subcategory,
+      subcategory: transaction.subcategory || '',
       isRecurring: transaction.is_recurring || false,
-      recurrenceInterval: transaction.recurrence_interval,
-      recurrenceMonths: transaction.recurrence_months,
+      recurrenceInterval: transaction.recurrence_interval as 'weekly' | 'monthly' | 'quarterly' | 'yearly' | undefined,
+      recurrenceMonths: transaction.recurrence_months || undefined,
       type: transaction.type as 'income' | 'expense',
-      eventId: transaction.event_id,
-      clientId: transaction.client_id,
+      eventId: transaction.event_id || undefined,
+      clientId: transaction.client_id || undefined,
       attachments: transaction.attachments || [],
-      notes: transaction.notes,
-      status: transaction.status as 'paid' | 'not_paid' | 'canceled'
+      notes: transaction.notes || '',
+      status: transaction.status as 'paid' | 'not_paid' | 'canceled' || 'not_paid'
     }));
   }
 
@@ -46,15 +46,15 @@ export class TransactionService {
         date: transaction.date.toISOString().split('T')[0],
         category: transaction.category,
         subcategory: transaction.subcategory,
+        type: transaction.type,
+        status: transaction.status || 'not_paid',
         is_recurring: transaction.isRecurring,
         recurrence_interval: transaction.recurrenceInterval,
         recurrence_months: transaction.recurrenceMonths,
-        type: transaction.type,
         event_id: transaction.eventId,
         client_id: transaction.clientId,
         attachments: transaction.attachments,
         notes: transaction.notes,
-        status: transaction.status || 'not_paid',
         user_id: userData.user.id
       })
       .select()
@@ -73,15 +73,15 @@ export class TransactionService {
         date: updates.date?.toISOString().split('T')[0],
         category: updates.category,
         subcategory: updates.subcategory,
+        type: updates.type,
+        status: updates.status,
         is_recurring: updates.isRecurring,
         recurrence_interval: updates.recurrenceInterval,
         recurrence_months: updates.recurrenceMonths,
-        type: updates.type,
         event_id: updates.eventId,
         client_id: updates.clientId,
         attachments: updates.attachments,
-        notes: updates.notes,
-        status: updates.status
+        notes: updates.notes
       })
       .eq('id', id);
 
@@ -117,16 +117,16 @@ export class TransactionService {
       description: data.description,
       date: new Date(data.date),
       category: data.category,
-      subcategory: data.subcategory,
+      subcategory: data.subcategory || '',
       isRecurring: data.is_recurring || false,
-      recurrenceInterval: data.recurrence_interval,
-      recurrenceMonths: data.recurrence_months,
+      recurrenceInterval: data.recurrence_interval as 'weekly' | 'monthly' | 'quarterly' | 'yearly' | undefined,
+      recurrenceMonths: data.recurrence_months || undefined,
       type: data.type as 'income' | 'expense',
-      eventId: data.event_id,
-      clientId: data.client_id,
+      eventId: data.event_id || undefined,
+      clientId: data.client_id || undefined,
       attachments: data.attachments || [],
-      notes: data.notes,
-      status: data.status as 'paid' | 'not_paid' | 'canceled'
+      notes: data.notes || '',
+      status: data.status as 'paid' | 'not_paid' | 'canceled' || 'not_paid'
     };
   }
 }
