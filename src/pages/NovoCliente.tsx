@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast';
 import { 
   Form,
   FormControl,
@@ -42,18 +42,27 @@ const NovoCliente = () => {
   });
 
   const onSubmit = async (data: ClientFormData) => {
+    console.log('=== NovoCliente.onSubmit START ===');
+    console.log('NovoCliente - Form data received:', data);
+    
     setIsLoading(true);
     
     try {
-      await ClientService.create({
+      const clientData = {
         name: data.name,
         contact: data.contact,
         email: data.email,
         phone: data.phone,
         totalRevenue: 0,
         notes: data.notes,
-      });
+      };
 
+      console.log('NovoCliente - Calling ClientService.create with:', clientData);
+      
+      const createdClient = await ClientService.create(clientData);
+      
+      console.log('NovoCliente - Client created successfully:', createdClient);
+      
       toast({
         title: "Cliente adicionado",
         description: `${data.name} foi adicionado com sucesso!`,
@@ -61,14 +70,15 @@ const NovoCliente = () => {
       
       navigate('/clientes');
     } catch (error) {
-      console.error('Error creating client:', error);
+      console.error('NovoCliente - Error creating client:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível adicionar o cliente. Tente novamente.",
+        description: error instanceof Error ? error.message : "Não foi possível criar o cliente. Tente novamente.",
         variant: "destructive"
       });
     } finally {
       setIsLoading(false);
+      console.log('=== NovoCliente.onSubmit END ===');
     }
   };
 
