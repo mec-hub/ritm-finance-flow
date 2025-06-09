@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -79,12 +78,16 @@ const EditarEvento = () => {
           ClientService.getAll()
         ]);
         
+        console.log('EditarEvento - Event data:', eventData);
+        console.log('EditarEvento - Clients data:', clientsData);
+        
         if (eventData) {
           setEvent(eventData);
           setClients(clientsData);
           
           // Find client ID by name (since events store client name, not ID)
           const client = clientsData.find(c => c.name === eventData.client);
+          console.log('EditarEvento - Found client:', client);
           
           form.reset({
             title: eventData.title,
@@ -128,6 +131,8 @@ const EditarEvento = () => {
     setIsLoading(true);
     
     try {
+      console.log('EditarEvento - Form data:', data);
+      
       await EventService.update(id, {
         title: data.title,
         date: data.date,
@@ -138,7 +143,7 @@ const EditarEvento = () => {
         actualExpenses: data.actualExpenses ? parseFloat(data.actualExpenses) : undefined,
         status: data.status as 'upcoming' | 'completed' | 'cancelled',
         notes: data.notes,
-      });
+      }, data.clientId);
       
       toast({
         title: "Evento atualizado",
@@ -277,6 +282,7 @@ const EditarEvento = () => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="">Nenhum cliente</SelectItem>
                           {clients.map((client) => (
                             <SelectItem key={client.id} value={client.id}>
                               {client.name}

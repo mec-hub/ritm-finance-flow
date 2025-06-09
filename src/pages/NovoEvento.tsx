@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -65,6 +64,7 @@ const NovoEvento = () => {
       try {
         const clientsData = await ClientService.getAll();
         setClients(clientsData);
+        console.log('NovoEvento - Clients loaded:', clientsData);
       } catch (error) {
         console.error('Error fetching clients:', error);
         toast({
@@ -82,6 +82,8 @@ const NovoEvento = () => {
     setIsLoading(true);
     
     try {
+      console.log('NovoEvento - Form data:', data);
+      
       await EventService.create({
         title: data.title,
         date: data.date,
@@ -91,7 +93,7 @@ const NovoEvento = () => {
         estimatedExpenses: parseFloat(data.estimatedExpenses) || 0,
         status: 'upcoming',
         notes: data.notes,
-      });
+      }, data.clientId);
       
       toast({
         title: "Evento adicionado",
@@ -219,6 +221,7 @@ const NovoEvento = () => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="">Nenhum cliente</SelectItem>
                         {clients.map((client) => (
                           <SelectItem key={client.id} value={client.id}>
                             {client.name}

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Event } from '@/types';
 
@@ -39,8 +38,8 @@ export class EventService {
     }));
   }
 
-  static async create(event: Omit<Event, 'id'>): Promise<Event> {
-    console.log('EventService.create - Starting request with data:', event);
+  static async create(event: Omit<Event, 'id'>, clientId?: string): Promise<Event> {
+    console.log('EventService.create - Starting request with data:', event, 'clientId:', clientId);
     
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
@@ -54,6 +53,7 @@ export class EventService {
       title: event.title,
       date: event.date.toISOString().split('T')[0],
       location: event.location,
+      client_id: clientId || null,
       estimated_revenue: event.estimatedRevenue,
       actual_revenue: event.actualRevenue,
       estimated_expenses: event.estimatedExpenses,
@@ -81,13 +81,14 @@ export class EventService {
     return { ...event, id: data.id };
   }
 
-  static async update(id: string, updates: Partial<Event>): Promise<void> {
-    console.log('EventService.update - Starting request:', { id, updates });
+  static async update(id: string, updates: Partial<Event>, clientId?: string): Promise<void> {
+    console.log('EventService.update - Starting request:', { id, updates, clientId });
 
     const updateData: any = {};
     if (updates.title !== undefined) updateData.title = updates.title;
     if (updates.date !== undefined) updateData.date = updates.date?.toISOString().split('T')[0];
     if (updates.location !== undefined) updateData.location = updates.location;
+    if (clientId !== undefined) updateData.client_id = clientId;
     if (updates.estimatedRevenue !== undefined) updateData.estimated_revenue = updates.estimatedRevenue;
     if (updates.actualRevenue !== undefined) updateData.actual_revenue = updates.actualRevenue;
     if (updates.estimatedExpenses !== undefined) updateData.estimated_expenses = updates.estimatedExpenses;
