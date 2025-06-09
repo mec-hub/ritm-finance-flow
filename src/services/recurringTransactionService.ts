@@ -17,8 +17,19 @@ export class RecurringTransactionService {
     startDate: Date,
     months: number
   ): Promise<void> {
+    console.log('RecurringTransactionService.createRecurringSchedule - Starting request:', {
+      parentTransactionId,
+      startDate,
+      months
+    });
+
     const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) throw new Error('User not authenticated');
+    if (!userData.user) {
+      console.error('RecurringTransactionService.createRecurringSchedule - User not authenticated');
+      throw new Error('User not authenticated');
+    }
+
+    console.log('RecurringTransactionService.createRecurringSchedule - User ID:', userData.user.id);
 
     const recurringEntries = [];
     
@@ -34,14 +45,23 @@ export class RecurringTransactionService {
       });
     }
 
+    console.log('RecurringTransactionService.createRecurringSchedule - Insert data:', recurringEntries);
+
     const { error } = await supabase
       .from('recurring_transactions')
       .insert(recurringEntries);
 
-    if (error) throw error;
+    console.log('RecurringTransactionService.createRecurringSchedule - Query result:', { error });
+
+    if (error) {
+      console.error('RecurringTransactionService.createRecurringSchedule - Error:', error);
+      throw error;
+    }
   }
 
   static async getPendingRecurringTransactions(): Promise<RecurringTransaction[]> {
+    console.log('RecurringTransactionService.getPendingRecurringTransactions - Starting request');
+
     const { data, error } = await supabase
       .from('recurring_transactions')
       .select(`
@@ -51,7 +71,12 @@ export class RecurringTransactionService {
       .eq('is_generated', false)
       .lte('scheduled_date', new Date().toISOString().split('T')[0]);
 
-    if (error) throw error;
+    console.log('RecurringTransactionService.getPendingRecurringTransactions - Query result:', { data, error });
+
+    if (error) {
+      console.error('RecurringTransactionService.getPendingRecurringTransactions - Error:', error);
+      throw error;
+    }
 
     return data.map(item => ({
       id: item.id,
@@ -68,6 +93,11 @@ export class RecurringTransactionService {
     recurringId: string, 
     generatedTransactionId: string
   ): Promise<void> {
+    console.log('RecurringTransactionService.markAsGenerated - Starting request:', {
+      recurringId,
+      generatedTransactionId
+    });
+
     const { error } = await supabase
       .from('recurring_transactions')
       .update({
@@ -76,19 +106,33 @@ export class RecurringTransactionService {
       })
       .eq('id', recurringId);
 
-    if (error) throw error;
+    console.log('RecurringTransactionService.markAsGenerated - Query result:', { error });
+
+    if (error) {
+      console.error('RecurringTransactionService.markAsGenerated - Error:', error);
+      throw error;
+    }
   }
 
   static async getRecurringTransactionsByParent(
     parentTransactionId: string
   ): Promise<RecurringTransaction[]> {
+    console.log('RecurringTransactionService.getRecurringTransactionsByParent - Starting request:', {
+      parentTransactionId
+    });
+
     const { data, error } = await supabase
       .from('recurring_transactions')
       .select('*')
       .eq('parent_transaction_id', parentTransactionId)
       .order('scheduled_date', { ascending: true });
 
-    if (error) throw error;
+    console.log('RecurringTransactionService.getRecurringTransactionsByParent - Query result:', { data, error });
+
+    if (error) {
+      console.error('RecurringTransactionService.getRecurringTransactionsByParent - Error:', error);
+      throw error;
+    }
 
     return data.map(item => ({
       id: item.id,
@@ -102,11 +146,20 @@ export class RecurringTransactionService {
   }
 
   static async deleteRecurringTransactions(parentTransactionId: string): Promise<void> {
+    console.log('RecurringTransactionService.deleteRecurringTransactions - Starting request:', {
+      parentTransactionId
+    });
+
     const { error } = await supabase
       .from('recurring_transactions')
       .delete()
       .eq('parent_transaction_id', parentTransactionId);
 
-    if (error) throw error;
+    console.log('RecurringTransactionService.deleteRecurringTransactions - Query result:', { error });
+
+    if (error) {
+      console.error('RecurringTransactionService.deleteRecurringTransactions - Error:', error);
+      throw error;
+    }
   }
 }

@@ -4,12 +4,22 @@ import { Client } from '@/types';
 
 export class ClientService {
   static async getAll(): Promise<Client[]> {
+    console.log('ClientService.getAll - Starting request');
+    
+    const { data: userData } = await supabase.auth.getUser();
+    console.log('ClientService.getAll - Current user:', userData.user?.id);
+
     const { data, error } = await supabase
       .from('clients')
       .select('*')
       .order('name', { ascending: true });
 
-    if (error) throw error;
+    console.log('ClientService.getAll - Query result:', { data, error });
+
+    if (error) {
+      console.error('ClientService.getAll - Error:', error);
+      throw error;
+    }
 
     return data.map(client => ({
       id: client.id,
@@ -24,62 +34,104 @@ export class ClientService {
   }
 
   static async create(client: Omit<Client, 'id'>): Promise<Client> {
+    console.log('ClientService.create - Starting request with data:', client);
+    
     const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) throw new Error('User not authenticated');
+    if (!userData.user) {
+      console.error('ClientService.create - User not authenticated');
+      throw new Error('User not authenticated');
+    }
+
+    console.log('ClientService.create - User ID:', userData.user.id);
+
+    const insertData = {
+      name: client.name,
+      contact: client.contact,
+      email: client.email,
+      phone: client.phone,
+      total_revenue: client.totalRevenue,
+      last_event: client.lastEvent?.toISOString().split('T')[0],
+      notes: client.notes,
+      user_id: userData.user.id
+    };
+
+    console.log('ClientService.create - Insert data:', insertData);
 
     const { data, error } = await supabase
       .from('clients')
-      .insert({
-        name: client.name,
-        contact: client.contact,
-        email: client.email,
-        phone: client.phone,
-        total_revenue: client.totalRevenue,
-        last_event: client.lastEvent?.toISOString().split('T')[0],
-        notes: client.notes,
-        user_id: userData.user.id
-      })
+      .insert(insertData)
       .select()
       .single();
 
-    if (error) throw error;
+    console.log('ClientService.create - Query result:', { data, error });
+
+    if (error) {
+      console.error('ClientService.create - Error:', error);
+      throw error;
+    }
+    
     return { ...client, id: data.id };
   }
 
   static async update(id: string, updates: Partial<Client>): Promise<void> {
+    console.log('ClientService.update - Starting request:', { id, updates });
+
+    const updateData: any = {};
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.contact !== undefined) updateData.contact = updates.contact;
+    if (updates.email !== undefined) updateData.email = updates.email;
+    if (updates.phone !== undefined) updateData.phone = updates.phone;
+    if (updates.totalRevenue !== undefined) updateData.total_revenue = updates.totalRevenue;
+    if (updates.lastEvent !== undefined) updateData.last_event = updates.lastEvent?.toISOString().split('T')[0];
+    if (updates.notes !== undefined) updateData.notes = updates.notes;
+
+    console.log('ClientService.update - Update data:', updateData);
+
     const { error } = await supabase
       .from('clients')
-      .update({
-        name: updates.name,
-        contact: updates.contact,
-        email: updates.email,
-        phone: updates.phone,
-        total_revenue: updates.totalRevenue,
-        last_event: updates.lastEvent?.toISOString().split('T')[0],
-        notes: updates.notes
-      })
+      .update(updateData)
       .eq('id', id);
 
-    if (error) throw error;
+    console.log('ClientService.update - Query result:', { error });
+
+    if (error) {
+      console.error('ClientService.update - Error:', error);
+      throw error;
+    }
   }
 
   static async delete(id: string): Promise<void> {
+    console.log('ClientService.delete - Starting request:', { id });
+
     const { error } = await supabase
       .from('clients')
       .delete()
       .eq('id', id);
 
-    if (error) throw error;
+    console.log('ClientService.delete - Query result:', { error });
+
+    if (error) {
+      console.error('ClientService.delete - Error:', error);
+      throw error;
+    }
   }
 
   static async getById(id: string): Promise<Client | null> {
+    console.log('ClientService.getById - Starting request:', { id });
+
     const { data, error } = await supabase
       .from('clients')
       .select('*')
       .eq('id', id)
       .single();
 
-    if (error) throw error;
+    console.log('ClientService.getById - Query result:', { data, error });
+
+    if (error) {
+      console.error('ClientService.getById - Error:', error);
+      throw error;
+    }
+    
     if (!data) return null;
 
     return {
