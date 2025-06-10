@@ -24,7 +24,7 @@ export class DebugService {
     }
   };
 
-  static logRLSPolicies = async (tableName: string) => {
+  static logRLSPolicies = async (tableName: 'clients' | 'events' | 'transactions' | 'team_members') => {
     const { supabase } = await import('@/integrations/supabase/client');
     console.log(`=== RLS DEBUG FOR ${tableName.toUpperCase()} ===`);
     

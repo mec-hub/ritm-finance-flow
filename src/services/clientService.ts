@@ -1,19 +1,11 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { Client } from '@/types';
-import { DebugService } from './debugService';
 
 export class ClientService {
   static async getAll(): Promise<Client[]> {
-    console.log('=== ClientService.getAll START ===');
-    
-    // Debug authentication and database
-    const user = await DebugService.logUserAuth();
-    await DebugService.logDatabaseConnection();
-    await DebugService.logRLSPolicies('clients');
-    
-    if (!user) {
-      console.error('ClientService.getAll - No authenticated user');
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
       throw new Error('User not authenticated');
     }
 
@@ -22,14 +14,12 @@ export class ClientService {
       .select('*')
       .order('name', { ascending: true });
 
-    console.log('ClientService.getAll - Raw result:', { data, error });
-
     if (error) {
-      console.error('ClientService.getAll - Database error:', error);
+      console.error('ClientService.getAll error:', error);
       throw error;
     }
 
-    const mappedData = data.map(client => ({
+    return data.map(client => ({
       id: client.id,
       name: client.name,
       contact: client.contact || '',
@@ -39,20 +29,11 @@ export class ClientService {
       lastEvent: client.last_event ? new Date(client.last_event) : undefined,
       notes: client.notes || ''
     }));
-
-    console.log('ClientService.getAll - Mapped data:', mappedData);
-    console.log('=== ClientService.getAll END ===');
-    
-    return mappedData;
   }
 
   static async create(client: Omit<Client, 'id'>): Promise<Client> {
-    console.log('=== ClientService.create START ===');
-    console.log('ClientService.create - Input data:', client);
-    
-    const user = await DebugService.logUserAuth();
-    if (!user) {
-      console.error('ClientService.create - No authenticated user');
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
       throw new Error('User not authenticated');
     }
 
@@ -64,10 +45,8 @@ export class ClientService {
       total_revenue: client.totalRevenue || 0,
       last_event: client.lastEvent?.toISOString().split('T')[0] || null,
       notes: client.notes || null,
-      user_id: user.id
+      user_id: userData.user.id
     };
-
-    console.log('ClientService.create - Insert data:', insertData);
 
     const { data, error } = await supabase
       .from('clients')
@@ -75,26 +54,17 @@ export class ClientService {
       .select()
       .single();
 
-    console.log('ClientService.create - Result:', { data, error });
-
     if (error) {
-      console.error('ClientService.create - Database error:', error);
+      console.error('ClientService.create error:', error);
       throw error;
     }
 
-    const result = { ...client, id: data.id };
-    console.log('ClientService.create - Final result:', result);
-    console.log('=== ClientService.create END ===');
-    
-    return result;
+    return { ...client, id: data.id };
   }
 
   static async update(id: string, updates: Partial<Client>): Promise<void> {
-    console.log('=== ClientService.update START ===');
-    console.log('ClientService.update - Input:', { id, updates });
-
-    const user = await DebugService.logUserAuth();
-    if (!user) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
       throw new Error('User not authenticated');
     }
 
@@ -107,29 +77,20 @@ export class ClientService {
     if (updates.lastEvent !== undefined) updateData.last_event = updates.lastEvent?.toISOString().split('T')[0] || null;
     if (updates.notes !== undefined) updateData.notes = updates.notes || null;
 
-    console.log('ClientService.update - Update data:', updateData);
-
     const { error } = await supabase
       .from('clients')
       .update(updateData)
       .eq('id', id);
 
-    console.log('ClientService.update - Result:', { error });
-
     if (error) {
-      console.error('ClientService.update - Database error:', error);
+      console.error('ClientService.update error:', error);
       throw error;
     }
-
-    console.log('=== ClientService.update END ===');
   }
 
   static async delete(id: string): Promise<void> {
-    console.log('=== ClientService.delete START ===');
-    console.log('ClientService.delete - ID:', id);
-
-    const user = await DebugService.logUserAuth();
-    if (!user) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
       throw new Error('User not authenticated');
     }
 
@@ -138,22 +99,15 @@ export class ClientService {
       .delete()
       .eq('id', id);
 
-    console.log('ClientService.delete - Result:', { error });
-
     if (error) {
-      console.error('ClientService.delete - Database error:', error);
+      console.error('ClientService.delete error:', error);
       throw error;
     }
-
-    console.log('=== ClientService.delete END ===');
   }
 
   static async getById(id: string): Promise<Client | null> {
-    console.log('=== ClientService.getById START ===');
-    console.log('ClientService.getById - ID:', id);
-
-    const user = await DebugService.logUserAuth();
-    if (!user) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
       throw new Error('User not authenticated');
     }
 
@@ -163,19 +117,16 @@ export class ClientService {
       .eq('id', id)
       .single();
 
-    console.log('ClientService.getById - Result:', { data, error });
-
     if (error) {
-      console.error('ClientService.getById - Database error:', error);
+      console.error('ClientService.getById error:', error);
       throw error;
     }
     
     if (!data) {
-      console.log('ClientService.getById - No data found');
       return null;
     }
 
-    const result = {
+    return {
       id: data.id,
       name: data.name,
       contact: data.contact || '',
@@ -185,10 +136,5 @@ export class ClientService {
       lastEvent: data.last_event ? new Date(data.last_event) : undefined,
       notes: data.notes || ''
     };
-
-    console.log('ClientService.getById - Mapped result:', result);
-    console.log('=== ClientService.getById END ===');
-    
-    return result;
   }
 }

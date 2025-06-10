@@ -42,9 +42,6 @@ const NovoCliente = () => {
   });
 
   const onSubmit = async (data: ClientFormData) => {
-    console.log('=== NovoCliente.onSubmit START ===');
-    console.log('NovoCliente - Form data received:', data);
-    
     setIsLoading(true);
     
     try {
@@ -57,11 +54,7 @@ const NovoCliente = () => {
         notes: data.notes,
       };
 
-      console.log('NovoCliente - Calling ClientService.create with:', clientData);
-      
-      const createdClient = await ClientService.create(clientData);
-      
-      console.log('NovoCliente - Client created successfully:', createdClient);
+      await ClientService.create(clientData);
       
       toast({
         title: "Cliente adicionado",
@@ -70,7 +63,7 @@ const NovoCliente = () => {
       
       navigate('/clientes');
     } catch (error) {
-      console.error('NovoCliente - Error creating client:', error);
+      console.error('Error creating client:', error);
       toast({
         title: "Erro",
         description: error instanceof Error ? error.message : "Não foi possível criar o cliente. Tente novamente.",
@@ -78,7 +71,6 @@ const NovoCliente = () => {
       });
     } finally {
       setIsLoading(false);
-      console.log('=== NovoCliente.onSubmit END ===');
     }
   };
 

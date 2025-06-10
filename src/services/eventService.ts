@@ -1,18 +1,11 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { Event } from '@/types';
-import { DebugService } from './debugService';
 
 export class EventService {
   static async getAll(): Promise<Event[]> {
-    console.log('=== EventService.getAll START ===');
-    
-    const user = await DebugService.logUserAuth();
-    await DebugService.logDatabaseConnection();
-    await DebugService.logRLSPolicies('events');
-    
-    if (!user) {
-      console.error('EventService.getAll - No authenticated user');
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
       throw new Error('User not authenticated');
     }
 
@@ -24,14 +17,12 @@ export class EventService {
       `)
       .order('date', { ascending: false });
 
-    console.log('EventService.getAll - Raw result:', { data, error });
-
     if (error) {
-      console.error('EventService.getAll - Database error:', error);
+      console.error('EventService.getAll error:', error);
       throw error;
     }
 
-    const mappedData = data.map(event => ({
+    return data.map(event => ({
       id: event.id,
       title: event.title,
       date: new Date(event.date),
@@ -44,20 +35,11 @@ export class EventService {
       status: event.status as 'upcoming' | 'completed' | 'cancelled',
       notes: event.notes || ''
     }));
-
-    console.log('EventService.getAll - Mapped data:', mappedData);
-    console.log('=== EventService.getAll END ===');
-    
-    return mappedData;
   }
 
   static async create(event: Omit<Event, 'id'>, clientId?: string): Promise<Event> {
-    console.log('=== EventService.create START ===');
-    console.log('EventService.create - Input:', { event, clientId });
-    
-    const user = await DebugService.logUserAuth();
-    if (!user) {
-      console.error('EventService.create - No authenticated user');
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
       throw new Error('User not authenticated');
     }
 
@@ -72,10 +54,8 @@ export class EventService {
       actual_expenses: event.actualExpenses || null,
       status: event.status,
       notes: event.notes || null,
-      user_id: user.id
+      user_id: userData.user.id
     };
-
-    console.log('EventService.create - Insert data:', insertData);
 
     const { data, error } = await supabase
       .from('events')
@@ -83,26 +63,17 @@ export class EventService {
       .select()
       .single();
 
-    console.log('EventService.create - Result:', { data, error });
-
     if (error) {
-      console.error('EventService.create - Database error:', error);
+      console.error('EventService.create error:', error);
       throw error;
     }
     
-    const result = { ...event, id: data.id };
-    console.log('EventService.create - Final result:', result);
-    console.log('=== EventService.create END ===');
-    
-    return result;
+    return { ...event, id: data.id };
   }
 
   static async update(id: string, updates: Partial<Event>, clientId?: string): Promise<void> {
-    console.log('=== EventService.update START ===');
-    console.log('EventService.update - Input:', { id, updates, clientId });
-
-    const user = await DebugService.logUserAuth();
-    if (!user) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
       throw new Error('User not authenticated');
     }
 
@@ -118,29 +89,20 @@ export class EventService {
     if (updates.status !== undefined) updateData.status = updates.status;
     if (updates.notes !== undefined) updateData.notes = updates.notes || null;
 
-    console.log('EventService.update - Update data:', updateData);
-
     const { error } = await supabase
       .from('events')
       .update(updateData)
       .eq('id', id);
 
-    console.log('EventService.update - Result:', { error });
-
     if (error) {
-      console.error('EventService.update - Database error:', error);
+      console.error('EventService.update error:', error);
       throw error;
     }
-
-    console.log('=== EventService.update END ===');
   }
 
   static async delete(id: string): Promise<void> {
-    console.log('=== EventService.delete START ===');
-    console.log('EventService.delete - ID:', id);
-
-    const user = await DebugService.logUserAuth();
-    if (!user) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
       throw new Error('User not authenticated');
     }
 
@@ -149,22 +111,15 @@ export class EventService {
       .delete()
       .eq('id', id);
 
-    console.log('EventService.delete - Result:', { error });
-
     if (error) {
-      console.error('EventService.delete - Database error:', error);
+      console.error('EventService.delete error:', error);
       throw error;
     }
-
-    console.log('=== EventService.delete END ===');
   }
 
   static async getById(id: string): Promise<Event | null> {
-    console.log('=== EventService.getById START ===');
-    console.log('EventService.getById - ID:', id);
-
-    const user = await DebugService.logUserAuth();
-    if (!user) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
       throw new Error('User not authenticated');
     }
 
@@ -177,19 +132,16 @@ export class EventService {
       .eq('id', id)
       .single();
 
-    console.log('EventService.getById - Result:', { data, error });
-
     if (error) {
-      console.error('EventService.getById - Database error:', error);
+      console.error('EventService.getById error:', error);
       throw error;
     }
     
     if (!data) {
-      console.log('EventService.getById - No data found');
       return null;
     }
 
-    const result = {
+    return {
       id: data.id,
       title: data.title,
       date: new Date(data.date),
@@ -202,10 +154,5 @@ export class EventService {
       status: data.status as 'upcoming' | 'completed' | 'cancelled',
       notes: data.notes || ''
     };
-
-    console.log('EventService.getById - Mapped result:', result);
-    console.log('=== EventService.getById END ===');
-    
-    return result;
   }
 }
