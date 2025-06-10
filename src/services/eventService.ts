@@ -77,9 +77,11 @@ export class EventService {
       throw new Error('User not authenticated');
     }
 
+    console.log('EventService.update - Input params:', { id, updates, clientId });
+
     const updateData: any = {};
     if (updates.title !== undefined) updateData.title = updates.title;
-    if (updates.date !== undefined) updateData.date = updates.date?.toISOString().split('T')[0];
+    if (updates.date !== undefined) updateData.date = updates.date.toISOString().split('T')[0];
     if (updates.location !== undefined) updateData.location = updates.location || null;
     if (clientId !== undefined) updateData.client_id = clientId || null;
     if (updates.estimatedRevenue !== undefined) updateData.estimated_revenue = updates.estimatedRevenue;
@@ -89,15 +91,20 @@ export class EventService {
     if (updates.status !== undefined) updateData.status = updates.status;
     if (updates.notes !== undefined) updateData.notes = updates.notes || null;
 
+    console.log('EventService.update - Update data:', updateData);
+
     const { error } = await supabase
       .from('events')
       .update(updateData)
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', userData.user.id);
 
     if (error) {
       console.error('EventService.update error:', error);
       throw error;
     }
+
+    console.log('EventService.update - Success');
   }
 
   static async delete(id: string): Promise<void> {
@@ -109,7 +116,8 @@ export class EventService {
     const { error } = await supabase
       .from('events')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', userData.user.id);
 
     if (error) {
       console.error('EventService.delete error:', error);
@@ -123,6 +131,8 @@ export class EventService {
       throw new Error('User not authenticated');
     }
 
+    console.log('EventService.getById - Fetching event with id:', id);
+
     const { data, error } = await supabase
       .from('events')
       .select(`
@@ -130,6 +140,7 @@ export class EventService {
         clients (name)
       `)
       .eq('id', id)
+      .eq('user_id', userData.user.id)
       .single();
 
     if (error) {
@@ -138,8 +149,11 @@ export class EventService {
     }
     
     if (!data) {
+      console.log('EventService.getById - No event found');
       return null;
     }
+
+    console.log('EventService.getById - Event found:', data);
 
     return {
       id: data.id,

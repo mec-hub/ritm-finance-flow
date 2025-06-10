@@ -58,7 +58,7 @@ const EditarEvento = () => {
       title: '',
       date: new Date(),
       location: '',
-      clientId: '',
+      clientId: 'no_client',
       estimatedRevenue: '',
       estimatedExpenses: '',
       actualRevenue: '',
@@ -93,7 +93,7 @@ const EditarEvento = () => {
             title: eventData.title,
             date: new Date(eventData.date),
             location: eventData.location,
-            clientId: client?.id || '',
+            clientId: client?.id || 'no_client',
             estimatedRevenue: eventData.estimatedRevenue.toString(),
             estimatedExpenses: eventData.estimatedExpenses.toString(),
             actualRevenue: eventData.actualRevenue?.toString() || '',
@@ -133,6 +133,9 @@ const EditarEvento = () => {
     try {
       console.log('EditarEvento - Form data:', data);
       
+      // Handle the case where "no_client" is selected
+      const clientId = data.clientId === 'no_client' ? undefined : data.clientId;
+      
       await EventService.update(id, {
         title: data.title,
         date: data.date,
@@ -143,7 +146,7 @@ const EditarEvento = () => {
         actualExpenses: data.actualExpenses ? parseFloat(data.actualExpenses) : undefined,
         status: data.status as 'upcoming' | 'completed' | 'cancelled',
         notes: data.notes,
-      }, data.clientId);
+      }, clientId);
       
       toast({
         title: "Evento atualizado",
@@ -282,7 +285,7 @@ const EditarEvento = () => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Nenhum cliente</SelectItem>
+                          <SelectItem value="no_client">Nenhum cliente</SelectItem>
                           {clients.map((client) => (
                             <SelectItem key={client.id} value={client.id}>
                               {client.name}

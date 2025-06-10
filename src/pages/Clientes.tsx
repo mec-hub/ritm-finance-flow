@@ -17,32 +17,32 @@ const Clientes = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        console.log('Clientes - Fetching clients and events...');
-        const [clientsData, eventsData] = await Promise.all([
-          ClientService.getAll(),
-          EventService.getAll()
-        ]);
-        
-        console.log('Clientes - Clients data:', clientsData);
-        console.log('Clientes - Events data:', eventsData);
-        
-        setClients(clientsData);
-        setEvents(eventsData);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar os dados.",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchData = async () => {
+    try {
+      console.log('Clientes - Fetching clients and events...');
+      const [clientsData, eventsData] = await Promise.all([
+        ClientService.getAll(),
+        EventService.getAll()
+      ]);
+      
+      console.log('Clientes - Clients data:', clientsData);
+      console.log('Clientes - Events data:', eventsData);
+      
+      setClients(clientsData);
+      setEvents(eventsData);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os dados.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchData();
   }, []);
 
@@ -84,7 +84,7 @@ const Clientes = () => {
         
         <div className="dashboard-card">
           <h2 className="dashboard-card-title mb-4">Lista de Clientes</h2>
-          <ClientsDataTable clients={clients} />
+          <ClientsDataTable clients={clients} onClientUpdated={fetchData} />
         </div>
       </div>
     </Layout>
