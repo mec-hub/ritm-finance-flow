@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -69,8 +68,8 @@ const NovaTransacao = () => {
       status: 'not_paid',
       isRecurring: false,
       recurrenceMonths: '1',
-      clientId: '',
-      eventId: '',
+      clientId: 'no_client',
+      eventId: 'no_event',
       notes: '',
     },
   });
@@ -114,8 +113,8 @@ const NovaTransacao = () => {
         isRecurring: data.isRecurring,
         recurrenceInterval: data.isRecurring ? 'monthly' : undefined,
         recurrenceMonths: data.isRecurring ? parseInt(data.recurrenceMonths || '1') : undefined,
-        clientId: data.clientId || undefined,
-        eventId: data.eventId || undefined,
+        clientId: data.clientId === 'no_client' ? undefined : data.clientId,
+        eventId: data.eventId === 'no_event' ? undefined : data.eventId,
         notes: data.notes || undefined,
         attachments: []
       };
@@ -342,7 +341,7 @@ const NovaTransacao = () => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Nenhum cliente</SelectItem>
+                          <SelectItem value="no_client">Nenhum cliente</SelectItem>
                           {clients.map((client) => (
                             <SelectItem key={client.id} value={client.id}>
                               {client.name}
@@ -368,7 +367,7 @@ const NovaTransacao = () => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Nenhum evento</SelectItem>
+                          <SelectItem value="no_event">Nenhum evento</SelectItem>
                           {events.map((event) => (
                             <SelectItem key={event.id} value={event.id}>
                               {event.title} ({format(new Date(event.date), "dd/MM/yyyy")})
