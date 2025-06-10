@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TransactionsList } from '@/components/financas/TransactionsList';
 import { BudgetManager } from '@/components/financas/BudgetManager';
@@ -13,12 +13,14 @@ import { Link } from 'react-router-dom';
 import { Filter, PlusCircle } from 'lucide-react';
 import { Transaction } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
-import { useTransactions } from '@/contexts/TransactionContext';
+import { TransactionService } from '@/services/transactionService';
+import { toast } from '@/hooks/use-toast';
 
 const Financas = () => {
-  const { transactions: allTransactions } = useTransactions();
   const [activeTab, setActiveTab] = useState('transactions');
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     type: 'all',
@@ -29,10 +31,28 @@ const Financas = () => {
     maxAmount: '',
   });
 
+  const fetchTransactions = async () => {
+    try {
+      console.log('Financas - Fetching transactions...');
+      const transactionsData = await TransactionService.getAll();
+      console.log('Financas - Transactions data:', transactionsData);
+      setAllTransactions(transactionsData);
+      setFilteredTransactions(transactionsData);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar as transações.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Initialize filtered transactions with all transactions
-    setFilteredTransactions([...allTransactions]);
-  }, [allTransactions]);
+    fetchTransactions();
+  }, []);
   
   // Calculate financial summary data using filtered transactions
   const totalIncome = filteredTransactions
@@ -97,6 +117,20 @@ const Financas = () => {
     });
   };
 
+  const handleTransactionDeleted = () => {
+    fetchTransactions();
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <p>Carregando transações...</p>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -113,7 +147,7 @@ const Financas = () => {
               Filtros
             </Button>
             <Button asChild>
-              <Link to="/nova-transacao">
+              <Link to="/financas/nova">
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Nova Transação
               </Link>
@@ -180,7 +214,10 @@ const Financas = () => {
           </TabsList>
 
           <TabsContent value="transactions" className="space-y-4">
-            <TransactionsList transactions={filteredTransactions} />
+            <TransactionsList 
+              transactions={filteredTransactions} 
+              onTransactionDeleted={handleTransactionDeleted}
+            />
           </TabsContent>
 
           <TabsContent value="summary" className="space-y-4">

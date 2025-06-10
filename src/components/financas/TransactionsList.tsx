@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import {
   Table,
@@ -34,18 +35,19 @@ import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Trash2, Eye, Check, X, 
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Transaction } from '@/types';
 import { toast } from '@/hooks/use-toast';
-import { mockTransactions, mockEvents } from '@/data/mockData';
 import { Badge } from '@/components/ui/badge';
-import { useTransactions } from '@/contexts/TransactionContext';
+import { TransactionService } from '@/services/transactionService';
+import { Link } from 'react-router-dom';
 
 interface TransactionsListProps {
   transactions: Transaction[];
+  onTransactionDeleted?: () => void;
 }
 
-export function TransactionsList({ transactions }: TransactionsListProps) {
-  const { deleteTransaction } = useTransactions();
+export function TransactionsList({ transactions, onTransactionDeleted }: TransactionsListProps) {
   const [page, setPage] = useState(1);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const itemsPerPage = 10;
   const totalPages = Math.ceil(transactions.length / itemsPerPage);
   
@@ -62,12 +64,27 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
     setPage(p => Math.min(totalPages, p + 1));
   };
 
-  const handleDelete = (id: string) => {
-    deleteTransaction(id);
-    toast({
-      title: "Transação excluída",
-      description: "A transação foi excluída com sucesso."
-    });
+  const handleDelete = async (id: string) => {
+    setIsDeleting(true);
+    try {
+      await TransactionService.delete(id);
+      toast({
+        title: "Transação excluída",
+        description: "A transação foi excluída com sucesso."
+      });
+      if (onTransactionDeleted) {
+        onTransactionDeleted();
+      }
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a transação.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const getStatusBadge = (status?: string) => {
@@ -83,12 +100,6 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
       default:
         return null;
     }
-  };
-
-  const findEventName = (eventId: string | undefined) => {
-    if (!eventId) return 'Não associado';
-    const event = mockEvents.find(e => e.id === eventId);
-    return event ? event.title : 'Evento não encontrado';
   };
 
   const getAttachmentCount = (attachments?: string[]) => {
@@ -190,21 +201,20 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                               </Button>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                              <Button variant="ghost" className="w-full justify-start" asChild>
-                                <a href={`/editar-transacao/${transaction.id}`}>
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  <span>Editar</span>
-                                </a>
-                              </Button>
+                              <Link to={`/financas/editar/${transaction.id}`} className="flex items-center w-full">
+                                <Edit className="h-4 w-4 mr-2" />
+                                <span>Editar</span>
+                              </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem>
                               <Button 
                                 variant="ghost" 
                                 className="w-full justify-start text-red-500 hover:text-red-500" 
                                 onClick={() => handleDelete(transaction.id)}
+                                disabled={isDeleting}
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
-                                <span>Excluir</span>
+                                <span>{isDeleting ? 'Excluindo...' : 'Excluir'}</span>
                               </Button>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -318,48 +328,6 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                   )}
                 </div>
                 
-                {selectedTransaction.eventId && (
-                  <div className="col-span-2">
-                    <h3 className="text-sm font-medium">Evento Relacionado</h3>
-                    <div className="mt-1 p-2 border rounded bg-muted/50">
-                      <p className="font-medium">{findEventName(selectedTransaction.eventId)}</p>
-                      {(() => {
-                        const event = mockEvents.find(e => e.id === selectedTransaction.eventId);
-                        return event ? (
-                          <div className="text-sm text-muted-foreground mt-1">
-                            <p>Data: {formatDate(event.date)}</p>
-                            <p>Local: {event.location}</p>
-                            {event.status && <p>Status: {event.status === 'upcoming' ? 'Próximo' : 
-                                                         event.status === 'completed' ? 'Realizado' : 
-                                                         'Cancelado'}</p>}
-                          </div>
-                        ) : null;
-                      })()}
-                    </div>
-                  </div>
-                )}
-                
-                {!selectedTransaction.eventId && (
-                  <div className="col-span-2">
-                    <h3 className="text-sm font-medium">Evento Relacionado</h3>
-                    <p>Não associado a nenhum evento</p>
-                  </div>
-                )}
-                
-                {selectedTransaction.teamPercentages && selectedTransaction.teamPercentages.length > 0 && (
-                  <div className="col-span-2">
-                    <h3 className="text-sm font-medium">Distribuição Percentual</h3>
-                    <div className="mt-1 space-y-2">
-                      {selectedTransaction.teamPercentages.map((tp, index) => (
-                        <div key={index} className="flex justify-between items-center p-2 border rounded bg-muted/50">
-                          <span>{tp.teamMemberId}</span>
-                          <span className="font-medium">{tp.percentageValue}%</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
                 {selectedTransaction.notes && (
                   <div className="col-span-2">
                     <h3 className="text-sm font-medium">Observações</h3>
@@ -392,10 +360,10 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                   Fechar
                 </Button>
                 <Button asChild>
-                  <a href={`/editar-transacao/${selectedTransaction.id}`}>
+                  <Link to={`/financas/editar/${selectedTransaction.id}`}>
                     <Edit className="h-4 w-4 mr-2" />
                     Editar
-                  </a>
+                  </Link>
                 </Button>
               </div>
             )}
