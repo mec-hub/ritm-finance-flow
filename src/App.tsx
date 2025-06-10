@@ -58,11 +58,11 @@ function AppRoutes() {
       <Route path="/financas/editar/:id" element={<ProtectedRoute><EditarTransacao /></ProtectedRoute>} />
       <Route path="/financas/detalhes/:id" element={<ProtectedRoute><DetalhesTransacao /></ProtectedRoute>} />
       
-      {/* Event routes */}
+      {/* Event routes - FIXED PATHS */}
       <Route path="/eventos/novo" element={<ProtectedRoute><NovoEvento /></ProtectedRoute>} />
       <Route path="/eventos/editar/:id" element={<ProtectedRoute><EditarEvento /></ProtectedRoute>} />
       
-      {/* Client routes */}
+      {/* Client routes - FIXED PATHS */}
       <Route path="/clientes/novo" element={<ProtectedRoute><NovoCliente /></ProtectedRoute>} />
       <Route path="/clientes/editar/:id" element={<ProtectedRoute><EditarCliente /></ProtectedRoute>} />
       

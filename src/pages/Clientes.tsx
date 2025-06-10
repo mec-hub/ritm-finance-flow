@@ -1,44 +1,60 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
-import { mockClients, mockEvents, mockTransactions } from '@/data/mockData';
 import { ClientsDataTable } from '@/components/clients/ClientsDataTable';
 import { ClientStats } from '@/components/clients/ClientStats';
 import { ClientEventChart } from '@/components/clients/ClientEventChart';
 import { Link } from 'react-router-dom';
+import { ClientService } from '@/services/clientService';
+import { EventService } from '@/services/eventService';
+import { Client, Event } from '@/types';
+import { toast } from '@/components/ui/use-toast';
 
 const Clientes = () => {
-  // Calculate client revenue based on events and transactions
-  const calculateClientRevenue = (clientName: string) => {
-    // Find all events for this client
-    const clientEvents = mockEvents.filter(event => event.client === clientName);
-    
-    let totalRevenue = 0;
-    
-    // For each event, find related transactions
-    clientEvents.forEach(event => {
-      const eventTransactions = mockTransactions.filter(
-        transaction => transaction.eventId === event.id && transaction.type === 'income'
-      );
-      
-      // Sum up transaction amounts
-      eventTransactions.forEach(transaction => {
-        totalRevenue += transaction.amount;
-      });
-    });
-    
-    return totalRevenue;
-  };
+  const [clients, setClients] = useState<Client[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [clients] = useState(() => {
-    // Update client data with actual revenue calculations
-    return mockClients.map(client => ({
-      ...client,
-      totalRevenue: calculateClientRevenue(client.name)
-    }));
-  });
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        console.log('Clientes - Fetching clients and events...');
+        const [clientsData, eventsData] = await Promise.all([
+          ClientService.getAll(),
+          EventService.getAll()
+        ]);
+        
+        console.log('Clientes - Clients data:', clientsData);
+        console.log('Clientes - Events data:', eventsData);
+        
+        setClients(clientsData);
+        setEvents(eventsData);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os dados.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <p>Carregando clientes...</p>
+        </div>
+      </Layout>
+    );
+  }
   
   return (
     <Layout>
@@ -51,7 +67,7 @@ const Clientes = () => {
             </p>
           </div>
           <Button asChild>
-            <Link to="/novo-cliente">
+            <Link to="/clientes/novo">
               <PlusCircle className="mr-2 h-4 w-4" />
               Novo Cliente
             </Link>
@@ -59,14 +75,13 @@ const Clientes = () => {
         </div>
         
         <div className="grid gap-6 md:grid-cols-3">
-          <ClientStats clients={clients} events={mockEvents} />
+          <ClientStats clients={clients} events={events} />
         </div>
         
         <div className="grid gap-6 md:grid-cols-2">
-          <ClientEventChart clients={clients} events={mockEvents} />
+          <ClientEventChart clients={clients} events={events} />
         </div>
         
-        {/* Client List with Number of Events Column */}
         <div className="dashboard-card">
           <h2 className="dashboard-card-title mb-4">Lista de Clientes</h2>
           <ClientsDataTable clients={clients} />
