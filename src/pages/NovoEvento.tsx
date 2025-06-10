@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -84,6 +85,9 @@ const NovoEvento = () => {
     try {
       console.log('NovoEvento - Form data:', data);
       
+      // Handle the case where "no_client" is selected
+      const clientId = data.clientId === 'no_client' ? undefined : data.clientId;
+      
       await EventService.create({
         title: data.title,
         date: data.date,
@@ -93,7 +97,7 @@ const NovoEvento = () => {
         estimatedExpenses: parseFloat(data.estimatedExpenses) || 0,
         status: 'upcoming',
         notes: data.notes,
-      }, data.clientId);
+      }, clientId);
       
       toast({
         title: "Evento adicionado",
@@ -221,7 +225,7 @@ const NovoEvento = () => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Nenhum cliente</SelectItem>
+                        <SelectItem value="no_client">Nenhum cliente</SelectItem>
                         {clients.map((client) => (
                           <SelectItem key={client.id} value={client.id}>
                             {client.name}
