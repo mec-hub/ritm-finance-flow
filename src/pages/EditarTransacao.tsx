@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
@@ -64,6 +63,8 @@ const EditarTransacao = () => {
       recurrenceMonths: 1,
       notes: '',
       status: 'not_paid',
+      clientId: 'no_client',
+      eventId: 'no_event',
     },
   });
 
@@ -93,8 +94,8 @@ const EditarTransacao = () => {
             isRecurring: transactionData.isRecurring || false,
             recurrenceMonths: transactionData.recurrenceMonths || 1,
             notes: transactionData.notes || '',
-            clientId: transactionData.clientId || '',
-            eventId: transactionData.eventId || '',
+            clientId: transactionData.clientId || 'no_client',
+            eventId: transactionData.eventId || 'no_event',
             status: transactionData.status || 'not_paid',
           });
         } else {
@@ -136,8 +137,8 @@ const EditarTransacao = () => {
         recurrenceInterval: values.isRecurring ? 'monthly' as const : undefined,
         recurrenceMonths: values.isRecurring ? values.recurrenceMonths : undefined,
         notes: values.notes || undefined,
-        clientId: values.clientId || undefined,
-        eventId: values.eventId || undefined,
+        clientId: values.clientId === 'no_client' ? undefined : values.clientId,
+        eventId: values.eventId === 'no_event' ? undefined : values.eventId,
         status: values.status,
       };
       
@@ -372,7 +373,7 @@ const EditarTransacao = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Nenhum cliente</SelectItem>
+                            <SelectItem value="no_client">Nenhum cliente</SelectItem>
                             {clients.map((client) => (
                               <SelectItem key={client.id} value={client.id}>
                                 {client.name}
@@ -398,7 +399,7 @@ const EditarTransacao = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Nenhum evento</SelectItem>
+                            <SelectItem value="no_event">Nenhum evento</SelectItem>
                             {events.map((event) => (
                               <SelectItem key={event.id} value={event.id}>
                                 {event.title} ({format(new Date(event.date), "dd/MM/yyyy")})
