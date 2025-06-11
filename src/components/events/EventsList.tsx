@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -122,7 +121,8 @@ export function EventsList({ events: initialEvents, onEventUpdated }: EventsList
   
   const handleEdit = (event: Event) => {
     console.log('EventsList - Edit event:', event);
-    navigate(`/editar-evento/${event.id}`);
+    // Fixed: Use the correct route path that matches App.tsx
+    navigate(`/eventos/editar/${event.id}`);
   };
   
   return (
