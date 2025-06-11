@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -85,15 +86,15 @@ const EditarEvento = () => {
           setEvent(eventData);
           setClients(clientsData);
           
-          // Find client ID by name (since events store client name, not ID)
-          const client = clientsData.find(c => c.name === eventData.client);
-          console.log('EditarEvento - Found client:', client);
+          // Use the clientId from the event data if available
+          const clientId = (eventData as any).clientId || 'no_client';
+          console.log('EditarEvento - Using client ID:', clientId);
           
           form.reset({
             title: eventData.title,
             date: new Date(eventData.date),
             location: eventData.location,
-            clientId: client?.id || 'no_client',
+            clientId: clientId,
             estimatedRevenue: eventData.estimatedRevenue.toString(),
             estimatedExpenses: eventData.estimatedExpenses.toString(),
             actualRevenue: eventData.actualRevenue?.toString() || '',

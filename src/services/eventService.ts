@@ -138,7 +138,7 @@ export class EventService {
       .from('events')
       .select(`
         *,
-        clients (name)
+        clients (id, name)
       `)
       .eq('id', id)
       .eq('user_id', userData.user.id)
@@ -162,6 +162,7 @@ export class EventService {
       date: new Date(data.date),
       location: data.location || '',
       client: data.clients?.name || '',
+      clientId: data.clients?.id || '', // Add clientId for editing
       estimatedRevenue: data.estimated_revenue || 0,
       actualRevenue: data.actual_revenue || undefined,
       estimatedExpenses: data.estimated_expenses || 0,

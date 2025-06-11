@@ -69,6 +69,8 @@ export class ClientService {
       throw new Error('User not authenticated');
     }
 
+    console.log('ClientService.update - Input params:', { id, updates });
+
     const updateData: any = {};
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.contact !== undefined) updateData.contact = updates.contact || null;
@@ -77,6 +79,8 @@ export class ClientService {
     if (updates.totalRevenue !== undefined) updateData.total_revenue = updates.totalRevenue;
     if (updates.lastEvent !== undefined) updateData.last_event = updates.lastEvent?.toISOString().split('T')[0] || null;
     if (updates.notes !== undefined) updateData.notes = updates.notes || null;
+
+    console.log('ClientService.update - Update data:', updateData);
 
     const { error } = await supabase
       .from('clients')
@@ -88,6 +92,8 @@ export class ClientService {
       console.error('ClientService.update error:', error);
       throw error;
     }
+
+    console.log('ClientService.update - Success');
   }
 
   static async delete(id: string): Promise<void> {
@@ -114,6 +120,8 @@ export class ClientService {
       throw new Error('User not authenticated');
     }
 
+    console.log('ClientService.getById - Fetching client with id:', id);
+
     const { data, error } = await supabase
       .from('clients')
       .select('*')
@@ -127,8 +135,11 @@ export class ClientService {
     }
     
     if (!data) {
+      console.log('ClientService.getById - No client found');
       return null;
     }
+
+    console.log('ClientService.getById - Client found:', data);
 
     return {
       id: data.id,
