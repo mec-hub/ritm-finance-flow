@@ -16,12 +16,14 @@ export interface Transaction {
   notes?: string;
   percentageValue?: number; // For backward compatibility
   status?: 'paid' | 'not_paid' | 'canceled';
+  attachments?: string[]; // Array of file URLs or base64 strings
   files?: File[]; // For temporary file storage during upload
 }
 
 export interface TeamPercentageAssignment {
   teamMemberId: string;
   percentageValue: number;
+  teamMemberName?: string;
 }
 
 export interface Event {

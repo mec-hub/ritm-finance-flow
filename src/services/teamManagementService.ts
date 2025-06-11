@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface TeamMember {
@@ -150,6 +149,10 @@ export class TeamManagementService {
     }
   }
 
+  static async addTeamMember(userId: string, teamMember: Omit<TeamMember, 'id' | 'joinDate'>): Promise<TeamMember | null> {
+    return this.createTeamMember(userId, teamMember);
+  }
+
   static async getPercentageTemplates(userId: string): Promise<PercentageTemplate[]> {
     return [
       {
@@ -192,6 +195,17 @@ export class TeamManagementService {
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
     };
     return newInvitation;
+  }
+
+  static async sendTeamInvitation(email: string, role: 'admin' | 'manager' | 'member'): Promise<boolean> {
+    try {
+      // This would send an actual invitation email
+      console.log(`Sending invitation to ${email} for role ${role}`);
+      return true;
+    } catch (error) {
+      console.error('Error sending team invitation:', error);
+      return false;
+    }
   }
 
   static async updateInvitationStatus(invitationId: string, status: 'accepted' | 'rejected'): Promise<boolean> {

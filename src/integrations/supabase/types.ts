@@ -464,6 +464,7 @@ export type Database = {
           client_id: string
           notes: string
           status: string
+          attachments: string[]
           team_assignments: Json
         }[]
       }

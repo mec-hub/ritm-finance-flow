@@ -1,346 +1,424 @@
-
+import { TransactionService } from './transactionService';
+import { ClientService } from './clientService';
+import { EventService } from './eventService';
+import { Transaction, Client, Event, MonthlyData, CategoryData } from '@/types';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-import { supabase } from '@/integrations/supabase/client';
 
-export interface ReportFilters {
-  startDate?: string;
-  endDate?: string;
-  dateFrom?: Date;
-  dateTo?: Date;
-  category?: string;
-  type?: 'income' | 'expense' | 'all';
-  status?: 'paid' | 'pending' | 'not_paid' | 'all';
-  clientId?: string;
-  eventId?: string;
-}
-
-export interface ReportTemplate {
-  id: string;
-  name: string;
-  description: string;
-  type: 'financial' | 'clients' | 'events' | 'tax';
-  filters: ReportFilters;
-  userId: string;
-  createdAt: string;
-}
-
-interface Transaction {
-  id: string;
-  date: string;
-  description: string;
-  category: string;
-  type: 'income' | 'expense';
-  amount: number;
-  status: 'paid' | 'pending' | 'not_paid';
-  notes?: string;
-}
-
-interface Client {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  contact?: string;
+export interface ReportData {
   totalRevenue: number;
-  lastEvent?: string;
-  notes?: string;
+  totalExpenses: number;
+  netProfit: number;
+  monthlyTrends: MonthlyData[];
+  categoryBreakdown: CategoryData[];
 }
-
-interface Event {
-  id: string;
-  title: string;
-  date: string;
-  location?: string;
-  client?: string;
-  status: string;
-  estimatedRevenue: number;
-  actualRevenue: number;
-  estimatedExpenses: number;
-  actualExpenses: number;
-}
-
-const formatDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString();
-};
 
 export class ReportService {
-  static async generatePDF(reportType: string, data: any, filters: any): Promise<void> {
-    const doc = new jsPDF();
-    
-    switch (reportType) {
-      case 'financial':
-        this.addFinancialTable(doc, data);
-        break;
-      case 'clients':
-        this.addClientsTable(doc, data);
-        break;
-      case 'events':
-        this.addEventsTable(doc, data);
-        break;
-      case 'tax':
-        this.addTaxTable(doc, data);
-        break;
+  static async generateBasicReport(
+    startDate: Date,
+    endDate: Date
+  ): Promise<ReportData> {
+    try {
+      const transactions = await TransactionService.getByFilters({
+        dateFrom: startDate,
+        dateTo: endDate
+      });
+
+      const totalRevenue = transactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const totalExpenses = transactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const netProfit = totalRevenue - totalExpenses;
+      const monthlyTrends = this.generateCashFlowData(transactions);
+      const categoryBreakdown = this.generateCategoryData(transactions);
+
+      return {
+        totalRevenue,
+        totalExpenses,
+        netProfit,
+        monthlyTrends,
+        categoryBreakdown
+      };
+    } catch (error) {
+      console.error('Error generating basic report:', error);
+      throw error;
     }
-    
-    doc.save(`${reportType}-report-${new Date().toISOString().split('T')[0]}.pdf`);
   }
 
-  static async generatePDFReport(reportType: string, data: any, filters: any): Promise<void> {
-    return this.generatePDF(reportType, data, filters);
-  }
+  static async generateAdvancedReport(
+    startDate: Date,
+    endDate: Date,
+    category?: string
+  ): Promise<ReportData> {
+    try {
+      const filters: {
+        dateFrom?: Date;
+        dateTo?: Date;
+        category?: string;
+      } = {
+        dateFrom: startDate,
+        dateTo: endDate
+      };
 
-  static async generateExcel(reportType: string, data: any, filters: any): Promise<void> {
-    const workbook = XLSX.utils.book_new();
-    
-    switch (reportType) {
-      case 'financial':
-        this.addFinancialExcelSheet(workbook, data);
-        break;
-      case 'clients':
-        this.addClientsExcelSheet(workbook, data);
-        break;
-      case 'events':
-        this.addEventsExcelSheet(workbook, data);
-        break;
-      case 'tax':
-        this.addTaxExcelSheet(workbook, data);
-        break;
-    }
-    
-    XLSX.writeFile(workbook, `${reportType}-report-${new Date().toISOString().split('T')[0]}.xlsx`);
-  }
-
-  static async generateExcelReport(reportType: string, data: any, filters: any): Promise<void> {
-    return this.generateExcel(reportType, data, filters);
-  }
-
-  static getReportTemplates(userId?: string): ReportTemplate[] {
-    return [
-      {
-        id: '1',
-        name: 'Relatório Mensal',
-        description: 'Relatório financeiro mensal padrão',
-        type: 'financial',
-        filters: { type: 'all' },
-        userId: userId || 'mock-user',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: '2',
-        name: 'Relatório de Clientes VIP',
-        description: 'Clientes com maior receita',
-        type: 'clients',
-        filters: {},
-        userId: userId || 'mock-user',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: '3',
-        name: 'Relatório de Eventos',
-        description: 'Análise de performance de eventos',
-        type: 'events',
-        filters: {},
-        userId: userId || 'mock-user',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: '4',
-        name: 'Relatório de Impostos',
-        description: 'Relatório para declaração de impostos',
-        type: 'tax',
-        filters: {},
-        userId: userId || 'mock-user',
-        createdAt: new Date().toISOString()
+      if (category) {
+        filters.category = category;
       }
-    ];
+
+      const transactions = await TransactionService.getByFilters(filters);
+
+      const totalRevenue = transactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const totalExpenses = transactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const netProfit = totalRevenue - totalExpenses;
+      const monthlyTrends = this.generateCashFlowData(transactions);
+      const categoryBreakdown = this.generateCategoryData(transactions);
+
+      return {
+        totalRevenue,
+        totalExpenses,
+        netProfit,
+        monthlyTrends,
+        categoryBreakdown
+      };
+    } catch (error) {
+      console.error('Error generating advanced report:', error);
+      throw error;
+    }
   }
 
-  private static addFinancialTable(doc: jsPDF, data: any): void {
-    const { transactions, summary } = data;
-    
-    doc.text('Relatório Financeiro', 10, 10);
-    
-    const head = [['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Status']];
-    const body = transactions.map((transaction: Transaction) => [
-      formatDate(transaction.date),
-      transaction.description,
-      transaction.category,
-      transaction.type === 'income' ? 'Receita' : 'Despesa',
-      transaction.amount.toString(),
-      transaction.status === 'paid' ? 'Pago' : transaction.status === 'pending' ? 'Pendente' : 'Não pago'
-    ]);
-    
-    autoTable(doc, { head: head, body: body, startY: 20 });
+  static async generateClientReport(
+    startDate: Date,
+    endDate: Date,
+    clientId: string
+  ): Promise<ReportData> {
+    try {
+      const transactions = await TransactionService.getByFilters({
+        dateFrom: startDate,
+        dateTo: endDate,
+        clientId: clientId
+      });
+
+      const client = await ClientService.getById(clientId);
+
+      if (!client) {
+        throw new Error('Client not found');
+      }
+
+      const totalRevenue = transactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const totalExpenses = transactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const netProfit = totalRevenue - totalExpenses;
+      const monthlyTrends = this.generateCashFlowData(transactions);
+      const categoryBreakdown = this.generateCategoryData(transactions);
+
+      return {
+        totalRevenue,
+        totalExpenses,
+        netProfit,
+        monthlyTrends,
+        categoryBreakdown
+      };
+    } catch (error) {
+      console.error('Error generating client report:', error);
+      throw error;
+    }
   }
 
-  private static addClientsTable(doc: jsPDF, data: any): void {
-    const { clients } = data;
-    
-    doc.text('Relatório de Clientes', 10, 10);
-    
-    const head = [['Cliente', 'Email', 'Telefone', 'Contato', 'Receita Total', 'Último Evento', 'Observações']];
-    const body = clients.map((client: Client) => [
-      client.name,
-      client.email || '',
-      client.phone || '',
-      client.contact || '',
-      client.totalRevenue.toString(),
-      client.lastEvent ? formatDate(client.lastEvent) : '',
-      client.notes || ''
-    ]);
-    
-    autoTable(doc, { head: head, body: body, startY: 20 });
+  static async generateTeamReport(
+    startDate: Date,
+    endDate: Date,
+    teamMemberId?: string
+  ): Promise<ReportData> {
+    try {
+      const transactions = await TransactionService.getByFilters({
+        dateFrom: startDate,
+        dateTo: endDate
+      });
+
+      let teamTransactions = transactions;
+      
+      // Filter by team member if specified
+      if (teamMemberId) {
+        teamTransactions = transactions.filter(t => 
+          t.teamPercentages?.some(tp => tp.teamMemberId === teamMemberId)
+        );
+      }
+
+      const totalRevenue = teamTransactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => {
+          const amount = typeof t.amount === 'number' ? t.amount : 0;
+          if (teamMemberId && t.teamPercentages) {
+            const memberAssignment = t.teamPercentages.find(tp => tp.teamMemberId === teamMemberId);
+            return sum + (memberAssignment ? (amount * memberAssignment.percentageValue / 100) : 0);
+          }
+          return sum + amount;
+        }, 0);
+
+      const totalExpenses = teamTransactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => {
+          const amount = typeof t.amount === 'number' ? t.amount : 0;
+          if (teamMemberId && t.teamPercentages) {
+            const memberAssignment = t.teamPercentages.find(tp => tp.teamMemberId === teamMemberId);
+            return sum + (memberAssignment ? (amount * memberAssignment.percentageValue / 100) : 0);
+          }
+          return sum + amount;
+        }, 0);
+
+      const netProfit = totalRevenue - totalExpenses;
+      const monthlyTrends = this.generateCashFlowData(teamTransactions);
+      const categoryBreakdown = this.generateCategoryData(teamTransactions);
+
+      return {
+        totalRevenue,
+        totalExpenses,
+        netProfit,
+        monthlyTrends,
+        categoryBreakdown
+      };
+    } catch (error) {
+      console.error('Error generating team report:', error);
+      throw error;
+    }
   }
 
-  private static addEventsTable(doc: jsPDF, data: any): void {
-    const { events } = data;
-    
-    doc.text('Relatório de Eventos', 10, 10);
-    
-    const head = [['Evento', 'Data', 'Local', 'Cliente', 'Status', 'Receita Estimada', 'Receita Real', 'Despesas Estimadas', 'Despesas Reais', 'Lucro']];
-    const body = events.map((event: Event) => [
-      event.title,
-      formatDate(event.date),
-      event.location || '',
-      event.client || '',
-      event.status,
-      event.estimatedRevenue.toString(),
-      event.actualRevenue.toString(),
-      event.estimatedExpenses.toString(),
-      event.actualExpenses.toString(),
-      (event.actualRevenue - event.actualExpenses).toString()
-    ]);
-    
-    autoTable(doc, { head: head, body: body, startY: 20 });
+  static async generatePeriodComparison(
+    startDate1: Date,
+    endDate1: Date,
+    startDate2: Date,
+    endDate2: Date
+  ): Promise<{ period1: ReportData; period2: ReportData }> {
+    try {
+      const period1 = await this.generateBasicReport(startDate1, endDate1);
+      const period2 = await this.generateBasicReport(startDate2, endDate2);
+
+      return { period1, period2 };
+    } catch (error) {
+      console.error('Error generating period comparison:', error);
+      throw error;
+    }
   }
 
-  private static addTaxTable(doc: jsPDF, data: any): void {
-    const { categorizedExpenses, transactions } = data;
-    
-    doc.text('Relatório de Impostos', 10, 10);
-    
-    const total = Object.values(categorizedExpenses).reduce((sum: number, amount: unknown) => {
-      return sum + (typeof amount === 'number' ? amount : 0);
-    }, 0);
-    
-    const categoryHead = [['Categoria', 'Valor Total', 'Percentual']];
-    const categoryBody = Object.entries(categorizedExpenses).map(([category, amount]) => [
-      category,
-      typeof amount === 'number' ? amount.toString() : '0',
-      (total > 0 && typeof amount === 'number') ? ((amount / total) * 100).toFixed(2) + '%' : '0%'
-    ]);
-    
-    autoTable(doc, { head: categoryHead, body: categoryBody, startY: 20 });
-    
-    const transactionHead = [['Data', 'Descrição', 'Categoria', 'Valor', 'Observações']];
-    const transactionBody = transactions.map((transaction: Transaction) => [
-      formatDate(transaction.date),
-      transaction.description,
-      transaction.category,
-      transaction.amount.toString(),
-      transaction.notes || ''
-    ]);
-    
-    const finalY = (doc as any).lastAutoTable?.finalY || 60;
-    autoTable(doc, { head: transactionHead, body: transactionBody, startY: finalY + 10 });
+  static async getMonthlyTrends(
+    startDate: Date,
+    endDate: Date
+  ): Promise<MonthlyData[]> {
+    try {
+      const transactions = await TransactionService.getByFilters({
+        dateFrom: startDate,
+        dateTo: endDate
+      });
+
+      return this.generateCashFlowData(transactions);
+    } catch (error) {
+      console.error('Error getting monthly trends:', error);
+      throw error;
+    }
   }
 
-  private static addFinancialExcelSheet(workbook: XLSX.WorkBook, data: any): void {
-    const { transactions, summary } = data;
-    
-    const transactionData = [
-      ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Status'],
-      ...transactions.map((transaction: Transaction) => [
-        formatDate(transaction.date),
-        transaction.description,
-        transaction.category,
-        transaction.type === 'income' ? 'Receita' : 'Despesa',
-        Number(transaction.amount) || 0,
-        transaction.status === 'paid' ? 'Pago' : transaction.status === 'pending' ? 'Pendente' : 'Não pago'
-      ])
-    ];
-    
-    const ws = XLSX.utils.aoa_to_sheet(transactionData);
-    XLSX.utils.book_append_sheet(workbook, ws, 'Transações');
+  static async getCategoryBreakdown(
+    startDate: Date,
+    endDate: Date
+  ): Promise<CategoryData[]> {
+    try {
+      const transactions = await TransactionService.getByFilters({
+        dateFrom: startDate,
+        dateTo: endDate
+      });
+
+      return this.generateCategoryData(transactions);
+    } catch (error) {
+      console.error('Error getting category breakdown:', error);
+      throw error;
+    }
   }
 
-  private static addClientsExcelSheet(workbook: XLSX.WorkBook, data: any): void {
-    const { clients } = data;
-    
-    const clientData = [
-      ['Cliente', 'Email', 'Telefone', 'Contato', 'Receita Total', 'Último Evento', 'Observações'],
-      ...clients.map((client: Client) => [
-        client.name,
-        client.email || '',
-        client.phone || '',
-        client.contact || '',
-        Number(client.totalRevenue) || 0,
-        client.lastEvent ? formatDate(client.lastEvent) : '',
-        client.notes || ''
-      ])
-    ];
-    
-    const ws = XLSX.utils.aoa_to_sheet(clientData);
-    XLSX.utils.book_append_sheet(workbook, ws, 'Clientes');
+  static async exportToPDF(reportData: ReportData, title: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.text(title, 14, 22);
+
+      // Basic data
+      let y = 40;
+      doc.setFontSize(12);
+      doc.text(`Total Revenue: ${reportData.totalRevenue.toFixed(2)}`, 14, y);
+      y += 8;
+      doc.text(`Total Expenses: ${reportData.totalExpenses.toFixed(2)}`, 14, y);
+      y += 8;
+      doc.text(`Net Profit: ${reportData.netProfit.toFixed(2)}`, 14, y);
+
+      // Monthly Trends table
+      y += 16;
+      doc.setFontSize(14);
+      doc.text('Monthly Trends', 14, y);
+      y += 10;
+
+      const monthlyTrendsHeaders = ['Month', 'Income', 'Expenses', 'Profit'];
+      const monthlyTrendsData = reportData.monthlyTrends.map(item => [
+        item.month,
+        item.income.toFixed(2),
+        item.expenses.toFixed(2),
+        item.profit.toFixed(2)
+      ]);
+
+      (doc as any).autoTable({
+        head: [monthlyTrendsHeaders],
+        body: monthlyTrendsData,
+        startY: y,
+        margin: { left: 14 },
+        styles: { overflow: 'linebreak' },
+        columnStyles: { 0: { columnWidth: 40 } }
+      });
+
+      // Category Breakdown table
+      y = (doc as any).autoTable.previous.finalY + 16;
+      doc.setFontSize(14);
+      doc.text('Category Breakdown', 14, y);
+      y += 10;
+
+      const categoryBreakdownHeaders = ['Category', 'Value', 'Percentage'];
+      const categoryBreakdownData = reportData.categoryBreakdown.map(item => [
+        item.name,
+        item.value.toFixed(2),
+        item.percentage.toFixed(2) + '%'
+      ]);
+
+      (doc as any).autoTable({
+        head: [categoryBreakdownHeaders],
+        body: categoryBreakdownData,
+        startY: y,
+        margin: { left: 14 },
+        styles: { overflow: 'linebreak' },
+        columnStyles: { 0: { columnWidth: 40 } }
+      });
+
+      doc.save(`${title}.pdf`);
+      resolve();
+    });
   }
 
-  private static addEventsExcelSheet(workbook: XLSX.WorkBook, data: any): void {
-    const { events } = data;
-    
-    const eventData = [
-      ['Evento', 'Data', 'Local', 'Cliente', 'Status', 'Receita Estimada', 'Receita Real', 'Despesas Estimadas', 'Despesas Reais', 'Lucro'],
-      ...events.map((event: Event) => [
-        event.title,
-        formatDate(event.date),
-        event.location || '',
-        event.client || '',
-        event.status,
-        Number(event.estimatedRevenue) || 0,
-        Number(event.actualRevenue) || 0,
-        Number(event.estimatedExpenses) || 0,
-        Number(event.actualExpenses) || 0,
-        (Number(event.actualRevenue) || Number(event.estimatedRevenue) || 0) - (Number(event.actualExpenses) || Number(event.estimatedExpenses) || 0)
-      ])
-    ];
-    
-    const ws = XLSX.utils.aoa_to_sheet(eventData);
-    XLSX.utils.book_append_sheet(workbook, ws, 'Eventos');
+  static async exportToExcel(reportData: ReportData, title: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const wb = XLSX.utils.book_new();
+
+      // Prepare monthly trends data
+      const monthlyTrendsHeaders = ['Month', 'Income', 'Expenses', 'Profit'];
+      const monthlyTrendsData = reportData.monthlyTrends.map(item => [
+        item.month,
+        item.income,
+        item.expenses,
+        item.profit
+      ]);
+      const monthlyTrendsSheet = XLSX.utils.aoa_to_sheet([monthlyTrendsHeaders, ...monthlyTrendsData]);
+      XLSX.utils.book_append_sheet(wb, monthlyTrendsSheet, 'Monthly Trends');
+
+      // Prepare category breakdown data
+      const categoryBreakdownHeaders = ['Category', 'Value', 'Percentage'];
+      const categoryBreakdownData = reportData.categoryBreakdown.map(item => [
+        item.name,
+        item.value,
+        item.percentage
+      ]);
+      const categoryBreakdownSheet = XLSX.utils.aoa_to_sheet([categoryBreakdownHeaders, ...categoryBreakdownData]);
+      XLSX.utils.book_append_sheet(wb, categoryBreakdownSheet, 'Category Breakdown');
+
+      // Save the Excel file
+      XLSX.writeFile(wb, `${title}.xlsx`);
+      resolve();
+    });
   }
 
-  private static addTaxExcelSheet(workbook: XLSX.WorkBook, data: any): void {
-    const { categorizedExpenses, transactions } = data;
-    
-    const total = Object.values(categorizedExpenses).reduce((sum: number, amount: unknown) => {
-      return sum + (typeof amount === 'number' ? amount : 0);
-    }, 0);
-    
-    const categoryData = [
-      ['Categoria', 'Valor Total', 'Percentual'],
-      ...Object.entries(categorizedExpenses).map(([category, amount]) => [
-        category,
-        typeof amount === 'number' ? amount : 0,
-        (total > 0 && typeof amount === 'number') ? ((amount / total) * 100).toFixed(2) + '%' : '0%'
-      ])
-    ];
-    
-    const ws1 = XLSX.utils.aoa_to_sheet(categoryData);
-    XLSX.utils.book_append_sheet(workbook, ws1, 'Resumo por Categoria');
-    
-    const transactionData = [
-      ['Data', 'Descrição', 'Categoria', 'Valor', 'Observações'],
-      ...transactions.map((transaction: Transaction) => [
-        formatDate(transaction.date),
-        transaction.description,
-        transaction.category,
-        Number(transaction.amount) || 0,
-        transaction.notes || ''
-      ])
-    ];
-    
-    const ws2 = XLSX.utils.aoa_to_sheet(transactionData);
-    XLSX.utils.book_append_sheet(workbook, ws2, 'Transações Detalhadas');
+  static async scheduleReport(
+    reportType: string,
+    startDate: Date,
+    endDate: Date,
+    frequency: string,
+    emailList: string[]
+  ): Promise<void> {
+    // TODO: Implement report scheduling logic
+    console.log(`Report scheduled: ${reportType}, ${startDate}, ${endDate}, ${frequency}, ${emailList}`);
+  }
+
+  static async getScheduledReports(): Promise<any[]> {
+    // TODO: Implement logic to fetch scheduled reports
+    return [];
+  }
+
+  static async deleteScheduledReport(reportId: string): Promise<void> {
+    // TODO: Implement logic to delete a scheduled report
+    console.log(`Scheduled report deleted: ${reportId}`);
+  }
+
+  private static generateCashFlowData(transactions: Transaction[]): MonthlyData[] {
+    const monthlyData: { [key: string]: MonthlyData } = {};
+
+    transactions.forEach(transaction => {
+      const amount = typeof transaction.amount === 'number' ? transaction.amount : 0;
+      const month = format(transaction.date, 'MMM yyyy', { locale: ptBR });
+      
+      if (!monthlyData[month]) {
+        monthlyData[month] = {
+          month,
+          income: 0,
+          expenses: 0,
+          profit: 0
+        };
+      }
+
+      if (transaction.type === 'income') {
+        monthlyData[month].income += amount;
+      } else {
+        monthlyData[month].expenses += amount;
+      }
+      
+      monthlyData[month].profit = monthlyData[month].income - monthlyData[month].expenses;
+    });
+
+    return Object.values(monthlyData).sort((a, b) => 
+      new Date(a.month).getTime() - new Date(b.month).getTime()
+    );
+  }
+
+  private static generateCategoryData(transactions: Transaction[]): CategoryData[] {
+    const categoryData: { [key: string]: CategoryData } = {};
+  
+    transactions.forEach(transaction => {
+      const amount = typeof transaction.amount === 'number' ? transaction.amount : 0;
+      if (!categoryData[transaction.category]) {
+        categoryData[transaction.category] = {
+          name: transaction.category,
+          value: 0,
+          percentage: 0
+        };
+      }
+      categoryData[transaction.category].value += amount;
+    });
+  
+    const totalValue = Object.values(categoryData).reduce((sum, data) => sum + data.value, 0);
+  
+    Object.values(categoryData).forEach(data => {
+      data.percentage = (data.value / totalValue) * 100;
+    });
+  
+    return Object.values(categoryData).sort((a, b) => b.value - a.value);
   }
 }

@@ -2,16 +2,24 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Transaction } from '@/types';
 
+export interface TeamTransactionAssignment {
+  id?: string;
+  teamMemberId: string;
+  percentageValue: number;
+  teamMemberName?: string;
+}
+
 export class TransactionService {
   static async getAll(): Promise<Transaction[]> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) throw new Error('User not authenticated');
+
     const { data, error } = await supabase
-      .from('transactions')
-      .select('*')
-      .order('date', { ascending: false });
+      .rpc('get_transactions_with_team_data', { user_id_param: userData.user.id });
 
     if (error) throw error;
 
-    return data.map(transaction => ({
+    return data?.map((transaction: any) => ({
       id: transaction.id,
       amount: transaction.amount,
       description: transaction.description,
@@ -24,18 +32,27 @@ export class TransactionService {
       type: transaction.type as 'income' | 'expense',
       eventId: transaction.event_id,
       clientId: transaction.client_id,
-      teamMemberId: undefined, // Will be handled by team_transaction_assignments
-      teamPercentages: [], // Will be populated from team_transaction_assignments
+      teamMemberId: undefined,
+      teamPercentages: transaction.team_assignments || [],
       notes: transaction.notes,
-      percentageValue: undefined, // Legacy field
-      status: transaction.status as 'paid' | 'not_paid' | 'canceled'
-    }));
+      percentageValue: undefined,
+      status: transaction.status as 'paid' | 'not_paid' | 'canceled',
+      attachments: transaction.attachments || []
+    })) || [];
   }
 
   static async getById(id: string): Promise<Transaction | null> {
     const { data, error } = await supabase
       .from('transactions')
-      .select('*')
+      .select(`
+        *,
+        team_transaction_assignments(
+          id,
+          team_member_id,
+          percentage_value,
+          team_members(name)
+        )
+      `)
       .eq('id', id)
       .single();
 
@@ -56,10 +73,15 @@ export class TransactionService {
       eventId: data.event_id,
       clientId: data.client_id,
       teamMemberId: undefined,
-      teamPercentages: [],
+      teamPercentages: data.team_transaction_assignments?.map((assignment: any) => ({
+        teamMemberId: assignment.team_member_id,
+        percentageValue: assignment.percentage_value,
+        teamMemberName: assignment.team_members?.name
+      })) || [],
       notes: data.notes,
       percentageValue: undefined,
-      status: data.status as 'paid' | 'not_paid' | 'canceled'
+      status: data.status as 'paid' | 'not_paid' | 'canceled',
+      attachments: data.attachments || []
     };
   }
 
@@ -83,12 +105,29 @@ export class TransactionService {
         client_id: transaction.clientId,
         notes: transaction.notes,
         status: transaction.status || 'not_paid',
+        attachments: transaction.attachments || [],
         user_id: userData.user.id
       })
       .select()
       .single();
 
     if (error) throw error;
+
+    // Create team assignments
+    if (transaction.teamPercentages && transaction.teamPercentages.length > 0) {
+      const assignments = transaction.teamPercentages.map(assignment => ({
+        transaction_id: data.id,
+        team_member_id: assignment.teamMemberId,
+        percentage_value: assignment.percentageValue
+      }));
+
+      const { error: assignmentError } = await supabase
+        .from('team_transaction_assignments')
+        .insert(assignments);
+
+      if (assignmentError) throw assignmentError;
+    }
+
     return { ...transaction, id: data.id };
   }
 
@@ -108,6 +147,7 @@ export class TransactionService {
     if (updates.clientId !== undefined) updateData.client_id = updates.clientId;
     if (updates.notes !== undefined) updateData.notes = updates.notes;
     if (updates.status !== undefined) updateData.status = updates.status;
+    if (updates.attachments !== undefined) updateData.attachments = updates.attachments;
 
     const { error } = await supabase
       .from('transactions')
@@ -115,9 +155,39 @@ export class TransactionService {
       .eq('id', id);
 
     if (error) throw error;
+
+    // Update team assignments if provided
+    if (updates.teamPercentages !== undefined) {
+      // Delete existing assignments
+      await supabase
+        .from('team_transaction_assignments')
+        .delete()
+        .eq('transaction_id', id);
+
+      // Create new assignments
+      if (updates.teamPercentages.length > 0) {
+        const assignments = updates.teamPercentages.map(assignment => ({
+          transaction_id: id,
+          team_member_id: assignment.teamMemberId,
+          percentage_value: assignment.percentageValue
+        }));
+
+        const { error: assignmentError } = await supabase
+          .from('team_transaction_assignments')
+          .insert(assignments);
+
+        if (assignmentError) throw assignmentError;
+      }
+    }
   }
 
   static async delete(id: string): Promise<void> {
+    // Delete team assignments first
+    await supabase
+      .from('team_transaction_assignments')
+      .delete()
+      .eq('transaction_id', id);
+
     const { error } = await supabase
       .from('transactions')
       .delete()
@@ -134,34 +204,42 @@ export class TransactionService {
     eventId?: string;
     clientId?: string;
   }): Promise<Transaction[]> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) throw new Error('User not authenticated');
+
     let query = supabase
-      .from('transactions')
-      .select('*');
+      .rpc('get_transactions_with_team_data', { user_id_param: userData.user.id });
 
-    if (filters.category) {
-      query = query.eq('category', filters.category);
-    }
-    if (filters.type) {
-      query = query.eq('type', filters.type);
-    }
-    if (filters.dateFrom) {
-      query = query.gte('date', filters.dateFrom.toISOString().split('T')[0]);
-    }
-    if (filters.dateTo) {
-      query = query.lte('date', filters.dateTo.toISOString().split('T')[0]);
-    }
-    if (filters.eventId) {
-      query = query.eq('event_id', filters.eventId);
-    }
-    if (filters.clientId) {
-      query = query.eq('client_id', filters.clientId);
-    }
-
-    const { data, error } = await query.order('date', { ascending: false });
+    const { data, error } = await query;
 
     if (error) throw error;
 
-    return data.map(transaction => ({
+    let filteredData = data || [];
+
+    if (filters.category) {
+      filteredData = filteredData.filter((t: any) => t.category === filters.category);
+    }
+    if (filters.type) {
+      filteredData = filteredData.filter((t: any) => t.type === filters.type);
+    }
+    if (filters.dateFrom) {
+      filteredData = filteredData.filter((t: any) => 
+        new Date(t.date) >= filters.dateFrom!
+      );
+    }
+    if (filters.dateTo) {
+      filteredData = filteredData.filter((t: any) => 
+        new Date(t.date) <= filters.dateTo!
+      );
+    }
+    if (filters.eventId) {
+      filteredData = filteredData.filter((t: any) => t.event_id === filters.eventId);
+    }
+    if (filters.clientId) {
+      filteredData = filteredData.filter((t: any) => t.client_id === filters.clientId);
+    }
+
+    return filteredData.map((transaction: any) => ({
       id: transaction.id,
       amount: transaction.amount,
       description: transaction.description,
@@ -175,10 +253,11 @@ export class TransactionService {
       eventId: transaction.event_id,
       clientId: transaction.client_id,
       teamMemberId: undefined,
-      teamPercentages: [],
+      teamPercentages: transaction.team_assignments || [],
       notes: transaction.notes,
       percentageValue: undefined,
-      status: transaction.status as 'paid' | 'not_paid' | 'canceled'
+      status: transaction.status as 'paid' | 'not_paid' | 'canceled',
+      attachments: transaction.attachments || []
     }));
   }
 }
