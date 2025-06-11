@@ -1,214 +1,134 @@
-import { supabase } from '@/integrations/supabase/client';
 
-export interface TeamMember {
-  id: string;
+import { supabase } from '@/integrations/supabase/client';
+import { TeamMember } from '@/types';
+
+export interface NewMemberForm {
   name: string;
-  email: string;
-  role: 'admin' | 'manager' | 'member';
-  status: 'active' | 'inactive' | 'pending';
-  joinDate: string;
-  avatar?: string;
+  role: string;
   percentageShare: number;
-  totalPaid: number;
-  pendingAmount: number;
-  profileId?: string;
 }
 
 export interface PercentageTemplate {
   id: string;
   name: string;
   description: string;
-  percentages: { [role: string]: number };
-  userId: string;
-  createdAt: string;
+  defaultAssignments: TeamPercentageAssignment[];
 }
 
-export interface TeamInvitation {
-  id: string;
-  email: string;
-  role: 'admin' | 'manager' | 'member';
-  status: 'pending' | 'accepted' | 'rejected';
-  invitedBy: string;
-  createdAt: string;
-  expiresAt: string;
+export interface TeamPercentageAssignment {
+  teamMemberId: string;
+  percentageValue: number;
+  teamMemberName?: string;
 }
 
 export class TeamManagementService {
-  static async getTeamMembers(userId: string): Promise<TeamMember[]> {
-    try {
-      const { data, error } = await supabase
-        .from('team_members')
-        .select('*')
-        .eq('user_id', userId);
+  static async getAllMembers(): Promise<TeamMember[]> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) throw new Error('User not authenticated');
 
-      if (error) {
-        console.error('Error fetching team members:', error);
-        return [];
-      }
+    const { data, error } = await supabase
+      .from('team_members')
+      .select('*')
+      .eq('user_id', userData.user.id)
+      .order('name');
 
-      return data?.map((member: any) => ({
-        id: member.id,
-        name: member.name,
-        email: member.email || '',
-        role: (member.role || 'member') as 'admin' | 'manager' | 'member',
-        status: 'active' as const,
-        joinDate: member.created_at,
-        avatar: member.avatar || '',
-        percentageShare: Number(member.percentage_share) || 0,
-        totalPaid: Number(member.total_paid) || 0,
-        pendingAmount: Number(member.pending_amount) || 0,
-        profileId: member.profile_id
-      })) || [];
-    } catch (error) {
-      console.error('Error in getTeamMembers:', error);
-      return [];
-    }
+    if (error) throw error;
+
+    return data?.map(member => ({
+      id: member.id,
+      name: member.name,
+      role: member.role || '',
+      percentageShare: member.percentage_share || 0,
+      totalPaid: member.total_paid || 0,
+      pendingAmount: member.pending_amount || 0
+    })) || [];
   }
 
-  static async createTeamMember(userId: string, teamMember: Omit<TeamMember, 'id' | 'joinDate'>): Promise<TeamMember | null> {
-    try {
-      const { data, error } = await supabase
-        .from('team_members')
-        .insert({
-          name: teamMember.name,
-          role: teamMember.role,
-          percentage_share: teamMember.percentageShare,
-          total_paid: teamMember.totalPaid,
-          pending_amount: teamMember.pendingAmount,
-          profile_id: teamMember.profileId,
-          user_id: userId
-        })
-        .select()
-        .single();
+  static async createMember(memberData: NewMemberForm): Promise<TeamMember> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) throw new Error('User not authenticated');
 
-      if (error) {
-        console.error('Error creating team member:', error);
-        return null;
-      }
+    const { data, error } = await supabase
+      .from('team_members')
+      .insert({
+        name: memberData.name,
+        role: memberData.role,
+        percentage_share: memberData.percentageShare,
+        user_id: userData.user.id,
+        total_paid: 0,
+        pending_amount: 0
+      })
+      .select()
+      .single();
 
-      return {
-        id: data.id,
-        name: data.name,
-        email: teamMember.email,
-        role: data.role as 'admin' | 'manager' | 'member',
-        status: 'active',
-        joinDate: data.created_at,
-        avatar: teamMember.avatar,
-        percentageShare: Number(data.percentage_share),
-        totalPaid: Number(data.total_paid),
-        pendingAmount: Number(data.pending_amount),
-        profileId: data.profile_id
-      };
-    } catch (error) {
-      console.error('Error in createTeamMember:', error);
-      return null;
-    }
+    if (error) throw error;
+
+    return {
+      id: data.id,
+      name: data.name,
+      role: data.role || '',
+      percentageShare: data.percentage_share || 0,
+      totalPaid: data.total_paid || 0,
+      pendingAmount: data.pending_amount || 0
+    };
   }
 
-  static async updateTeamMember(teamMember: TeamMember): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('team_members')
-        .update({
-          name: teamMember.name,
-          role: teamMember.role,
-          percentage_share: teamMember.percentageShare,
-          total_paid: teamMember.totalPaid,
-          pending_amount: teamMember.pendingAmount
-        })
-        .eq('id', teamMember.id);
+  static async updateMember(id: string, updates: Partial<NewMemberForm>): Promise<void> {
+    const updateData: any = {};
+    
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.role !== undefined) updateData.role = updates.role;
+    if (updates.percentageShare !== undefined) updateData.percentage_share = updates.percentageShare;
 
-      if (error) {
-        console.error('Error updating team member:', error);
-        return false;
-      }
+    const { error } = await supabase
+      .from('team_members')
+      .update(updateData)
+      .eq('id', id);
 
-      return true;
-    } catch (error) {
-      console.error('Error in updateTeamMember:', error);
-      return false;
-    }
+    if (error) throw error;
   }
 
-  static async removeTeamMember(memberId: string): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('team_members')
-        .delete()
-        .eq('id', memberId);
+  static async deleteMember(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('team_members')
+      .delete()
+      .eq('id', id);
 
-      if (error) {
-        console.error('Error removing team member:', error);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error in removeTeamMember:', error);
-      return false;
-    }
+    if (error) throw error;
   }
 
-  static async addTeamMember(userId: string, teamMember: Omit<TeamMember, 'id' | 'joinDate'>): Promise<TeamMember | null> {
-    return this.createTeamMember(userId, teamMember);
-  }
-
-  static async getPercentageTemplates(userId: string): Promise<PercentageTemplate[]> {
+  static async getPercentageTemplates(): Promise<PercentageTemplate[]> {
+    // For now, return some default templates
     return [
       {
-        id: '1',
-        name: 'Distribuição Padrão',
-        description: 'Divisão igualitária entre membros',
-        percentages: { admin: 40, manager: 35, member: 25 },
-        userId,
-        createdAt: new Date().toISOString()
+        id: 'partners-only',
+        name: 'Apenas Sócios',
+        description: 'Rian (40%) e Davi (60%)',
+        defaultAssignments: []
       },
       {
-        id: '2',
-        name: 'Por Senioridade',
-        description: 'Baseado na experiência do membro',
-        percentages: { admin: 50, manager: 30, member: 20 },
-        userId,
-        createdAt: new Date().toISOString()
+        id: 'with-employee',
+        name: 'Com Funcionário',
+        description: 'Inclui funcionário com percentual variável',
+        defaultAssignments: []
       }
     ];
   }
 
-  static async createPercentageTemplate(template: Omit<PercentageTemplate, 'id' | 'createdAt'>): Promise<PercentageTemplate | null> {
-    const newTemplate: PercentageTemplate = {
-      id: Math.random().toString(36).substr(2, 9),
-      ...template,
-      createdAt: new Date().toISOString()
+  static async calculateMemberEarnings(memberId: string, startDate?: Date, endDate?: Date) {
+    const { data, error } = await supabase
+      .rpc('calculate_team_member_earnings', {
+        member_id: memberId,
+        start_date: startDate?.toISOString().split('T')[0] || null,
+        end_date: endDate?.toISOString().split('T')[0] || null
+      });
+
+    if (error) throw error;
+
+    return data?.[0] || {
+      total_earnings: 0,
+      total_transactions: 0,
+      avg_percentage: 0
     };
-    return newTemplate;
-  }
-
-  static async getTeamInvitations(userId: string): Promise<TeamInvitation[]> {
-    return [];
-  }
-
-  static async createTeamInvitation(invitation: Omit<TeamInvitation, 'id' | 'createdAt' | 'expiresAt'>): Promise<TeamInvitation | null> {
-    const newInvitation: TeamInvitation = {
-      id: Math.random().toString(36).substr(2, 9),
-      ...invitation,
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-    };
-    return newInvitation;
-  }
-
-  static async sendTeamInvitation(email: string, role: 'admin' | 'manager' | 'member'): Promise<boolean> {
-    try {
-      // This would send an actual invitation email
-      console.log(`Sending invitation to ${email} for role ${role}`);
-      return true;
-    } catch (error) {
-      console.error('Error sending team invitation:', error);
-      return false;
-    }
-  }
-
-  static async updateInvitationStatus(invitationId: string, status: 'accepted' | 'rejected'): Promise<boolean> {
-    return true;
   }
 }

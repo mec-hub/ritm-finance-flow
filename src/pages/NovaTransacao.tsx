@@ -22,7 +22,10 @@ import { toast } from '@/hooks/use-toast';
 import { TransactionService } from '@/services/transactionService';
 import { ClientService } from '@/services/clientService';
 import { EventService } from '@/services/eventService';
-import { Transaction, Client, Event } from '@/types';
+import { TeamManagementService } from '@/services/teamManagementService';
+import { Transaction, Client, Event, TeamMember } from '@/types';
+import { TeamAssignmentForm } from '@/components/transactions/TeamAssignmentForm';
+import { AttachmentUpload } from '@/components/transactions/AttachmentUpload';
 
 const formSchema = z.object({
   description: z.string().min(1, 'Descrição é obrigatória'),
@@ -48,6 +51,9 @@ const NovaTransacao = () => {
   const [loading, setLoading] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [teamAssignments, setTeamAssignments] = useState<Array<{ teamMemberId: string; percentageValue: number; teamMemberName?: string }>>([]);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -70,17 +76,19 @@ const NovaTransacao = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [clientsData, eventsData] = await Promise.all([
+        const [clientsData, eventsData, teamMembersData] = await Promise.all([
           ClientService.getAll(),
-          EventService.getAll()
+          EventService.getAll(),
+          TeamManagementService.getAllMembers()
         ]);
         setClients(clientsData);
         setEvents(eventsData);
+        setTeamMembers(teamMembersData);
       } catch (error) {
         console.error('Error fetching data:', error);
         toast({
           title: "Erro",
-          description: "Não foi possível carregar clientes e eventos.",
+          description: "Não foi possível carregar clientes, eventos e membros da equipe.",
           variant: "destructive"
         });
       }
@@ -89,9 +97,38 @@ const NovaTransacao = () => {
     fetchData();
   }, []);
 
+  const convertFilesToBase64 = async (files: File[]): Promise<string[]> => {
+    const promises = files.map(file => {
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    });
+    
+    return Promise.all(promises);
+  };
+
   const onSubmit = async (values: FormValues) => {
     try {
       setLoading(true);
+      
+      // Validate team assignments if there are any
+      if (teamAssignments.length > 0) {
+        const totalPercentage = teamAssignments.reduce((sum, assignment) => sum + assignment.percentageValue, 0);
+        if (Math.abs(totalPercentage - 100) > 0.01) {
+          toast({
+            title: "Erro",
+            description: "A soma das porcentagens deve ser exatamente 100%.",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+
+      // Convert files to base64 for storage
+      const attachments = attachmentFiles.length > 0 ? await convertFilesToBase64(attachmentFiles) : [];
       
       const newTransaction: Omit<Transaction, 'id'> = {
         description: values.description,
@@ -108,8 +145,9 @@ const NovaTransacao = () => {
         eventId: values.eventId === 'no_event' ? undefined : values.eventId,
         status: values.status,
         teamMemberId: undefined,
-        teamPercentages: [],
-        percentageValue: undefined
+        teamPercentages: teamAssignments,
+        percentageValue: undefined,
+        attachments
       };
       
       await TransactionService.create(newTransaction);
@@ -155,15 +193,15 @@ const NovaTransacao = () => {
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Detalhes da Transação</CardTitle>
-            <CardDescription>
-              Preencha as informações da nova transação abaixo.
-            </CardDescription>
-          </CardHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Detalhes da Transação</CardTitle>
+                <CardDescription>
+                  Preencha as informações da nova transação abaixo.
+                </CardDescription>
+              </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
@@ -433,18 +471,31 @@ const NovaTransacao = () => {
                     </FormItem>
                   )}
                 />
-
-                <Button 
-                  type="submit" 
-                  className="w-full bg-gold-gradient text-black hover:brightness-110"
-                  disabled={loading}
-                >
-                  {loading ? 'Criando...' : 'Criar Transação'}
-                </Button>
               </CardContent>
-            </form>
-          </Form>
-        </Card>
+            </Card>
+
+            {/* Team Assignment Section */}
+            <TeamAssignmentForm
+              teamMembers={teamMembers}
+              assignments={teamAssignments}
+              onChange={setTeamAssignments}
+            />
+
+            {/* Attachment Upload Section */}
+            <AttachmentUpload
+              files={attachmentFiles}
+              onChange={setAttachmentFiles}
+            />
+
+            <Button 
+              type="submit" 
+              className="w-full bg-gold-gradient text-black hover:brightness-110"
+              disabled={loading}
+            >
+              {loading ? 'Criando...' : 'Criar Transação'}
+            </Button>
+          </form>
+        </Form>
       </div>
     </Layout>
   );
