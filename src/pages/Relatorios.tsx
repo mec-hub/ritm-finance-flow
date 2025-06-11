@@ -419,7 +419,7 @@ const Relatorios = () => {
 
           <TabsContent value="events" className="space-y-4">
             <ReportTemplateSelector
-              templates={ReportService.getReportTemplates().filter(t => t.type === 'event')}
+              templates={ReportService.getReportTemplates().filter(t => t.type === 'events')}
               selectedTemplate={selectedTemplate}
               onTemplateSelect={setSelectedTemplate}
               onGeneratePDF={generatePDFReport}
@@ -430,7 +430,7 @@ const Relatorios = () => {
 
           <TabsContent value="clients" className="space-y-4">
             <ReportTemplateSelector
-              templates={ReportService.getReportTemplates().filter(t => t.type === 'client')}
+              templates={ReportService.getReportTemplates().filter(t => t.type === 'clients')}
               selectedTemplate={selectedTemplate}
               onTemplateSelect={setSelectedTemplate}
               onGeneratePDF={generatePDFReport}

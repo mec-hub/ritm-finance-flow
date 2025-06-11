@@ -1,3 +1,4 @@
+
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -6,6 +7,8 @@ import { supabase } from '@/integrations/supabase/client';
 export interface ReportFilters {
   startDate?: string;
   endDate?: string;
+  dateFrom?: Date;
+  dateTo?: Date;
   category?: string;
   type?: 'income' | 'expense' | 'all';
   status?: 'paid' | 'pending' | 'not_paid' | 'all';
@@ -114,8 +117,8 @@ export class ReportService {
     return this.generateExcel(reportType, data, filters);
   }
 
-  static async getReportTemplates(userId: string): Promise<ReportTemplate[]> {
-    // Mock implementation - in a real app, this would fetch from database
+  static getReportTemplates(userId?: string): ReportTemplate[] {
+    // Mock implementation - return synchronous array
     return [
       {
         id: '1',
@@ -123,7 +126,7 @@ export class ReportService {
         description: 'Relatório financeiro mensal padrão',
         type: 'financial',
         filters: { type: 'all' },
-        userId,
+        userId: userId || 'mock-user',
         createdAt: new Date().toISOString()
       },
       {
@@ -132,7 +135,25 @@ export class ReportService {
         description: 'Clientes com maior receita',
         type: 'clients',
         filters: {},
-        userId,
+        userId: userId || 'mock-user',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: '3',
+        name: 'Relatório de Eventos',
+        description: 'Análise de performance de eventos',
+        type: 'events',
+        filters: {},
+        userId: userId || 'mock-user',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: '4',
+        name: 'Relatório de Impostos',
+        description: 'Relatório para declaração de impostos',
+        type: 'tax',
+        filters: {},
+        userId: userId || 'mock-user',
         createdAt: new Date().toISOString()
       }
     ];
@@ -224,7 +245,8 @@ export class ReportService {
       transaction.notes || ''
     ]);
     
-    autoTable(doc, { head: transactionHead, body: transactionBody, startY: doc.lastAutoTable.finalY + 10 });
+    const finalY = (doc as any).lastAutoTable?.finalY || 60;
+    autoTable(doc, { head: transactionHead, body: transactionBody, startY: finalY + 10 });
   }
 
   private static addFinancialExcelSheet(workbook: XLSX.WorkBook, data: any): void {
