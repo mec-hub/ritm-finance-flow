@@ -1,674 +1,442 @@
-import { useState, useMemo } from 'react';
+
+import { useState, useMemo, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Download, TrendingUp, TrendingDown, DollarSign, Calendar, Users, MapPin } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/utils/formatters';
-import { mockTransactions, mockEvents, mockClients } from '@/data/mockData';
+import { AdvancedReportFilters } from '@/components/reports/AdvancedReportFilters';
+import { ReportTemplateSelector } from '@/components/reports/ReportTemplateSelector';
+import { InteractiveDashboard } from '@/components/reports/InteractiveDashboard';
+import { TransactionService } from '@/services/transactionService';
+import { ReportService, ReportFilters } from '@/services/reportService';
 import { Transaction, Event, Client } from '@/types';
+import { formatCurrency } from '@/utils/formatters';
+import { FileText, TrendingUp, BarChart3, PieChart, Download, Zap } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 const Relatorios = () => {
-  const [dateFilter, setDateFilter] = useState<string>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   
-  // Get current date for filtering
-  const currentDate = new Date();
-  const currentMonth = currentDate.getMonth();
-  const currentYear = currentDate.getFullYear();
+  const [filters, setFilters] = useState<ReportFilters>({
+    type: 'all',
+    dateFrom: undefined,
+    dateTo: undefined,
+    category: undefined,
+    eventId: undefined,
+    clientId: undefined
+  });
 
-  // Filter transactions based on date filter
-  const filteredTransactions = useMemo(() => {
-    let filtered = [...mockTransactions];
+  // Mock data for events and clients - replace with actual service calls
+  const mockEvents: Event[] = [];
+  const mockClients: Client[] = [];
+
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true);
+      console.log('Relatorios - Fetching transactions...');
+      const transactionsData = await TransactionService.getAll();
+      console.log('Relatorios - Transactions data:', transactionsData);
+      setAllTransactions(transactionsData);
+      setFilteredTransactions(transactionsData);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os dados para os relatórios.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  // Apply filters to transactions
+  const applyFilters = (newFilters: ReportFilters) => {
+    let filtered = [...allTransactions];
     
-    if (dateFilter === 'thisMonth') {
-      filtered = filtered.filter(t => {
-        const transactionDate = new Date(t.date);
-        return transactionDate.getMonth() === currentMonth && 
-               transactionDate.getFullYear() === currentYear;
-      });
-    } else if (dateFilter === 'lastMonth') {
-      const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-      const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-      filtered = filtered.filter(t => {
-        const transactionDate = new Date(t.date);
-        return transactionDate.getMonth() === lastMonth && 
-               transactionDate.getFullYear() === lastMonthYear;
-      });
-    } else if (dateFilter === 'thisYear') {
-      filtered = filtered.filter(t => {
-        const transactionDate = new Date(t.date);
-        return transactionDate.getFullYear() === currentYear;
-      });
+    if (newFilters.type && newFilters.type !== 'all') {
+      filtered = filtered.filter(t => t.type === newFilters.type);
     }
     
-    if (categoryFilter !== 'all') {
-      filtered = filtered.filter(t => t.category === categoryFilter);
+    if (newFilters.dateFrom) {
+      filtered = filtered.filter(t => new Date(t.date) >= newFilters.dateFrom!);
     }
     
-    return filtered;
-  }, [dateFilter, categoryFilter, currentMonth, currentYear]);
+    if (newFilters.dateTo) {
+      filtered = filtered.filter(t => new Date(t.date) <= newFilters.dateTo!);
+    }
+    
+    if (newFilters.category) {
+      filtered = filtered.filter(t => 
+        t.category.toLowerCase().includes(newFilters.category!.toLowerCase())
+      );
+    }
+    
+    if (newFilters.eventId) {
+      filtered = filtered.filter(t => t.eventId === newFilters.eventId);
+    }
+    
+    if (newFilters.clientId) {
+      filtered = filtered.filter(t => t.clientId === newFilters.clientId);
+    }
+    
+    setFilteredTransactions(filtered);
+    setFilters(newFilters);
+  };
 
-  // Calculate financial metrics
-  const financialMetrics = useMemo(() => {
-    const income = filteredTransactions
+  const clearFilters = () => {
+    const clearedFilters: ReportFilters = {
+      type: 'all',
+      dateFrom: undefined,
+      dateTo: undefined,
+      category: undefined,
+      eventId: undefined,
+      clientId: undefined
+    };
+    applyFilters(clearedFilters);
+  };
+
+  // Calculate summary metrics
+  const summaryMetrics = useMemo(() => {
+    const totalIncome = filteredTransactions
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
     
-    const expenses = filteredTransactions
+    const totalExpenses = filteredTransactions
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
     
-    const profit = income - expenses;
+    const netProfit = totalIncome - totalExpenses;
+    const profitMargin = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0;
     
-    return { income, expenses, profit };
+    return {
+      totalIncome,
+      totalExpenses,
+      netProfit,
+      profitMargin,
+      transactionCount: filteredTransactions.length
+    };
   }, [filteredTransactions]);
 
-  // Get unique categories for filter
-  const categories = useMemo(() => {
-    const uniqueCategories = Array.from(
-      new Set(mockTransactions.map(t => t.category))
-    );
-    return uniqueCategories;
-  }, []);
+  // Get available filter options
+  const availableCategories = useMemo(() => 
+    Array.from(new Set(allTransactions.map(t => t.category))), 
+    [allTransactions]
+  );
 
-  // Event performance metrics
-  const eventMetrics = useMemo(() => {
-    const completedEvents = mockEvents.filter(e => e.status === 'completed');
-    const upcomingEvents = mockEvents.filter(e => e.status === 'upcoming');
-    const cancelledEvents = mockEvents.filter(e => e.status === 'cancelled');
-    
-    const totalRevenue = completedEvents.reduce((sum, e) => sum + (e.actualRevenue || 0), 0);
-    const totalExpenses = completedEvents.reduce((sum, e) => sum + (e.actualExpenses || 0), 0);
-    
-    return {
-      completed: completedEvents.length,
-      upcoming: upcomingEvents.length,
-      cancelled: cancelledEvents.length,
-      totalRevenue,
-      totalExpenses,
-      profit: totalRevenue - totalExpenses
-    };
-  }, []);
+  const availableEvents = useMemo(() => 
+    mockEvents.map(e => ({ id: e.id, title: e.title })), 
+    [mockEvents]
+  );
 
-  // Calculate actual client revenue from transactions
-  const clientMetrics = useMemo(() => {
-    // Calculate client revenues from transactions linked to events
-    const calculateClientRevenue = (clientName: string): number => {
-      // Find all events for this client
-      const clientEvents = mockEvents.filter(event => event.client === clientName);
+  const availableClients = useMemo(() => 
+    mockClients.map(c => ({ id: c.id, name: c.name })), 
+    [mockClients]
+  );
+
+  // Report generation functions
+  const generatePDFReport = async (templateId: string) => {
+    try {
+      setIsGenerating(true);
       
-      let totalRevenue = 0;
+      const reportData = prepareReportData(templateId);
+      ReportService.generatePDFReport(getReportType(templateId), reportData, filters);
       
-      // For each event, find related income transactions
-      clientEvents.forEach(event => {
-        const eventTransactions = mockTransactions.filter(
-          transaction => transaction.eventId === event.id && transaction.type === 'income'
-        );
-        
-        // Sum up transaction amounts
-        eventTransactions.forEach(transaction => {
-          totalRevenue += transaction.amount;
-        });
+      toast({
+        title: "Relatório gerado",
+        description: "O relatório PDF foi baixado com sucesso."
       });
+    } catch (error) {
+      console.error('Error generating PDF report:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível gerar o relatório PDF.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const generateExcelReport = async (templateId: string) => {
+    try {
+      setIsGenerating(true);
       
-      return totalRevenue;
-    };
+      const reportData = prepareReportData(templateId);
+      ReportService.generateExcelReport(getReportType(templateId), reportData, filters);
+      
+      toast({
+        title: "Relatório gerado",
+        description: "O relatório Excel foi baixado com sucesso."
+      });
+    } catch (error) {
+      console.error('Error generating Excel report:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível gerar o relatório Excel.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
-    // Update clients with actual calculated revenues
-    const clientsWithRevenue = mockClients.map(client => ({
-      ...client,
-      totalRevenue: calculateClientRevenue(client.name)
-    }));
-
-    const topClients = clientsWithRevenue
-      .sort((a, b) => b.totalRevenue - a.totalRevenue)
-      .slice(0, 5);
+  const prepareReportData = (templateId: string) => {
+    const reportType = getReportType(templateId);
     
-    const totalRevenue = clientsWithRevenue.reduce((sum, c) => sum + c.totalRevenue, 0);
-    
-    return {
-      total: clientsWithRevenue.length,
-      topClients,
-      totalRevenue,
-      allClients: clientsWithRevenue
-    };
-  }, []);
-
-  const exportReport = (reportType: string) => {
-    let reportContent = '';
-    
-    switch(reportType) {
-      case 'financeiro':
-        reportContent = generateFinancialReport();
-        break;
-      case 'eventos':
-        reportContent = generateEventsReport();
-        break;
-      case 'clientes':
-        reportContent = generateClientsReport();
-        break;
-      case 'completo':
-        reportContent = generateCompleteReport();
-        break;
+    switch (reportType) {
+      case 'financial':
+        return {
+          transactions: filteredTransactions,
+          summary: summaryMetrics
+        };
+      case 'client':
+        return {
+          clients: mockClients,
+          totalRevenue: summaryMetrics.totalIncome
+        };
+      case 'event':
+        return {
+          events: mockEvents,
+          summary: summaryMetrics
+        };
+      case 'tax':
+        const categorizedExpenses = filteredTransactions
+          .filter(t => t.type === 'expense')
+          .reduce((acc, t) => {
+            acc[t.category] = (acc[t.category] || 0) + t.amount;
+            return acc;
+          }, {} as { [key: string]: number });
+        
+        return {
+          categorizedExpenses,
+          totalDeductible: summaryMetrics.totalExpenses,
+          transactions: filteredTransactions.filter(t => t.type === 'expense')
+        };
+      case 'team':
+        return {
+          teamMembers: [], // Add team data when available
+          totalPaid: 0
+        };
       default:
-        reportContent = generateCompleteReport();
+        return { transactions: filteredTransactions, summary: summaryMetrics };
+    }
+  };
+
+  const getReportType = (templateId: string): string => {
+    if (templateId.includes('financial')) return 'financial';
+    if (templateId.includes('client')) return 'client';
+    if (templateId.includes('event')) return 'event';
+    if (templateId.includes('tax')) return 'tax';
+    if (templateId.includes('team')) return 'team';
+    return 'financial';
+  };
+
+  const handleDrillDown = (type: string, filter: any) => {
+    // Apply drill-down filters
+    const newFilters = { ...filters, ...filter };
+    applyFilters(newFilters);
+    
+    // Switch to appropriate tab
+    if (type === 'profit' || type === 'income' || type === 'expenses') {
+      setActiveTab('financial');
+    } else if (type === 'events') {
+      setActiveTab('events');
+    } else if (type === 'client') {
+      setActiveTab('clients');
     }
     
-    // Create and download the report
-    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+    toast({
+      title: "Filtro aplicado",
+      description: `Visualizando dados filtrados por ${type}.`
+    });
+  };
+
+  const handleExportSegment = (data: any, type: string) => {
+    // Export specific data segment
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `relatorio-${reportType}-${new Date().toISOString().split('T')[0]}.txt`;
+    link.download = `dados-${type}-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  };
-
-  const generateFinancialReport = () => {
-    let report = `RELATÓRIO FINANCEIRO\n`;
-    report += `Data de Geração: ${formatDate(new Date())}\n`;
-    report += `Período: ${dateFilter === 'all' ? 'Todos os períodos' : 
-                dateFilter === 'thisMonth' ? 'Este mês' :
-                dateFilter === 'lastMonth' ? 'Mês passado' : 'Este ano'}\n\n`;
     
-    report += `RESUMO FINANCEIRO:\n`;
-    report += `Receitas: ${formatCurrency(financialMetrics.income)}\n`;
-    report += `Despesas: ${formatCurrency(financialMetrics.expenses)}\n`;
-    report += `Lucro Líquido: ${formatCurrency(financialMetrics.profit)}\n`;
-    report += `Margem de Lucro: ${financialMetrics.income > 0 ? ((financialMetrics.profit / financialMetrics.income) * 100).toFixed(1) : 0}%\n\n`;
-    
-    report += `TRANSAÇÕES DETALHADAS:\n`;
-    filteredTransactions
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .forEach((transaction, index) => {
-        report += `${index + 1}. ${transaction.description}\n`;
-        report += `   Data: ${formatDate(transaction.date)}\n`;
-        report += `   Categoria: ${transaction.category}\n`;
-        report += `   Tipo: ${transaction.type === 'income' ? 'Receita' : 'Despesa'}\n`;
-        report += `   Valor: ${formatCurrency(transaction.amount)}\n`;
-        report += `   Status: ${transaction.status === 'paid' ? 'Pago' : 
-                     transaction.status === 'not_paid' ? 'Não Pago' : 'Cancelado'}\n`;
-        if (transaction.notes) {
-          report += `   Observações: ${transaction.notes}\n`;
-        }
-        report += `\n`;
-      });
-    
-    return report;
-  };
-
-  const generateEventsReport = () => {
-    let report = `RELATÓRIO DE EVENTOS\n`;
-    report += `Data de Geração: ${formatDate(new Date())}\n\n`;
-    
-    report += `RESUMO DE EVENTOS:\n`;
-    report += `Eventos Realizados: ${eventMetrics.completed}\n`;
-    report += `Eventos Futuros: ${eventMetrics.upcoming}\n`;
-    report += `Eventos Cancelados: ${eventMetrics.cancelled}\n`;
-    report += `Receita Total de Eventos: ${formatCurrency(eventMetrics.totalRevenue)}\n\n`;
-    
-    report += `DETALHES DOS EVENTOS:\n`;
-    mockEvents.forEach((event, index) => {
-      report += `${index + 1}. ${event.title}\n`;
-      report += `   Data: ${formatDate(event.date)}\n`;
-      report += `   Local: ${event.location}\n`;
-      report += `   Cliente: ${event.client}\n`;
-      report += `   Status: ${event.status === 'completed' ? 'Realizado' : 
-                   event.status === 'upcoming' ? 'Próximo' : 'Cancelado'}\n`;
-      report += `   Receita: ${formatCurrency(event.actualRevenue || event.estimatedRevenue)}\n`;
-      report += `   Despesas: ${formatCurrency(event.actualExpenses || event.estimatedExpenses)}\n`;
-      if (event.notes) {
-        report += `   Observações: ${event.notes}\n`;
-      }
-      report += `\n`;
+    toast({
+      title: "Dados exportados",
+      description: `Os dados de ${type} foram exportados com sucesso.`
     });
-    
-    return report;
   };
 
-  const generateClientsReport = () => {
-    let report = `RELATÓRIO DE CLIENTES\n`;
-    report += `Data de Geração: ${formatDate(new Date())}\n\n`;
-    
-    report += `RESUMO DE CLIENTES:\n`;
-    report += `Total de Clientes: ${clientMetrics.total}\n`;
-    report += `Receita Total: ${formatCurrency(clientMetrics.totalRevenue)}\n`;
-    report += `Ticket Médio: ${formatCurrency(clientMetrics.totalRevenue / clientMetrics.total)}\n\n`;
-    
-    report += `TOP 5 CLIENTES:\n`;
-    clientMetrics.topClients.forEach((client, index) => {
-      report += `${index + 1}. ${client.name} - ${formatCurrency(client.totalRevenue)}\n`;
-    });
-    report += `\n`;
-    
-    report += `TODOS OS CLIENTES:\n`;
-    clientMetrics.allClients.forEach((client, index) => {
-      report += `${index + 1}. ${client.name}\n`;
-      report += `   Contato: ${client.contact}\n`;
-      report += `   Email: ${client.email}\n`;
-      report += `   Receita Total: ${formatCurrency(client.totalRevenue)}\n`;
-      if (client.lastEvent) {
-        report += `   Último Evento: ${formatDate(client.lastEvent)}\n`;
-      }
-      if (client.notes) {
-        report += `   Observações: ${client.notes}\n`;
-      }
-      report += `\n`;
-    });
-    
-    return report;
-  };
-
-  const generateCompleteReport = () => {
-    let report = `RELATÓRIO COMPLETO DO SISTEMA\n`;
-    report += `Data de Geração: ${formatDate(new Date())}\n\n`;
-    
-    report += generateFinancialReport();
-    report += `\n${'='.repeat(50)}\n\n`;
-    report += generateEventsReport();
-    report += `\n${'='.repeat(50)}\n\n`;
-    report += generateClientsReport();
-    
-    return report;
-  };
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <p>Carregando dados dos relatórios...</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Relatórios Avançados</h1>
             <p className="text-muted-foreground">
-              Análises detalhadas e métricas de performance do seu negócio.
+              Dashboard interativo com relatórios profissionais e análises detalhadas.
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => exportReport('completo')}>
-              <Download className="h-4 w-4 mr-2" />
-              Exportar Relatório Completo
-            </Button>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex gap-4 items-center">
           <div className="flex items-center gap-2">
-            <CalendarIcon className="h-4 w-4" />
-            <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os períodos</SelectItem>
-                <SelectItem value="thisMonth">Este mês</SelectItem>
-                <SelectItem value="lastMonth">Mês passado</SelectItem>
-                <SelectItem value="thisYear">Este ano</SelectItem>
-              </SelectContent>
-            </Select>
+            {Object.values(filters).some(v => v !== undefined && v !== 'all' && v !== '') && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <Zap className="h-3 w-3" />
+                Filtros ativos
+              </Badge>
+            )}
           </div>
-          
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as categorias</SelectItem>
-              {categories.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {category}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
-        <Tabs defaultValue="financial" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="financial">Relatório Financeiro</TabsTrigger>
-            <TabsTrigger value="events">Relatório de Eventos</TabsTrigger>
-            <TabsTrigger value="clients">Relatório de Clientes</TabsTrigger>
+        {/* Summary Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Receitas</CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-500">
+                {formatCurrency(summaryMetrics.totalIncome)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {filteredTransactions.filter(t => t.type === 'income').length} transações
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Despesas</CardTitle>
+              <TrendingUp className="h-4 w-4 text-red-500 rotate-180" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-500">
+                {formatCurrency(summaryMetrics.totalExpenses)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {filteredTransactions.filter(t => t.type === 'expense').length} transações
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Lucro Líquido</CardTitle>
+              <BarChart3 className={`h-4 w-4 ${
+                summaryMetrics.netProfit >= 0 ? 'text-green-500' : 'text-red-500'
+              }`} />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${
+                summaryMetrics.netProfit >= 0 ? 'text-green-500' : 'text-red-500'
+              }`}>
+                {formatCurrency(summaryMetrics.netProfit)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Margem: {summaryMetrics.profitMargin.toFixed(1)}%
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Transações</CardTitle>
+              <PieChart className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {summaryMetrics.transactionCount}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {availableCategories.length} categorias
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Advanced Filters */}
+        <AdvancedReportFilters
+          filters={filters}
+          onFiltersChange={applyFilters}
+          onClearFilters={clearFilters}
+          availableCategories={availableCategories}
+          availableEvents={availableEvents}
+          availableClients={availableClients}
+        />
+
+        {/* Main Content Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid grid-cols-4">
+            <TabsTrigger value="dashboard">Dashboard Interativo</TabsTrigger>
+            <TabsTrigger value="financial">Relatórios Financeiros</TabsTrigger>
+            <TabsTrigger value="events">Relatórios de Eventos</TabsTrigger>
+            <TabsTrigger value="clients">Relatórios de Clientes</TabsTrigger>
           </TabsList>
 
-          {/* Financial Report */}
+          <TabsContent value="dashboard" className="space-y-4">
+            <InteractiveDashboard
+              transactions={filteredTransactions}
+              events={mockEvents}
+              clients={mockClients}
+              onDrillDown={handleDrillDown}
+              onExportSegment={handleExportSegment}
+            />
+          </TabsContent>
+
           <TabsContent value="financial" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Receitas</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-green-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-green-500">
-                    {formatCurrency(financialMetrics.income)}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {filteredTransactions.filter(t => t.type === 'income').length} transações
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Despesas</CardTitle>
-                  <TrendingDown className="h-4 w-4 text-red-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-red-500">
-                    {formatCurrency(financialMetrics.expenses)}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {filteredTransactions.filter(t => t.type === 'expense').length} transações
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Lucro Líquido</CardTitle>
-                  <DollarSign className={`h-4 w-4 ${financialMetrics.profit >= 0 ? 'text-green-500' : 'text-red-500'}`} />
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-2xl font-bold ${financialMetrics.profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {formatCurrency(financialMetrics.profit)}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Margem: {financialMetrics.income > 0 ? ((financialMetrics.profit / financialMetrics.income) * 100).toFixed(1) : 0}%
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Detailed Transaction List */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Transações Detalhadas</CardTitle>
-                <CardDescription>
-                  Lista completa das transações no período selecionado
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {filteredTransactions.length > 0 ? (
-                    filteredTransactions
-                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                      .map((transaction) => (
-                        <div key={transaction.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-medium">{transaction.description}</h4>
-                              <Badge variant="outline">{transaction.category}</Badge>
-                              {transaction.status && (
-                                <Badge 
-                                  variant={
-                                    transaction.status === 'paid' ? 'default' : 
-                                    transaction.status === 'not_paid' ? 'secondary' : 'destructive'
-                                  }
-                                >
-                                  {transaction.status === 'paid' ? 'Pago' : 
-                                   transaction.status === 'not_paid' ? 'Não Pago' : 'Cancelado'}
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {formatDate(transaction.date)}
-                              {transaction.notes && ` • ${transaction.notes}`}
-                            </p>
-                          </div>
-                          <div className={`text-lg font-semibold ${
-                            transaction.type === 'income' ? 'text-green-500' : 'text-red-500'
-                          }`}>
-                            {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                          </div>
-                        </div>
-                      ))
-                  ) : (
-                    <p className="text-center text-muted-foreground py-8">
-                      Nenhuma transação encontrada para o período selecionado.
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="flex justify-end">
-              <Button onClick={() => exportReport('financeiro')}>
-                <Download className="h-4 w-4 mr-2" />
-                Exportar Relatório Financeiro
-              </Button>
-            </div>
+            <ReportTemplateSelector
+              templates={ReportService.getReportTemplates().filter(t => t.type === 'financial')}
+              selectedTemplate={selectedTemplate}
+              onTemplateSelect={setSelectedTemplate}
+              onGeneratePDF={generatePDFReport}
+              onGenerateExcel={generateExcelReport}
+              isGenerating={isGenerating}
+            />
           </TabsContent>
 
-          {/* Events Report */}
           <TabsContent value="events" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Eventos Realizados</CardTitle>
-                  <Calendar className="h-4 w-4 text-green-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{eventMetrics.completed}</div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Eventos Futuros</CardTitle>
-                  <Calendar className="h-4 w-4 text-blue-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{eventMetrics.upcoming}</div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Eventos Cancelados</CardTitle>
-                  <Calendar className="h-4 w-4 text-red-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{eventMetrics.cancelled}</div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Receita de Eventos</CardTitle>
-                  <DollarSign className="h-4 w-4 text-green-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-green-500">
-                    {formatCurrency(eventMetrics.totalRevenue)}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Event Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Detalhes dos Eventos</CardTitle>
-                <CardDescription>
-                  Performance detalhada de cada evento
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {mockEvents.map((event) => (
-                    <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-medium">{event.title}</h4>
-                          <Badge 
-                            variant={
-                              event.status === 'completed' ? 'default' : 
-                              event.status === 'upcoming' ? 'secondary' : 'destructive'
-                            }
-                          >
-                            {event.status === 'completed' ? 'Realizado' : 
-                             event.status === 'upcoming' ? 'Próximo' : 'Cancelado'}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {formatDate(event.date)}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {event.location}
-                          </span>
-                          <span>Cliente: {event.client}</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-semibold text-green-500">
-                          {formatCurrency(event.actualRevenue || event.estimatedRevenue)}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          Despesas: {formatCurrency(event.actualExpenses || event.estimatedExpenses)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="flex justify-end">
-              <Button onClick={() => exportReport('eventos')}>
-                <Download className="h-4 w-4 mr-2" />
-                Exportar Relatório de Eventos
-              </Button>
-            </div>
+            <ReportTemplateSelector
+              templates={ReportService.getReportTemplates().filter(t => t.type === 'event')}
+              selectedTemplate={selectedTemplate}
+              onTemplateSelect={setSelectedTemplate}
+              onGeneratePDF={generatePDFReport}
+              onGenerateExcel={generateExcelReport}
+              isGenerating={isGenerating}
+            />
           </TabsContent>
 
-          {/* Clients Report */}
           <TabsContent value="clients" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total de Clientes</CardTitle>
-                  <Users className="h-4 w-4 text-blue-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{clientMetrics.total}</div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-                  <DollarSign className="h-4 w-4 text-green-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-green-500">
-                    {formatCurrency(clientMetrics.totalRevenue)}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
-                  <DollarSign className="h-4 w-4 text-blue-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {formatCurrency(clientMetrics.total > 0 ? clientMetrics.totalRevenue / clientMetrics.total : 0)}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Top Clients */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Top 5 Clientes</CardTitle>
-                <CardDescription>
-                  Clientes com maior receita gerada (baseado em transações)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {clientMetrics.topClients.map((client, index) => (
-                    <div key={client.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-bold">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <h4 className="font-medium">{client.name}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            Contato: {client.contact} • {client.email}
-                          </p>
-                          {client.lastEvent && (
-                            <p className="text-xs text-muted-foreground">
-                              Último evento: {formatDate(client.lastEvent)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-semibold text-green-500">
-                          {formatCurrency(client.totalRevenue)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* All Clients */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Todos os Clientes</CardTitle>
-                <CardDescription>
-                  Lista completa de clientes e suas receitas (calculadas a partir das transações)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {clientMetrics.allClients.map((client) => (
-                    <div key={client.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <h4 className="font-medium">{client.name}</h4>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          <p>Contato: {client.contact}</p>
-                          <p>Email: {client.email}</p>
-                          {client.phone && <p>Telefone: {client.phone}</p>}
-                          {client.lastEvent && (
-                            <p>Último evento: {formatDate(client.lastEvent)}</p>
-                          )}
-                          {client.notes && <p>Notas: {client.notes}</p>}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-semibold text-green-500">
-                          {formatCurrency(client.totalRevenue)}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {mockEvents.filter(e => e.client === client.name).length} eventos
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="flex justify-end">
-              <Button onClick={() => exportReport('clientes')}>
-                <Download className="h-4 w-4 mr-2" />
-                Exportar Relatório de Clientes
-              </Button>
-            </div>
+            <ReportTemplateSelector
+              templates={ReportService.getReportTemplates().filter(t => t.type === 'client')}
+              selectedTemplate={selectedTemplate}
+              onTemplateSelect={setSelectedTemplate}
+              onGeneratePDF={generatePDFReport}
+              onGenerateExcel={generateExcelReport}
+              isGenerating={isGenerating}
+            />
           </TabsContent>
         </Tabs>
       </div>
