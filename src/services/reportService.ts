@@ -215,9 +215,9 @@ export class ReportService {
     
     const clientData = clients.map((client: Client) => [
       client.name,
-      client.email,
-      client.contact,
-      formatCurrency(client.totalRevenue),
+      client.email || '',
+      client.contact || '',
+      formatCurrency(client.totalRevenue || 0),
       client.lastEvent ? formatDate(client.lastEvent) : 'N/A'
     ]);
     
@@ -245,11 +245,11 @@ export class ReportService {
     const eventData = events.map((event: Event) => [
       event.title,
       formatDate(event.date),
-      event.client,
+      event.client || '',
       event.status === 'completed' ? 'Realizado' : event.status === 'upcoming' ? 'Próximo' : 'Cancelado',
-      formatCurrency(event.actualRevenue || event.estimatedRevenue),
-      formatCurrency(event.actualExpenses || event.estimatedExpenses),
-      formatCurrency((event.actualRevenue || event.estimatedRevenue) - (event.actualExpenses || event.estimatedExpenses))
+      formatCurrency(event.actualRevenue || event.estimatedRevenue || 0),
+      formatCurrency(event.actualExpenses || event.estimatedExpenses || 0),
+      formatCurrency((event.actualRevenue || event.estimatedRevenue || 0) - (event.actualExpenses || event.estimatedExpenses || 0))
     ]);
     
     autoTable(doc, {
@@ -366,10 +366,10 @@ export class ReportService {
       ['Cliente', 'Email', 'Telefone', 'Contato', 'Receita Total', 'Último Evento', 'Observações'],
       ...clients.map((client: Client) => [
         client.name,
-        client.email,
+        client.email || '',
         client.phone || '',
-        client.contact,
-        client.totalRevenue,
+        client.contact || '',
+        client.totalRevenue || 0,
         client.lastEvent ? formatDate(client.lastEvent) : '',
         client.notes || ''
       ])
@@ -387,14 +387,14 @@ export class ReportService {
       ...events.map((event: Event) => [
         event.title,
         formatDate(event.date),
-        event.location,
-        event.client,
+        event.location || '',
+        event.client || '',
         event.status,
-        event.estimatedRevenue,
+        event.estimatedRevenue || 0,
         event.actualRevenue || '',
-        event.estimatedExpenses,
+        event.estimatedExpenses || 0,
         event.actualExpenses || '',
-        (event.actualRevenue || event.estimatedRevenue) - (event.actualExpenses || event.estimatedExpenses)
+        (event.actualRevenue || event.estimatedRevenue || 0) - (event.actualExpenses || event.estimatedExpenses || 0)
       ])
     ];
     
@@ -405,13 +405,18 @@ export class ReportService {
   private static addTaxExcelSheet(workbook: XLSX.WorkBook, data: any): void {
     const { categorizedExpenses, transactions } = data;
     
+    // Calculate total for percentage calculation
+    const total = Object.values(categorizedExpenses).reduce((sum: number, amount: unknown) => {
+      return sum + (typeof amount === 'number' ? amount : 0);
+    }, 0);
+    
     // Summary by category
     const categoryData = [
       ['Categoria', 'Valor Total', '% do Total'],
       ...Object.entries(categorizedExpenses).map(([category, amount]) => [
         category,
         amount,
-        ((amount as number) / Object.values(categorizedExpenses).reduce((a: number, b: number) => a + b, 0) * 100).toFixed(2)
+        total > 0 ? ((amount as number) / total * 100).toFixed(2) : '0'
       ])
     ];
     
