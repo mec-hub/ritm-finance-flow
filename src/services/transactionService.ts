@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Transaction } from '@/types';
 
@@ -26,11 +25,13 @@ export class TransactionService {
       eventId: transaction.event_id,
       clientId: transaction.client_id,
       teamMemberId: undefined,
-      teamPercentages: (transaction.team_assignments || []).map(assignment => ({
-        teamMemberId: assignment.team_member_id,
-        teamMemberName: assignment.team_member_name,
-        percentageValue: assignment.percentage_value
-      })),
+      teamPercentages: Array.isArray(transaction.team_assignments) 
+        ? transaction.team_assignments.map((assignment: any) => ({
+            teamMemberId: assignment.team_member_id,
+            teamMemberName: assignment.team_member_name,
+            percentageValue: assignment.percentage_value
+          }))
+        : [],
       notes: transaction.notes,
       percentageValue: undefined,
       status: transaction.status as 'paid' | 'not_paid' | 'canceled'
@@ -177,8 +178,8 @@ export class TransactionService {
     if (teamPercentages.length > 0) {
       const assignments = teamPercentages.map(tp => ({
         transaction_id: transactionId,
-        team_member_id: tp.team_member_id,
-        percentage_value: tp.percentage_value
+        team_member_id: tp.teamMemberId,
+        percentage_value: tp.percentageValue
       }));
 
       const { error } = await supabase

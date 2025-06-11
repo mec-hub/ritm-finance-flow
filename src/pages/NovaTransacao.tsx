@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
@@ -90,7 +91,7 @@ const NovaTransacao = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="container mx-auto px-4 py-6 space-y-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={() => navigate('/financas')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -294,7 +295,7 @@ const NovaTransacao = () => {
             </div>
           </div>
 
-          <div className="flex justify-end space-x-4">
+          <div className="flex justify-end space-x-4 pt-6">
             <Button type="button" variant="outline" onClick={() => navigate('/financas')}>
               Cancelar
             </Button>
