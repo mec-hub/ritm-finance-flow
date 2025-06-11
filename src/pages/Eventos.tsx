@@ -16,25 +16,25 @@ const Eventos = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        console.log('Eventos - Fetching events...');
-        const eventsData = await EventService.getAll();
-        console.log('Eventos - Events data:', eventsData);
-        setEvents(eventsData);
-      } catch (error) {
-        console.error('Error fetching events:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar os eventos.",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchEvents = async () => {
+    try {
+      console.log('Eventos - Fetching events...');
+      const eventsData = await EventService.getAll();
+      console.log('Eventos - Events data:', eventsData);
+      setEvents(eventsData);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os eventos.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchEvents();
   }, []);
 
@@ -77,7 +77,7 @@ const Eventos = () => {
           </TabsList>
           <TabsContent value="lista" className="mt-4">
             <div className="dashboard-card">
-              <EventsList events={events} />
+              <EventsList events={events} onEventUpdated={fetchEvents} />
             </div>
           </TabsContent>
           <TabsContent value="calendario" className="mt-4">

@@ -12,6 +12,7 @@ export class ClientService {
     const { data, error } = await supabase
       .from('clients')
       .select('*')
+      .eq('user_id', userData.user.id)
       .order('name', { ascending: true });
 
     if (error) {
@@ -80,7 +81,8 @@ export class ClientService {
     const { error } = await supabase
       .from('clients')
       .update(updateData)
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', userData.user.id);
 
     if (error) {
       console.error('ClientService.update error:', error);
@@ -97,7 +99,8 @@ export class ClientService {
     const { error } = await supabase
       .from('clients')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', userData.user.id);
 
     if (error) {
       console.error('ClientService.delete error:', error);
@@ -115,6 +118,7 @@ export class ClientService {
       .from('clients')
       .select('*')
       .eq('id', id)
+      .eq('user_id', userData.user.id)
       .single();
 
     if (error) {

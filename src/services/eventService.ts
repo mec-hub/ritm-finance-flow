@@ -15,6 +15,7 @@ export class EventService {
         *,
         clients (name)
       `)
+      .eq('user_id', userData.user.id)
       .order('date', { ascending: false });
 
     if (error) {

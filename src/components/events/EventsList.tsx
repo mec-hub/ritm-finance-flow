@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -29,13 +30,15 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { formatDate, formatCurrency } from '@/utils/formatters';
 import { Event } from '@/types';
+import { EventService } from '@/services/eventService';
 import { MoreHorizontal, Search, Eye, Trash2, Edit } from 'lucide-react';
 
 interface EventsListProps {
   events: Event[];
+  onEventUpdated?: () => void;
 }
 
-export function EventsList({ events: initialEvents }: EventsListProps) {
+export function EventsList({ events: initialEvents, onEventUpdated }: EventsListProps) {
   const [events, setEvents] = useState<Event[]>(initialEvents);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed' | 'cancelled'>('all');
@@ -70,23 +73,37 @@ export function EventsList({ events: initialEvents }: EventsListProps) {
     }
   };
   
-  const handleDelete = () => {
-    if (selectedEvent) {
-      // Filter out the event we want to delete
+  const handleDelete = async () => {
+    if (!selectedEvent) return;
+
+    try {
+      await EventService.delete(selectedEvent.id);
+      
+      // Update local state
       const updatedEvents = events.filter(event => event.id !== selectedEvent.id);
       setEvents(updatedEvents);
       
       // Close dialog
       setDeleteDialogOpen(false);
       
-      // Show toast notification
+      // Notify parent component
+      if (onEventUpdated) {
+        onEventUpdated();
+      }
+      
       toast({
         title: "Evento excluído",
         description: `O evento "${selectedEvent.title}" foi excluído com sucesso.`,
       });
       
-      // Clear selection
       setSelectedEvent(null);
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir o evento. Tente novamente.",
+        variant: "destructive"
+      });
     }
   };
   
@@ -96,8 +113,7 @@ export function EventsList({ events: initialEvents }: EventsListProps) {
   };
   
   const handleEdit = (event: Event) => {
-    // Navigate to edit page with event data
-    navigate(`/editar-evento/${event.id}`, { state: { eventData: event } });
+    navigate(`/editar-evento/${event.id}`);
   };
   
   return (
