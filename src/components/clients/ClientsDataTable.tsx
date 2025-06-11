@@ -77,7 +77,9 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
   });
 
   const handleEdit = (client: Client) => {
-    navigate(`/editar-cliente/${client.id}`);
+    console.log('ClientsDataTable - Edit client:', client);
+    // Fixed: Use the correct route path that matches App.tsx
+    navigate(`/clientes/editar/${client.id}`);
   };
 
   const handleDelete = async () => {
