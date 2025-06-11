@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Transaction } from '@/types';
-import { ArrowDownIcon, ArrowUpIcon, Check, X, Paperclip } from 'lucide-react';
+import { ArrowDownIcon, ArrowUpIcon, Check, X } from 'lucide-react';
 
 interface RecentTransactionsProps {
   transactions: Transaction[];
@@ -49,7 +49,6 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
               <TableHead>Data</TableHead>
               <TableHead>Descrição</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Anexos</TableHead>
               <TableHead className="text-right">Valor</TableHead>
             </TableRow>
           </TableHeader>
@@ -69,16 +68,6 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(transaction.status)}</TableCell>
-                  <TableCell>
-                    {transaction.attachments && transaction.attachments.length > 0 ? (
-                      <div className="flex items-center">
-                        <Paperclip className="h-4 w-4 mr-1 text-gray-400" />
-                        <span>{transaction.attachments.length}</span>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end space-x-1">
                       {transaction.type === 'income' ? (
@@ -97,7 +86,7 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-4">
+                <TableCell colSpan={4} className="text-center py-4">
                   Nenhuma transação encontrada.
                 </TableCell>
               </TableRow>

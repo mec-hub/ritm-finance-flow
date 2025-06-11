@@ -1,4 +1,3 @@
-
 export interface Transaction {
   id: string;
   amount: number;
@@ -14,10 +13,9 @@ export interface Transaction {
   clientId?: string;
   teamMemberId?: string; // For backward compatibility
   teamPercentages?: TeamPercentageAssignment[];
-  attachments?: string[];
   notes?: string;
   percentageValue?: number; // For backward compatibility
-  status?: 'paid' | 'not_paid' | 'canceled'; // New status field
+  status?: 'paid' | 'not_paid' | 'canceled';
   files?: File[]; // For temporary file storage during upload
 }
 

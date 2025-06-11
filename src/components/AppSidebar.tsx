@@ -1,144 +1,100 @@
 
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { 
-  ChartBar, 
-  Calendar, 
-  DollarSign, 
-  Users, 
-  Settings, 
-  FileText, 
-  BarChart4, 
-  ChevronLeft, 
-  ChevronRight
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Home, DollarSign, Calendar, Users, BarChart3, FileText, Settings } from "lucide-react"
+import { useNavigate, useLocation } from 'react-router-dom'
+
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarHeader,
+} from "@/components/ui/sidebar"
+import { UserProfile } from "@/components/UserProfile"
+
+// Menu items.
+const items = [
+  {
+    title: "Dashboard",
+    url: "/",
+    icon: Home,
+  },
+  {
+    title: "Finanças",
+    url: "/financas",
+    icon: DollarSign,
+  },
+  {
+    title: "Eventos",
+    url: "/eventos",
+    icon: Calendar,
+  },
+  {
+    title: "Clientes",
+    url: "/clientes",
+    icon: Users,
+  },
+  {
+    title: "Análises",
+    url: "/analises",
+    icon: BarChart3,
+  },
+  {
+    title: "Relatórios",
+    url: "/relatorios",
+    icon: FileText,
+  },
+  {
+    title: "Configurações",
+    url: "/configuracoes",
+    icon: Settings,
+  },
+]
 
 export function AppSidebar() {
-  const { pathname } = useLocation();
-  const [collapsed, setCollapsed] = useState(false);
-
-  const toggleSidebar = () => {
-    setCollapsed(!collapsed);
-  };
-
-  const menuItems = [
-    {
-      icon: ChartBar,
-      label: 'Dashboard',
-      path: '/',
-    },
-    {
-      icon: DollarSign,
-      label: 'Finanças',
-      path: '/financas',
-    },
-    {
-      icon: Calendar,
-      label: 'Eventos',
-      path: '/eventos',
-    },
-    {
-      icon: Users,
-      label: 'Clientes',
-      path: '/clientes',
-    },
-    {
-      icon: BarChart4,
-      label: 'Análises',
-      path: '/analises',
-    },
-    {
-      icon: FileText,
-      label: 'Relatórios',
-      path: '/relatorios',
-    },
-    {
-      icon: Settings,
-      label: 'Configurações',
-      path: '/configuracoes',
-    },
-  ];
+  const navigate = useNavigate()
+  const location = useLocation()
 
   return (
-    <div className={cn(
-      "h-full border-r border-border transition-all shrink-0",
-      collapsed ? "w-16" : "w-64"
-    )}>
-      <div className="h-full flex flex-col">
-        <div className="p-4 flex items-center justify-between border-b border-border">
-          <div className="flex items-center gap-2">
-            {!collapsed ? (
-              <div className="flex items-center gap-2">
-                <img 
-                  src="/lovable-uploads/3867e3d9-7903-46de-9705-af9db3e627d0.png" 
-                  alt="DJ Davizão Logo" 
-                  className="h-8 w-auto"
-                />
-                <span className="text-xl font-bold bg-gold-gradient bg-clip-text text-transparent">
-                  DJ Davizão
-                </span>
-              </div>
-            ) : (
-              <img 
-                src="/lovable-uploads/3867e3d9-7903-46de-9705-af9db3e627d0.png" 
-                alt="DJ Logo" 
-                className="h-8 w-auto mx-auto"
-              />
-            )}
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className={collapsed ? "ml-auto" : ""}
-          >
-            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-          </Button>
+    <Sidebar>
+      <SidebarHeader className="border-b border-sidebar-border p-4">
+        <div className="flex items-center space-x-2">
+          <div className="h-8 w-8 rounded-lg bg-gold-gradient" />
+          <span className="text-lg font-semibold">DJ Davizão</span>
         </div>
-
-        <div className="px-3 py-4 flex-1 overflow-y-auto">
-          <nav className="space-y-2">
-            {menuItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
-                  pathname === item.path
-                    ? "bg-gold-gradient text-black font-medium"
-                    : "text-foreground hover:bg-secondary"
-                )}
-              >
-                <item.icon size={20} />
-                {!collapsed && <span>{item.label}</span>}
-              </Link>
-            ))}
-          </nav>
-        </div>
-
-        <div className="p-4 border-t border-border">
-          <div className="flex items-center gap-3">
-            {!collapsed && (
-              <>
-                <div className="h-8 w-8 rounded-full bg-gold-gradient flex items-center justify-center">
-                  <span className="font-bold text-black">D</span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">DJ Davizão</p>
-                  <p className="text-xs text-muted-foreground">Administrador</p>
-                </div>
-              </>
-            )}
-            {collapsed && (
-              <div className="h-8 w-8 mx-auto rounded-full bg-gold-gradient flex items-center justify-center">
-                <span className="font-bold text-black">D</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {items.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton 
+                    asChild
+                    isActive={location.pathname === item.url}
+                  >
+                    <button 
+                      onClick={() => navigate(item.url)}
+                      className="flex items-center w-full"
+                    >
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </button>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter className="p-4 border-t border-sidebar-border">
+        <UserProfile />
+      </SidebarFooter>
+    </Sidebar>
+  )
 }

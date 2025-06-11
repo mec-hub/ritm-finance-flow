@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Transaction } from '@/types';
 
@@ -27,7 +26,7 @@ export class TransactionService {
       id: transaction.id,
       description: transaction.description,
       amount: transaction.amount,
-      date: new Date(transaction.date),
+      date: new Date(transaction.date + 'T00:00:00'), // Fix timezone issue
       category: transaction.category,
       subcategory: transaction.subcategory || '',
       type: transaction.type as 'income' | 'expense',
@@ -48,10 +47,18 @@ export class TransactionService {
       throw new Error('User not authenticated');
     }
 
+    // Format date to YYYY-MM-DD without timezone conversion
+    const formatDateForDB = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     const insertData = {
       description: transaction.description,
       amount: transaction.amount,
-      date: transaction.date.toISOString().split('T')[0],
+      date: formatDateForDB(transaction.date),
       category: transaction.category,
       subcategory: transaction.subcategory || null,
       type: transaction.type,
@@ -86,10 +93,18 @@ export class TransactionService {
       throw new Error('User not authenticated');
     }
 
+    // Format date to YYYY-MM-DD without timezone conversion
+    const formatDateForDB = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     const updateData: any = {};
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.amount !== undefined) updateData.amount = updates.amount;
-    if (updates.date !== undefined) updateData.date = updates.date.toISOString().split('T')[0];
+    if (updates.date !== undefined) updateData.date = formatDateForDB(updates.date);
     if (updates.category !== undefined) updateData.category = updates.category;
     if (updates.subcategory !== undefined) updateData.subcategory = updates.subcategory || null;
     if (updates.type !== undefined) updateData.type = updates.type;
@@ -159,7 +174,7 @@ export class TransactionService {
       id: data.id,
       description: data.description,
       amount: data.amount,
-      date: new Date(data.date),
+      date: new Date(data.date + 'T00:00:00'), // Fix timezone issue
       category: data.category,
       subcategory: data.subcategory || '',
       type: data.type as 'income' | 'expense',

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Event } from '@/types';
 
@@ -30,7 +29,7 @@ export class EventService {
     return data.map(event => ({
       id: event.id,
       title: event.title,
-      date: new Date(event.date),
+      date: new Date(event.date + 'T00:00:00'), // Fix timezone issue
       location: event.location || '',
       client: event.clients?.name || '',
       clientId: event.clients?.id || undefined,
@@ -76,7 +75,7 @@ export class EventService {
     return {
       id: data.id,
       title: data.title,
-      date: new Date(data.date),
+      date: new Date(data.date + 'T00:00:00'), // Fix timezone issue
       location: data.location || '',
       client: data.clients?.name || '',
       clientId: data.clients?.id || undefined,
@@ -95,9 +94,17 @@ export class EventService {
       throw new Error('User not authenticated');
     }
 
+    // Format date to YYYY-MM-DD without timezone conversion
+    const formatDateForDB = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     const insertData = {
       title: event.title,
-      date: event.date.toISOString().split('T')[0],
+      date: formatDateForDB(event.date),
       location: event.location || null,
       client_id: clientId || null,
       estimated_revenue: event.estimatedRevenue || 0,
@@ -135,11 +142,19 @@ export class EventService {
     console.log('EventService.update - Updates:', updates);
     console.log('EventService.update - Client ID:', clientId);
 
+    // Format date to YYYY-MM-DD without timezone conversion
+    const formatDateForDB = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     // Build update data object with proper database column names
     const updateData: any = {};
     
     if (updates.title !== undefined) updateData.title = updates.title;
-    if (updates.date !== undefined) updateData.date = updates.date.toISOString().split('T')[0];
+    if (updates.date !== undefined) updateData.date = formatDateForDB(updates.date);
     if (updates.location !== undefined) updateData.location = updates.location || null;
     if (clientId !== undefined) updateData.client_id = clientId || null;
     if (updates.estimatedRevenue !== undefined) updateData.estimated_revenue = updates.estimatedRevenue;
