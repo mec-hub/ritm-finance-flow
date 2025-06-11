@@ -4,10 +4,11 @@ import { Transaction } from '@/types';
 
 export class TransactionService {
   static async getAll(): Promise<Transaction[]> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) throw new Error('User not authenticated');
+
     const { data, error } = await supabase
-      .from('transactions')
-      .select('*')
-      .order('date', { ascending: false });
+      .rpc('get_transactions_with_team_data', { user_id_param: userData.user.id });
 
     if (error) throw error;
 
@@ -24,10 +25,10 @@ export class TransactionService {
       type: transaction.type as 'income' | 'expense',
       eventId: transaction.event_id,
       clientId: transaction.client_id,
-      teamMemberId: undefined, // Will be handled by team_transaction_assignments
-      teamPercentages: [], // Will be populated from team_transaction_assignments
+      teamMemberId: undefined,
+      teamPercentages: transaction.team_assignments || [],
       notes: transaction.notes,
-      percentageValue: undefined, // Legacy field
+      percentageValue: undefined,
       status: transaction.status as 'paid' | 'not_paid' | 'canceled'
     }));
   }
@@ -35,12 +36,29 @@ export class TransactionService {
   static async getById(id: string): Promise<Transaction | null> {
     const { data, error } = await supabase
       .from('transactions')
-      .select('*')
+      .select(`
+        *,
+        team_transaction_assignments (
+          id,
+          percentage_value,
+          team_member_id,
+          team_members (
+            id,
+            name
+          )
+        )
+      `)
       .eq('id', id)
       .single();
 
     if (error) throw error;
     if (!data) return null;
+
+    const teamPercentages = data.team_transaction_assignments?.map(assignment => ({
+      team_member_id: assignment.team_member_id,
+      team_member_name: assignment.team_members?.name || '',
+      percentage_value: assignment.percentage_value
+    })) || [];
 
     return {
       id: data.id,
@@ -56,7 +74,7 @@ export class TransactionService {
       eventId: data.event_id,
       clientId: data.client_id,
       teamMemberId: undefined,
-      teamPercentages: [],
+      teamPercentages,
       notes: data.notes,
       percentageValue: undefined,
       status: data.status as 'paid' | 'not_paid' | 'canceled'
@@ -89,6 +107,12 @@ export class TransactionService {
       .single();
 
     if (error) throw error;
+
+    // Handle team assignments if provided
+    if (transaction.teamPercentages && transaction.teamPercentages.length > 0) {
+      await this.updateTeamAssignments(data.id, transaction.teamPercentages);
+    }
+
     return { ...transaction, id: data.id };
   }
 
@@ -115,15 +139,50 @@ export class TransactionService {
       .eq('id', id);
 
     if (error) throw error;
+
+    // Handle team assignments update if provided
+    if (updates.teamPercentages !== undefined) {
+      await this.updateTeamAssignments(id, updates.teamPercentages);
+    }
   }
 
   static async delete(id: string): Promise<void> {
+    // First delete team assignments
+    await supabase
+      .from('team_transaction_assignments')
+      .delete()
+      .eq('transaction_id', id);
+
+    // Then delete the transaction
     const { error } = await supabase
       .from('transactions')
       .delete()
       .eq('id', id);
 
     if (error) throw error;
+  }
+
+  static async updateTeamAssignments(transactionId: string, teamPercentages: any[]): Promise<void> {
+    // Delete existing assignments
+    await supabase
+      .from('team_transaction_assignments')
+      .delete()
+      .eq('transaction_id', transactionId);
+
+    // Insert new assignments
+    if (teamPercentages.length > 0) {
+      const assignments = teamPercentages.map(tp => ({
+        transaction_id: transactionId,
+        team_member_id: tp.team_member_id,
+        percentage_value: tp.percentage_value
+      }));
+
+      const { error } = await supabase
+        .from('team_transaction_assignments')
+        .insert(assignments);
+
+      if (error) throw error;
+    }
   }
 
   static async getByFilters(filters: {
@@ -136,7 +195,18 @@ export class TransactionService {
   }): Promise<Transaction[]> {
     let query = supabase
       .from('transactions')
-      .select('*');
+      .select(`
+        *,
+        team_transaction_assignments (
+          id,
+          percentage_value,
+          team_member_id,
+          team_members (
+            id,
+            name
+          )
+        )
+      `);
 
     if (filters.category) {
       query = query.eq('category', filters.category);
@@ -161,24 +231,32 @@ export class TransactionService {
 
     if (error) throw error;
 
-    return data.map(transaction => ({
-      id: transaction.id,
-      amount: transaction.amount,
-      description: transaction.description,
-      date: new Date(transaction.date),
-      category: transaction.category,
-      subcategory: transaction.subcategory,
-      isRecurring: transaction.is_recurring || false,
-      recurrenceInterval: transaction.recurrence_interval,
-      recurrenceMonths: transaction.recurrence_months,
-      type: transaction.type as 'income' | 'expense',
-      eventId: transaction.event_id,
-      clientId: transaction.client_id,
-      teamMemberId: undefined,
-      teamPercentages: [],
-      notes: transaction.notes,
-      percentageValue: undefined,
-      status: transaction.status as 'paid' | 'not_paid' | 'canceled'
-    }));
+    return data.map(transaction => {
+      const teamPercentages = transaction.team_transaction_assignments?.map(assignment => ({
+        team_member_id: assignment.team_member_id,
+        team_member_name: assignment.team_members?.name || '',
+        percentage_value: assignment.percentage_value
+      })) || [];
+
+      return {
+        id: transaction.id,
+        amount: transaction.amount,
+        description: transaction.description,
+        date: new Date(transaction.date),
+        category: transaction.category,
+        subcategory: transaction.subcategory,
+        isRecurring: transaction.is_recurring || false,
+        recurrenceInterval: transaction.recurrence_interval,
+        recurrenceMonths: transaction.recurrence_months,
+        type: transaction.type as 'income' | 'expense',
+        eventId: transaction.event_id,
+        clientId: transaction.client_id,
+        teamMemberId: undefined,
+        teamPercentages,
+        notes: transaction.notes,
+        percentageValue: undefined,
+        status: transaction.status as 'paid' | 'not_paid' | 'canceled'
+      };
+    });
   }
 }

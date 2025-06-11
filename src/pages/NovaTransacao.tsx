@@ -1,450 +1,309 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
-import { Switch } from '@/components/ui/switch';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { TeamAssignmentManager } from '@/components/financas/TeamAssignmentManager';
+import { CalendarIcon, ArrowLeft } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
-import { CalendarIcon, ArrowLeft } from 'lucide-react';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
-import { toast } from '@/hooks/use-toast';
 import { TransactionService } from '@/services/transactionService';
-import { ClientService } from '@/services/clientService';
-import { EventService } from '@/services/eventService';
-import { Transaction, Client, Event } from '@/types';
-
-const formSchema = z.object({
-  description: z.string().min(1, 'Descrição é obrigatória'),
-  amount: z.coerce.number().positive('Valor deve ser positivo'),
-  date: z.date(),
-  category: z.string().min(1, 'Categoria é obrigatória'),
-  subcategory: z.string().optional(),
-  type: z.enum(['income', 'expense'], {
-    required_error: 'Selecione o tipo de transação',
-  }),
-  isRecurring: z.boolean().default(false),
-  recurrenceMonths: z.coerce.number().min(1).max(60).optional(),
-  notes: z.string().optional(),
-  clientId: z.string().optional(),
-  eventId: z.string().optional(),
-  status: z.enum(['paid', 'not_paid', 'canceled']).default('not_paid'),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+import { toast } from '@/hooks/use-toast';
+import { Transaction } from '@/types';
 
 const NovaTransacao = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      description: '',
-      amount: 0,
-      date: new Date(),
-      category: '',
-      subcategory: '',
-      type: 'income',
-      isRecurring: false,
-      recurrenceMonths: 1,
-      notes: '',
-      status: 'not_paid',
-      clientId: 'no_client',
-      eventId: 'no_event',
-    },
+  const [date, setDate] = useState<Date>(new Date());
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [teamAssignments, setTeamAssignments] = useState<any[]>([]);
+  
+  const [formData, setFormData] = useState({
+    description: '',
+    amount: '',
+    category: '',
+    subcategory: '',
+    type: 'expense' as 'income' | 'expense',
+    status: 'not_paid' as 'paid' | 'not_paid' | 'canceled',
+    notes: '',
+    recurrenceInterval: 'monthly' as 'weekly' | 'monthly' | 'quarterly' | 'yearly',
+    recurrenceMonths: 1,
+    eventId: '',
+    clientId: ''
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [clientsData, eventsData] = await Promise.all([
-          ClientService.getAll(),
-          EventService.getAll()
-        ]);
-        setClients(clientsData);
-        setEvents(eventsData);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar clientes e eventos.",
-          variant: "destructive"
-        });
-      }
-    };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
 
-    fetchData();
-  }, []);
-
-  const onSubmit = async (values: FormValues) => {
     try {
-      setLoading(true);
-      
-      const newTransaction: Omit<Transaction, 'id'> = {
-        description: values.description,
-        amount: values.amount,
-        date: values.date,
-        category: values.category,
-        subcategory: values.subcategory || undefined,
-        type: values.type,
-        isRecurring: values.isRecurring,
-        recurrenceInterval: values.isRecurring ? 'monthly' as const : undefined,
-        recurrenceMonths: values.isRecurring ? values.recurrenceMonths : undefined,
-        notes: values.notes || undefined,
-        clientId: values.clientId === 'no_client' ? undefined : values.clientId,
-        eventId: values.eventId === 'no_event' ? undefined : values.eventId,
-        status: values.status,
+      const transaction: Omit<Transaction, 'id'> = {
+        description: formData.description,
+        amount: parseFloat(formData.amount),
+        category: formData.category,
+        subcategory: formData.subcategory || undefined,
+        date: date,
+        type: formData.type,
+        status: formData.status,
+        notes: formData.notes || undefined,
+        isRecurring: isRecurring,
+        recurrenceInterval: isRecurring ? formData.recurrenceInterval : undefined,
+        recurrenceMonths: isRecurring ? formData.recurrenceMonths : undefined,
+        eventId: formData.eventId || undefined,
+        clientId: formData.clientId || undefined,
         teamMemberId: undefined,
-        teamPercentages: [],
+        teamPercentages: teamAssignments,
         percentageValue: undefined
       };
-      
-      await TransactionService.create(newTransaction);
+
+      await TransactionService.create(transaction);
       
       toast({
         title: "Transação criada",
-        description: "A transação foi criada com sucesso.",
+        description: "A transação foi criada com sucesso."
       });
       
       navigate('/financas');
     } catch (error) {
-      console.error("Error creating transaction:", error);
+      console.error('Error creating transaction:', error);
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao criar a transação.",
-        variant: "destructive",
+        description: "Não foi possível criar a transação.",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const categories = [
-    'Shows', 'Eventos', 'Publicidade', 'Equipamento', 'Transporte', 
-    'Alimentação', 'Hospedagem', 'Pessoal', 'Marketing', 'Outros'
-  ];
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <Button variant="ghost" onClick={() => navigate('/financas')} className="mr-4">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Nova Transação</h1>
-              <p className="text-muted-foreground">
-                Adicione uma nova receita ou despesa ao seu sistema financeiro.
-              </p>
-            </div>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" onClick={() => navigate('/financas')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Nova Transação</h1>
+            <p className="text-muted-foreground">
+              Adicione uma nova receita ou despesa ao sistema.
+            </p>
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Detalhes da Transação</CardTitle>
-            <CardDescription>
-              Preencha as informações da nova transação abaixo.
-            </CardDescription>
-          </CardHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Descrição</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Descrição da transação" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column - Basic Info */}
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Informações Básicas</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Descrição *</Label>
+                    <Input
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => handleInputChange('description', e.target.value)}
+                      placeholder="Ex: Pagamento DJ evento casamento"
+                      required
+                    />
+                  </div>
 
-                  <FormField
-                    control={form.control}
-                    name="amount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Valor (R$)</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="amount">Valor *</Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        step="0.01"
+                        value={formData.amount}
+                        onChange={(e) => handleInputChange('amount', e.target.value)}
+                        placeholder="0.00"
+                        required
+                      />
+                    </div>
 
-                  <FormField
-                    control={form.control}
-                    name="type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tipo</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o tipo" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="income">Receita</SelectItem>
-                            <SelectItem value="expense">Despesa</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <div className="space-y-2">
+                      <Label htmlFor="type">Tipo *</Label>
+                      <Select value={formData.type} onValueChange={(value) => handleInputChange('type', value)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="income">Receita</SelectItem>
+                          <SelectItem value="expense">Despesa</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="paid">Pago</SelectItem>
-                            <SelectItem value="not_paid">Não Pago</SelectItem>
-                            <SelectItem value="canceled">Cancelado</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="category">Categoria *</Label>
+                      <Input
+                        id="category"
+                        value={formData.category}
+                        onChange={(e) => handleInputChange('category', e.target.value)}
+                        placeholder="Ex: Eventos, Equipamentos"
+                        required
+                      />
+                    </div>
 
-                  <FormField
-                    control={form.control}
-                    name="date"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Data</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? (
-                                  format(field.value, "dd/MM/yyyy", { locale: ptBR })
-                                ) : (
-                                  <span>Selecione uma data</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              initialFocus
-                              locale={ptBR}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <div className="space-y-2">
+                      <Label htmlFor="subcategory">Subcategoria</Label>
+                      <Input
+                        id="subcategory"
+                        value={formData.subcategory}
+                        onChange={(e) => handleInputChange('subcategory', e.target.value)}
+                        placeholder="Ex: Casamentos, Som"
+                      />
+                    </div>
+                  </div>
 
-                  <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Categoria</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione uma categoria" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {categories.map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="subcategory"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Subcategoria (opcional)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Subcategoria" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="clientId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cliente (opcional)</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione um cliente" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="no_client">Nenhum cliente</SelectItem>
-                            {clients.map((client) => (
-                              <SelectItem key={client.id} value={client.id}>
-                                {client.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="eventId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Evento (opcional)</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione um evento" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="no_event">Nenhum evento</SelectItem>
-                            {events.map((event) => (
-                              <SelectItem key={event.id} value={event.id}>
-                                {event.title} ({format(new Date(event.date), "dd/MM/yyyy")})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="isRecurring"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">Transação Recorrente</FormLabel>
-                        <FormDescription>
-                          Esta é uma transação mensal recorrente?
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                {form.watch("isRecurring") && (
-                  <FormField
-                    control={form.control}
-                    name="recurrenceMonths"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Número de Meses</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            min="1" 
-                            max="60" 
-                            {...field} 
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Data *</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !date && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {date ? format(date, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar data"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={date}
+                            onSelect={(date) => date && setDate(date)}
+                            initialFocus
                           />
-                        </FormControl>
-                        <FormDescription>
-                          Por quantos meses esta transação mensal se repetirá
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
+                        </PopoverContent>
+                      </Popover>
+                    </div>
 
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Observações (opcional)</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Informações adicionais sobre a transação" 
-                          className="resize-none" 
-                          {...field} 
+                    <div className="space-y-2">
+                      <Label htmlFor="status">Status</Label>
+                      <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="paid">Pago</SelectItem>
+                          <SelectItem value="not_paid">Não Pago</SelectItem>
+                          <SelectItem value="canceled">Cancelado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Observações</Label>
+                    <Textarea
+                      id="notes"
+                      value={formData.notes}
+                      onChange={(e) => handleInputChange('notes', e.target.value)}
+                      placeholder="Informações adicionais sobre a transação..."
+                      rows={3}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Recurring Transaction Settings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Configurações de Recorrência</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="recurring"
+                      checked={isRecurring}
+                      onCheckedChange={setIsRecurring}
+                    />
+                    <Label htmlFor="recurring">Esta é uma transação recorrente</Label>
+                  </div>
+
+                  {isRecurring && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="recurrenceInterval">Intervalo</Label>
+                        <Select 
+                          value={formData.recurrenceInterval} 
+                          onValueChange={(value) => handleInputChange('recurrenceInterval', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="weekly">Semanal</SelectItem>
+                            <SelectItem value="monthly">Mensal</SelectItem>
+                            <SelectItem value="quarterly">Trimestral</SelectItem>
+                            <SelectItem value="yearly">Anual</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="recurrenceMonths">Repetições</Label>
+                        <Input
+                          id="recurrenceMonths"
+                          type="number"
+                          min="1"
+                          max="12"
+                          value={formData.recurrenceMonths}
+                          onChange={(e) => handleInputChange('recurrenceMonths', parseInt(e.target.value))}
+                          placeholder="1"
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                      </div>
+                    </div>
                   )}
-                />
+                </CardContent>
+              </Card>
+            </div>
 
-                <Button 
-                  type="submit" 
-                  className="w-full bg-gold-gradient text-black hover:brightness-110"
-                  disabled={loading}
-                >
-                  {loading ? 'Criando...' : 'Criar Transação'}
-                </Button>
-              </CardContent>
-            </form>
-          </Form>
-        </Card>
+            {/* Right Column - Team Assignment */}
+            <div className="space-y-6">
+              {formData.type === 'income' && (
+                <TeamAssignmentManager
+                  onAssignmentsChange={setTeamAssignments}
+                  transactionAmount={parseFloat(formData.amount) || 0}
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-4">
+            <Button type="button" variant="outline" onClick={() => navigate('/financas')}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Criando...' : 'Criar Transação'}
+            </Button>
+          </div>
+        </form>
       </div>
     </Layout>
   );
