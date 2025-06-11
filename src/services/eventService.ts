@@ -79,9 +79,13 @@ export class EventService {
       throw new Error('User not authenticated');
     }
 
-    console.log('EventService.update - Input params:', { id, updates, clientId });
+    console.log('EventService.update - Starting update for event:', id);
+    console.log('EventService.update - Updates:', updates);
+    console.log('EventService.update - Client ID:', clientId);
 
     const updateData: any = {};
+    
+    // Only include fields that are actually being updated
     if (updates.title !== undefined) updateData.title = updates.title;
     if (updates.date !== undefined) updateData.date = updates.date.toISOString().split('T')[0];
     if (updates.location !== undefined) updateData.location = updates.location || null;
@@ -93,20 +97,22 @@ export class EventService {
     if (updates.status !== undefined) updateData.status = updates.status;
     if (updates.notes !== undefined) updateData.notes = updates.notes || null;
 
-    console.log('EventService.update - Update data:', updateData);
+    console.log('EventService.update - Final update data:', updateData);
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('events')
       .update(updateData)
       .eq('id', id)
-      .eq('user_id', userData.user.id);
+      .eq('user_id', userData.user.id)
+      .select()
+      .single();
 
     if (error) {
       console.error('EventService.update error:', error);
       throw error;
     }
 
-    console.log('EventService.update - Success');
+    console.log('EventService.update - Update successful:', data);
   }
 
   static async delete(id: string): Promise<void> {
@@ -143,7 +149,7 @@ export class EventService {
       `)
       .eq('id', id)
       .eq('user_id', userData.user.id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('EventService.getById error:', error);
@@ -151,13 +157,13 @@ export class EventService {
     }
     
     if (!data) {
-      console.log('EventService.getById - No event found');
+      console.log('EventService.getById - No event found for id:', id);
       return null;
     }
 
     console.log('EventService.getById - Event found:', data);
 
-    return {
+    const result = {
       id: data.id,
       title: data.title,
       date: new Date(data.date),
@@ -171,5 +177,8 @@ export class EventService {
       status: data.status as 'upcoming' | 'completed' | 'cancelled',
       notes: data.notes || ''
     };
+
+    console.log('EventService.getById - Returning event:', result);
+    return result;
   }
 }

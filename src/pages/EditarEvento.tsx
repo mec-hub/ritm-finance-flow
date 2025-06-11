@@ -72,56 +72,66 @@ const EditarEvento = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (!id) {
-        console.error('No event ID provided');
+        console.error('EditarEvento - No event ID provided');
+        toast({
+          title: "Erro",
+          description: "ID do evento não fornecido",
+          variant: "destructive"
+        });
         navigate('/eventos');
         return;
       }
 
       try {
-        console.log('EditarEvento - Fetching data for event ID:', id);
+        console.log('EditarEvento - Starting data fetch for event ID:', id);
+        setLoading(true);
         
         const [eventData, clientsData] = await Promise.all([
           EventService.getById(id),
           ClientService.getAll()
         ]);
         
-        console.log('EditarEvento - Event data:', eventData);
-        console.log('EditarEvento - Clients data:', clientsData);
+        console.log('EditarEvento - Event data received:', eventData);
+        console.log('EditarEvento - Clients data received:', clientsData);
         
-        if (eventData) {
-          setEvent(eventData);
-          setClients(clientsData);
-          
-          // Use the clientId from the event data if available
-          const clientId = eventData.clientId || 'no_client';
-          console.log('EditarEvento - Using client ID:', clientId);
-          
-          form.reset({
-            title: eventData.title,
-            date: new Date(eventData.date),
-            location: eventData.location,
-            clientId: clientId,
-            estimatedRevenue: eventData.estimatedRevenue.toString(),
-            estimatedExpenses: eventData.estimatedExpenses.toString(),
-            actualRevenue: eventData.actualRevenue?.toString() || '',
-            actualExpenses: eventData.actualExpenses?.toString() || '',
-            status: eventData.status,
-            notes: eventData.notes || '',
-          });
-        } else {
-          console.error('Event not found');
+        if (!eventData) {
+          console.error('EditarEvento - Event not found');
           toast({
             title: "Erro",
             description: "Evento não encontrado",
             variant: "destructive"
           });
           navigate('/eventos');
+          return;
         }
+
+        setEvent(eventData);
+        setClients(clientsData);
+        
+        // Use the clientId from the event data, defaulting to 'no_client' if not present
+        const clientId = eventData.clientId || 'no_client';
+        console.log('EditarEvento - Setting form with client ID:', clientId);
+        
+        form.reset({
+          title: eventData.title,
+          date: new Date(eventData.date),
+          location: eventData.location,
+          clientId: clientId,
+          estimatedRevenue: eventData.estimatedRevenue.toString(),
+          estimatedExpenses: eventData.estimatedExpenses.toString(),
+          actualRevenue: eventData.actualRevenue?.toString() || '',
+          actualExpenses: eventData.actualExpenses?.toString() || '',
+          status: eventData.status,
+          notes: eventData.notes || '',
+        });
+
+        console.log('EditarEvento - Form reset completed');
+        
       } catch (error) {
-        console.error('Error fetching event:', error);
+        console.error('EditarEvento - Error fetching data:', error);
         toast({
           title: "Erro",
-          description: "Não foi possível carregar o evento.",
+          description: "Não foi possível carregar o evento. Tente novamente.",
           variant: "destructive"
         });
         navigate('/eventos');
@@ -134,17 +144,21 @@ const EditarEvento = () => {
   }, [id, navigate, form]);
 
   const onSubmit = async (data: EventFormData) => {
-    if (!id) return;
+    if (!id) {
+      console.error('EditarEvento - No event ID for update');
+      return;
+    }
     
     setIsLoading(true);
     
     try {
-      console.log('EditarEvento - Form data:', data);
+      console.log('EditarEvento - Starting update with form data:', data);
       
       // Handle the case where "no_client" is selected
       const clientId = data.clientId === 'no_client' ? undefined : data.clientId;
+      console.log('EditarEvento - Using client ID for update:', clientId);
       
-      await EventService.update(id, {
+      const updateData = {
         title: data.title,
         date: data.date,
         location: data.location,
@@ -154,7 +168,13 @@ const EditarEvento = () => {
         actualExpenses: data.actualExpenses ? parseFloat(data.actualExpenses) : undefined,
         status: data.status as 'upcoming' | 'completed' | 'cancelled',
         notes: data.notes,
-      }, clientId);
+      };
+
+      console.log('EditarEvento - Update data prepared:', updateData);
+      
+      await EventService.update(id, updateData, clientId);
+      
+      console.log('EditarEvento - Update successful');
       
       toast({
         title: "Evento atualizado",
@@ -163,7 +183,7 @@ const EditarEvento = () => {
       
       navigate('/eventos');
     } catch (error) {
-      console.error('Error updating event:', error);
+      console.error('EditarEvento - Error updating event:', error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o evento. Tente novamente.",
@@ -179,6 +199,16 @@ const EditarEvento = () => {
       <Layout>
         <div className="flex justify-center items-center h-64">
           <p>Carregando dados do evento...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!event) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <p>Evento não encontrado</p>
         </div>
       </Layout>
     );

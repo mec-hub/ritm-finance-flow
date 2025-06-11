@@ -69,9 +69,12 @@ export class ClientService {
       throw new Error('User not authenticated');
     }
 
-    console.log('ClientService.update - Input params:', { id, updates });
+    console.log('ClientService.update - Starting update for client:', id);
+    console.log('ClientService.update - Updates:', updates);
 
     const updateData: any = {};
+    
+    // Only include fields that are actually being updated
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.contact !== undefined) updateData.contact = updates.contact || null;
     if (updates.email !== undefined) updateData.email = updates.email || null;
@@ -80,20 +83,22 @@ export class ClientService {
     if (updates.lastEvent !== undefined) updateData.last_event = updates.lastEvent?.toISOString().split('T')[0] || null;
     if (updates.notes !== undefined) updateData.notes = updates.notes || null;
 
-    console.log('ClientService.update - Update data:', updateData);
+    console.log('ClientService.update - Final update data:', updateData);
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('clients')
       .update(updateData)
       .eq('id', id)
-      .eq('user_id', userData.user.id);
+      .eq('user_id', userData.user.id)
+      .select()
+      .single();
 
     if (error) {
       console.error('ClientService.update error:', error);
       throw error;
     }
 
-    console.log('ClientService.update - Success');
+    console.log('ClientService.update - Update successful:', data);
   }
 
   static async delete(id: string): Promise<void> {
@@ -127,7 +132,7 @@ export class ClientService {
       .select('*')
       .eq('id', id)
       .eq('user_id', userData.user.id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('ClientService.getById error:', error);
@@ -135,13 +140,13 @@ export class ClientService {
     }
     
     if (!data) {
-      console.log('ClientService.getById - No client found');
+      console.log('ClientService.getById - No client found for id:', id);
       return null;
     }
 
     console.log('ClientService.getById - Client found:', data);
 
-    return {
+    const result = {
       id: data.id,
       name: data.name,
       contact: data.contact || '',
@@ -151,5 +156,8 @@ export class ClientService {
       lastEvent: data.last_event ? new Date(data.last_event) : undefined,
       notes: data.notes || ''
     };
+
+    console.log('ClientService.getById - Returning client:', result);
+    return result;
   }
 }

@@ -47,32 +47,52 @@ const EditarCliente = () => {
 
   useEffect(() => {
     const fetchClient = async () => {
-      if (!id) return;
+      if (!id) {
+        console.error('EditarCliente - No client ID provided');
+        toast({
+          title: "Erro",
+          description: "ID do cliente não fornecido",
+          variant: "destructive"
+        });
+        navigate('/clientes');
+        return;
+      }
 
       try {
+        console.log('EditarCliente - Starting data fetch for client ID:', id);
+        setLoading(true);
+        
         const clientData = await ClientService.getById(id);
-        if (clientData) {
-          setClient(clientData);
-          form.reset({
-            name: clientData.name,
-            contact: clientData.contact,
-            email: clientData.email,
-            phone: clientData.phone,
-            notes: clientData.notes || '',
-          });
-        } else {
+        console.log('EditarCliente - Client data received:', clientData);
+        
+        if (!clientData) {
+          console.error('EditarCliente - Client not found');
           toast({
             title: "Erro",
             description: "Cliente não encontrado",
             variant: "destructive"
           });
           navigate('/clientes');
+          return;
         }
+
+        setClient(clientData);
+        
+        form.reset({
+          name: clientData.name,
+          contact: clientData.contact,
+          email: clientData.email,
+          phone: clientData.phone,
+          notes: clientData.notes || '',
+        });
+
+        console.log('EditarCliente - Form reset completed');
+        
       } catch (error) {
-        console.error('Error fetching client:', error);
+        console.error('EditarCliente - Error fetching client:', error);
         toast({
           title: "Erro",
-          description: "Não foi possível carregar o cliente.",
+          description: "Não foi possível carregar o cliente. Tente novamente.",
           variant: "destructive"
         });
         navigate('/clientes');
@@ -85,11 +105,16 @@ const EditarCliente = () => {
   }, [id, navigate, form]);
 
   const onSubmit = async (data: ClientFormData) => {
-    if (!id) return;
+    if (!id) {
+      console.error('EditarCliente - No client ID for update');
+      return;
+    }
     
     setIsLoading(true);
     
     try {
+      console.log('EditarCliente - Starting update with form data:', data);
+      
       await ClientService.update(id, {
         name: data.name,
         contact: data.contact,
@@ -98,6 +123,8 @@ const EditarCliente = () => {
         notes: data.notes,
       });
       
+      console.log('EditarCliente - Update successful');
+      
       toast({
         title: "Cliente atualizado",
         description: `${data.name} foi atualizado com sucesso!`,
@@ -105,7 +132,7 @@ const EditarCliente = () => {
       
       navigate('/clientes');
     } catch (error) {
-      console.error('Error updating client:', error);
+      console.error('EditarCliente - Error updating client:', error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o cliente. Tente novamente.",
@@ -121,6 +148,16 @@ const EditarCliente = () => {
       <Layout>
         <div className="flex justify-center items-center h-64">
           <p>Carregando dados do cliente...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!client) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <p>Cliente não encontrado</p>
         </div>
       </Layout>
     );
