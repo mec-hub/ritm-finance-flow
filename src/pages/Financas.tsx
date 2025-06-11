@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,6 @@ import { BudgetManager } from '@/components/financas/BudgetManager';
 import { FinancialSummary } from '@/components/financas/FinancialSummary';
 import { RecurringTransactions } from '@/components/financas/RecurringTransactions';
 import { TransactionFilters } from '@/components/financas/TransactionFilters';
-import { TeamEarningsDashboard } from '@/components/financas/TeamEarningsDashboard';
 import { Link } from 'react-router-dom';
 import { Filter, PlusCircle } from 'lucide-react';
 import { Transaction } from '@/types';
@@ -206,17 +206,17 @@ const Financas = () => {
         </div>
         
         <Tabs defaultValue="transactions" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-5 mb-6">
+          <TabsList className="grid grid-cols-4 mb-6">
             <TabsTrigger value="transactions">Transações</TabsTrigger>
             <TabsTrigger value="summary">Resumo Financeiro</TabsTrigger>
             <TabsTrigger value="recurring">Transações Recorrentes</TabsTrigger>
-            <TabsTrigger value="team">Ganhos da Equipe</TabsTrigger>
             <TabsTrigger value="budget">Orçamentos</TabsTrigger>
           </TabsList>
 
           <TabsContent value="transactions" className="space-y-4">
             <TransactionsList 
-              filters={filters} 
+              transactions={filteredTransactions} 
+              onTransactionDeleted={handleTransactionDeleted}
             />
           </TabsContent>
 
@@ -226,10 +226,6 @@ const Financas = () => {
 
           <TabsContent value="recurring" className="space-y-4">
             <RecurringTransactions transactions={filteredTransactions.filter(t => t.isRecurring)} />
-          </TabsContent>
-
-          <TabsContent value="team" className="space-y-4">
-            <TeamEarningsDashboard />
           </TabsContent>
 
           <TabsContent value="budget" className="space-y-4">

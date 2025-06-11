@@ -378,37 +378,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      calculate_team_member_earnings: {
-        Args: { member_id: string; start_date?: string; end_date?: string }
-        Returns: {
-          total_earnings: number
-          total_transactions: number
-          avg_percentage: number
-        }[]
-      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_role"]
-      }
-      get_transactions_with_team_data: {
-        Args: { user_id_param: string }
-        Returns: {
-          id: string
-          amount: number
-          description: string
-          date: string
-          category: string
-          subcategory: string
-          is_recurring: boolean
-          recurrence_interval: string
-          recurrence_months: number
-          type: string
-          event_id: string
-          client_id: string
-          notes: string
-          status: string
-          team_assignments: Json
-        }[]
       }
     }
     Enums: {
