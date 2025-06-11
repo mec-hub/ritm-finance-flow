@@ -1,365 +1,203 @@
-
-import { Transaction, Event, Client } from '@/types';
-import { formatCurrency, formatDate } from '@/utils/formatters';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { supabase } from '@/integrations/supabase/client';
 
-export interface ReportFilters {
-  dateFrom?: Date;
-  dateTo?: Date;
-  category?: string;
-  type?: 'income' | 'expense' | 'all';
-  eventId?: string;
-  clientId?: string;
+interface Transaction {
+  id: string;
+  date: string;
+  description: string;
+  category: string;
+  type: 'income' | 'expense';
+  amount: number;
+  status: 'paid' | 'pending' | 'not_paid';
+  notes?: string;
 }
 
-export interface ReportTemplate {
+interface Client {
   id: string;
   name: string;
-  description: string;
-  type: 'financial' | 'client' | 'event' | 'tax' | 'team';
-  fields: string[];
+  email?: string;
+  phone?: string;
+  contact?: string;
+  totalRevenue: number;
+  lastEvent?: string;
+  notes?: string;
 }
 
-export class ReportService {
-  private static getCompanyInfo() {
-    return {
-      name: 'Sua Empresa',
-      address: 'Endereço da Empresa',
-      phone: '(11) 99999-9999',
-      email: 'contato@empresa.com',
-      website: 'www.empresa.com'
-    };
-  }
+interface Event {
+  id: string;
+  title: string;
+  date: string;
+  location?: string;
+  client?: string;
+  status: string;
+  estimatedRevenue: number;
+  actualRevenue: number;
+  estimatedExpenses: number;
+  actualExpenses: number;
+}
 
-  static generatePDFReport(
-    reportType: string,
-    data: any,
-    filters: ReportFilters,
-    template?: ReportTemplate
-  ): void {
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString();
+};
+
+export class ReportService {
+  static async generatePDF(reportType: string, data: any, filters: any): Promise<void> {
     const doc = new jsPDF();
-    const company = this.getCompanyInfo();
-    
-    // Header with company info
-    doc.setFontSize(20);
-    doc.setTextColor(40, 40, 40);
-    doc.text(company.name, 20, 20);
-    
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(company.address, 20, 30);
-    doc.text(`${company.phone} | ${company.email}`, 20, 35);
-    
-    // Report title
-    doc.setFontSize(16);
-    doc.setTextColor(40, 40, 40);
-    const reportTitle = this.getReportTitle(reportType);
-    doc.text(reportTitle, 20, 50);
-    
-    // Date range
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    const dateRange = this.getDateRangeText(filters);
-    doc.text(dateRange, 20, 60);
-    doc.text(`Gerado em: ${formatDate(new Date())}`, 20, 65);
-    
-    // Line separator
-    doc.setLineWidth(0.5);
-    doc.line(20, 75, 190, 75);
-    
-    let yPosition = 85;
     
     switch (reportType) {
       case 'financial':
-        yPosition = this.addFinancialReportContent(doc, data, yPosition);
+        this.addFinancialTable(doc, data);
         break;
-      case 'client':
-        yPosition = this.addClientReportContent(doc, data, yPosition);
+      case 'clients':
+        this.addClientsTable(doc, data);
         break;
-      case 'event':
-        yPosition = this.addEventReportContent(doc, data, yPosition);
+      case 'events':
+        this.addEventsTable(doc, data);
         break;
       case 'tax':
-        yPosition = this.addTaxReportContent(doc, data, yPosition);
-        break;
-      case 'team':
-        yPosition = this.addTeamReportContent(doc, data, yPosition);
+        this.addTaxTable(doc, data);
         break;
     }
     
-    // Footer
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text(`Página ${i} de ${pageCount}`, 170, 285);
-      doc.text(company.website, 20, 285);
-    }
-    
-    doc.save(`relatorio-${reportType}-${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`${reportType}-report-${new Date().toISOString().split('T')[0]}.pdf`);
   }
 
-  static generateExcelReport(
-    reportType: string,
-    data: any,
-    filters: ReportFilters
-  ): void {
+  static async generateExcel(reportType: string, data: any, filters: any): Promise<void> {
     const workbook = XLSX.utils.book_new();
     
     switch (reportType) {
       case 'financial':
         this.addFinancialExcelSheet(workbook, data);
         break;
-      case 'client':
-        this.addClientExcelSheet(workbook, data);
+      case 'clients':
+        this.addClientsExcelSheet(workbook, data);
         break;
-      case 'event':
-        this.addEventExcelSheet(workbook, data);
+      case 'events':
+        this.addEventsExcelSheet(workbook, data);
         break;
       case 'tax':
         this.addTaxExcelSheet(workbook, data);
         break;
-      case 'team':
-        this.addTeamExcelSheet(workbook, data);
-        break;
     }
     
-    XLSX.writeFile(workbook, `relatorio-${reportType}-${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(workbook, `${reportType}-report-${new Date().toISOString().split('T')[0]}.xlsx`);
   }
 
-  private static getReportTitle(reportType: string): string {
-    const titles = {
-      financial: 'Relatório Financeiro',
-      client: 'Relatório de Clientes',
-      event: 'Relatório de Eventos',
-      tax: 'Relatório Fiscal',
-      team: 'Relatório de Equipe'
-    };
-    return titles[reportType as keyof typeof titles] || 'Relatório';
-  }
-
-  private static getDateRangeText(filters: ReportFilters): string {
-    if (filters.dateFrom && filters.dateTo) {
-      return `Período: ${formatDate(filters.dateFrom)} até ${formatDate(filters.dateTo)}`;
-    } else if (filters.dateFrom) {
-      return `A partir de: ${formatDate(filters.dateFrom)}`;
-    } else if (filters.dateTo) {
-      return `Até: ${formatDate(filters.dateTo)}`;
-    }
-    return 'Período: Todos os registros';
-  }
-
-  private static addFinancialReportContent(doc: jsPDF, data: any, yPosition: number): number {
+  private static addFinancialTable(doc: jsPDF, data: any): void {
     const { transactions, summary } = data;
     
-    // Summary section
-    doc.setFontSize(12);
-    doc.setTextColor(40, 40, 40);
-    doc.text('Resumo Financeiro', 20, yPosition);
-    yPosition += 10;
+    doc.text('Relatório Financeiro', 10, 10);
     
-    const summaryData = [
-      ['Receitas', formatCurrency(summary.totalIncome)],
-      ['Despesas', formatCurrency(summary.totalExpenses)],
-      ['Lucro Líquido', formatCurrency(summary.netProfit)],
-      ['Margem de Lucro', `${summary.profitMargin}%`]
-    ];
-    
-    autoTable(doc, {
-      startY: yPosition,
-      head: [['Métrica', 'Valor']],
-      body: summaryData,
-      theme: 'grid',
-      headStyles: { fillColor: [41, 128, 185] }
-    });
-    
-    yPosition = (doc as any).lastAutoTable.finalY + 20;
-    
-    // Transactions table
-    doc.setFontSize(12);
-    doc.text('Transações Detalhadas', 20, yPosition);
-    yPosition += 10;
-    
-    const transactionData = transactions.map((t: Transaction) => [
-      formatDate(t.date),
-      t.description,
-      t.category,
-      t.type === 'income' ? 'Receita' : 'Despesa',
-      formatCurrency(t.amount),
-      t.status === 'paid' ? 'Pago' : t.status === 'not_paid' ? 'Não Pago' : 'Cancelado'
+    const head = [['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Status']];
+    const body = transactions.map((transaction: Transaction) => [
+      this.formatDate(transaction.date),
+      transaction.description,
+      transaction.category,
+      transaction.type === 'income' ? 'Receita' : 'Despesa',
+      transaction.amount.toString(),
+      transaction.status === 'paid' ? 'Pago' : transaction.status === 'pending' ? 'Pendente' : 'Não pago'
     ]);
     
-    autoTable(doc, {
-      startY: yPosition,
-      head: [['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Status']],
-      body: transactionData,
-      theme: 'striped',
-      headStyles: { fillColor: [41, 128, 185] },
-      columnStyles: {
-        4: { halign: 'right' }
-      }
-    });
-    
-    return (doc as any).lastAutoTable.finalY + 10;
+    autoTable(doc, { head: head, body: body, startY: 20 });
   }
 
-  private static addClientReportContent(doc: jsPDF, data: any, yPosition: number): number {
-    const { clients, totalRevenue } = data;
+  private static addClientsTable(doc: jsPDF, data: any): void {
+    const { clients } = data;
     
-    doc.setFontSize(12);
-    doc.text(`Análise de Clientes - Receita Total: ${formatCurrency(totalRevenue)}`, 20, yPosition);
-    yPosition += 15;
+    doc.text('Relatório de Clientes', 10, 10);
     
-    const clientData = clients.map((client: Client) => [
+    const head = [['Cliente', 'Email', 'Telefone', 'Contato', 'Receita Total', 'Último Evento', 'Observações']];
+    const body = clients.map((client: Client) => [
       client.name,
       client.email || '',
+      client.phone || '',
       client.contact || '',
-      formatCurrency(client.totalRevenue || 0),
-      client.lastEvent ? formatDate(client.lastEvent) : 'N/A'
+      client.totalRevenue.toString(),
+      client.lastEvent ? this.formatDate(client.lastEvent) : '',
+      client.notes || ''
     ]);
     
-    autoTable(doc, {
-      startY: yPosition,
-      head: [['Cliente', 'Email', 'Contato', 'Receita Total', 'Último Evento']],
-      body: clientData,
-      theme: 'striped',
-      headStyles: { fillColor: [41, 128, 185] },
-      columnStyles: {
-        3: { halign: 'right' }
-      }
-    });
-    
-    return (doc as any).lastAutoTable.finalY + 10;
+    autoTable(doc, { head: head, body: body, startY: 20 });
   }
 
-  private static addEventReportContent(doc: jsPDF, data: any, yPosition: number): number {
-    const { events, summary } = data;
+  private static addEventsTable(doc: jsPDF, data: any): void {
+    const { events } = data;
     
-    doc.setFontSize(12);
-    doc.text('Análise de Performance de Eventos', 20, yPosition);
-    yPosition += 15;
+    doc.text('Relatório de Eventos', 10, 10);
     
-    const eventData = events.map((event: Event) => [
+    const head = [['Evento', 'Data', 'Local', 'Cliente', 'Status', 'Receita Estimada', 'Receita Real', 'Despesas Estimadas', 'Despesas Reais', 'Lucro']];
+    const body = events.map((event: Event) => [
       event.title,
-      formatDate(event.date),
+      this.formatDate(event.date),
+      event.location || '',
       event.client || '',
-      event.status === 'completed' ? 'Realizado' : event.status === 'upcoming' ? 'Próximo' : 'Cancelado',
-      formatCurrency(event.actualRevenue || event.estimatedRevenue || 0),
-      formatCurrency(event.actualExpenses || event.estimatedExpenses || 0),
-      formatCurrency((event.actualRevenue || event.estimatedRevenue || 0) - (event.actualExpenses || event.estimatedExpenses || 0))
+      event.status,
+      event.estimatedRevenue.toString(),
+      event.actualRevenue.toString(),
+      event.estimatedExpenses.toString(),
+      event.actualExpenses.toString(),
+      (event.actualRevenue - event.actualExpenses).toString()
     ]);
     
-    autoTable(doc, {
-      startY: yPosition,
-      head: [['Evento', 'Data', 'Cliente', 'Status', 'Receita', 'Despesas', 'Lucro']],
-      body: eventData,
-      theme: 'striped',
-      headStyles: { fillColor: [41, 128, 185] },
-      columnStyles: {
-        4: { halign: 'right' },
-        5: { halign: 'right' },
-        6: { halign: 'right' }
-      }
-    });
-    
-    return (doc as any).lastAutoTable.finalY + 10;
+    autoTable(doc, { head: head, body: body, startY: 20 });
   }
 
-  private static addTaxReportContent(doc: jsPDF, data: any, yPosition: number): number {
-    const { categorizedExpenses, totalDeductible } = data;
+  private static addTaxTable(doc: jsPDF, data: any): void {
+    const { categorizedExpenses, transactions } = data;
     
-    doc.setFontSize(12);
-    doc.text(`Relatório Fiscal - Total Dedutível: ${formatCurrency(totalDeductible)}`, 20, yPosition);
-    yPosition += 15;
+    doc.text('Relatório de Impostos', 10, 10);
     
-    const taxData = Object.entries(categorizedExpenses).map(([category, amount]) => [
+    // Calculate total for percentage calculation
+    const total = Object.values(categorizedExpenses).reduce((sum: number, amount: unknown) => {
+      return sum + (typeof amount === 'number' ? amount : 0);
+    }, 0);
+    
+    // Summary by category
+    const categoryHead = [['Categoria', 'Valor Total', 'Percentual']];
+    const categoryBody = Object.entries(categorizedExpenses).map(([category, amount]) => [
       category,
-      formatCurrency(amount as number),
-      `${(((amount as number) / totalDeductible) * 100).toFixed(1)}%`
+      typeof amount === 'number' ? amount.toString() : '0',
+      total > 0 ? (((typeof amount === 'number' ? amount : 0) / total) * 100).toFixed(2) + '%' : '0%'
     ]);
     
-    autoTable(doc, {
-      startY: yPosition,
-      head: [['Categoria', 'Valor', '% do Total']],
-      body: taxData,
-      theme: 'striped',
-      headStyles: { fillColor: [41, 128, 185] },
-      columnStyles: {
-        1: { halign: 'right' },
-        2: { halign: 'right' }
-      }
-    });
+    autoTable(doc, { head: categoryHead, body: categoryBody, startY: 20 });
     
-    return (doc as any).lastAutoTable.finalY + 10;
-  }
-
-  private static addTeamReportContent(doc: jsPDF, data: any, yPosition: number): number {
-    const { teamMembers, totalPaid } = data;
-    
-    doc.setFontSize(12);
-    doc.text(`Relatório de Equipe - Total Pago: ${formatCurrency(totalPaid)}`, 20, yPosition);
-    yPosition += 15;
-    
-    const teamData = teamMembers.map((member: any) => [
-      member.name,
-      member.role,
-      `${member.percentageShare}%`,
-      formatCurrency(member.totalPaid),
-      formatCurrency(member.pendingAmount)
+    // Detailed transactions
+    const transactionHead = [['Data', 'Descrição', 'Categoria', 'Valor', 'Observações']];
+    const transactionBody = transactions.map((transaction: Transaction) => [
+      this.formatDate(transaction.date),
+      transaction.description,
+      transaction.category,
+      transaction.amount.toString(),
+      transaction.notes || ''
     ]);
     
-    autoTable(doc, {
-      startY: yPosition,
-      head: [['Membro', 'Função', '% Participação', 'Total Pago', 'Pendente']],
-      body: teamData,
-      theme: 'striped',
-      headStyles: { fillColor: [41, 128, 185] },
-      columnStyles: {
-        3: { halign: 'right' },
-        4: { halign: 'right' }
-      }
-    });
-    
-    return (doc as any).lastAutoTable.finalY + 10;
+    autoTable(doc, { head: transactionHead, body: transactionBody, startY: doc.lastAutoTable.finalY + 10 });
   }
 
   private static addFinancialExcelSheet(workbook: XLSX.WorkBook, data: any): void {
     const { transactions, summary } = data;
     
-    // Summary sheet
-    const summaryData = [
-      ['Métrica', 'Valor'],
-      ['Receitas', summary.totalIncome],
-      ['Despesas', summary.totalExpenses],
-      ['Lucro Líquido', summary.netProfit],
-      ['Margem de Lucro (%)', summary.profitMargin]
-    ];
-    
-    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Resumo');
-    
-    // Transactions sheet
     const transactionData = [
-      ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Status', 'Observações'],
-      ...transactions.map((t: Transaction) => [
-        formatDate(t.date),
-        t.description,
-        t.category,
-        t.type === 'income' ? 'Receita' : 'Despesa',
-        t.amount,
-        t.status === 'paid' ? 'Pago' : t.status === 'not_paid' ? 'Não Pago' : 'Cancelado',
-        t.notes || ''
+      ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Status'],
+      ...transactions.map((transaction: Transaction) => [
+        this.formatDate(transaction.date),
+        transaction.description,
+        transaction.category,
+        transaction.type === 'income' ? 'Receita' : 'Despesa',
+        Number(transaction.amount) || 0,
+        transaction.status === 'paid' ? 'Pago' : transaction.status === 'pending' ? 'Pendente' : 'Não pago'
       ])
     ];
     
-    const transactionSheet = XLSX.utils.aoa_to_sheet(transactionData);
-    XLSX.utils.book_append_sheet(workbook, transactionSheet, 'Transações');
+    const ws = XLSX.utils.aoa_to_sheet(transactionData);
+    XLSX.utils.book_append_sheet(workbook, ws, 'Transações');
   }
 
-  private static addClientExcelSheet(workbook: XLSX.WorkBook, data: any): void {
+  private static addClientsExcelSheet(workbook: XLSX.WorkBook, data: any): void {
     const { clients } = data;
     
     const clientData = [
@@ -369,37 +207,37 @@ export class ReportService {
         client.email || '',
         client.phone || '',
         client.contact || '',
-        client.totalRevenue || 0,
-        client.lastEvent ? formatDate(client.lastEvent) : '',
+        Number(client.totalRevenue) || 0,
+        client.lastEvent ? this.formatDate(client.lastEvent) : '',
         client.notes || ''
       ])
     ];
     
-    const clientSheet = XLSX.utils.aoa_to_sheet(clientData);
-    XLSX.utils.book_append_sheet(workbook, clientSheet, 'Clientes');
+    const ws = XLSX.utils.aoa_to_sheet(clientData);
+    XLSX.utils.book_append_sheet(workbook, ws, 'Clientes');
   }
 
-  private static addEventExcelSheet(workbook: XLSX.WorkBook, data: any): void {
+  private static addEventsExcelSheet(workbook: XLSX.WorkBook, data: any): void {
     const { events } = data;
     
     const eventData = [
       ['Evento', 'Data', 'Local', 'Cliente', 'Status', 'Receita Estimada', 'Receita Real', 'Despesas Estimadas', 'Despesas Reais', 'Lucro'],
       ...events.map((event: Event) => [
         event.title,
-        formatDate(event.date),
+        this.formatDate(event.date),
         event.location || '',
         event.client || '',
         event.status,
-        event.estimatedRevenue || 0,
-        event.actualRevenue || '',
-        event.estimatedExpenses || 0,
-        event.actualExpenses || '',
-        (event.actualRevenue || event.estimatedRevenue || 0) - (event.actualExpenses || event.estimatedExpenses || 0)
+        Number(event.estimatedRevenue) || 0,
+        Number(event.actualRevenue) || 0,
+        Number(event.estimatedExpenses) || 0,
+        Number(event.actualExpenses) || 0,
+        (Number(event.actualRevenue) || Number(event.estimatedRevenue) || 0) - (Number(event.actualExpenses) || Number(event.estimatedExpenses) || 0)
       ])
     ];
     
-    const eventSheet = XLSX.utils.aoa_to_sheet(eventData);
-    XLSX.utils.book_append_sheet(workbook, eventSheet, 'Eventos');
+    const ws = XLSX.utils.aoa_to_sheet(eventData);
+    XLSX.utils.book_append_sheet(workbook, ws, 'Eventos');
   }
 
   private static addTaxExcelSheet(workbook: XLSX.WorkBook, data: any): void {
@@ -412,95 +250,35 @@ export class ReportService {
     
     // Summary by category
     const categoryData = [
-      ['Categoria', 'Valor Total', '% do Total'],
+      ['Categoria', 'Valor Total', 'Percentual'],
       ...Object.entries(categorizedExpenses).map(([category, amount]) => [
         category,
-        amount,
-        total > 0 ? ((amount as number) / total * 100).toFixed(2) : '0'
+        typeof amount === 'number' ? amount : 0,
+        total > 0 ? (((typeof amount === 'number' ? amount : 0) / total) * 100).toFixed(2) + '%' : '0%'
       ])
     ];
     
-    const categorySheet = XLSX.utils.aoa_to_sheet(categoryData);
-    XLSX.utils.book_append_sheet(workbook, categorySheet, 'Por Categoria');
+    const ws1 = XLSX.utils.aoa_to_sheet(categoryData);
+    XLSX.utils.book_append_sheet(workbook, ws1, 'Resumo por Categoria');
     
     // Detailed transactions
     const transactionData = [
-      ['Data', 'Descrição', 'Categoria', 'Valor', 'Status'],
-      ...transactions.filter((t: Transaction) => t.type === 'expense').map((t: Transaction) => [
-        formatDate(t.date),
-        t.description,
-        t.category,
-        t.amount,
-        t.status
+      ['Data', 'Descrição', 'Categoria', 'Valor', 'Observações'],
+      ...transactions.map((transaction: Transaction) => [
+        this.formatDate(transaction.date),
+        transaction.description,
+        transaction.category,
+        Number(transaction.amount) || 0,
+        transaction.notes || ''
       ])
     ];
     
-    const transactionSheet = XLSX.utils.aoa_to_sheet(transactionData);
-    XLSX.utils.book_append_sheet(workbook, transactionSheet, 'Despesas Detalhadas');
+    const ws2 = XLSX.utils.aoa_to_sheet(transactionData);
+    XLSX.utils.book_append_sheet(workbook, ws2, 'Transações Detalhadas');
   }
 
-  private static addTeamExcelSheet(workbook: XLSX.WorkBook, data: any): void {
-    const { teamMembers } = data;
-    
-    const teamData = [
-      ['Membro', 'Função', '% Participação', 'Total Pago', 'Valor Pendente'],
-      ...teamMembers.map((member: any) => [
-        member.name,
-        member.role,
-        member.percentageShare,
-        member.totalPaid,
-        member.pendingAmount
-      ])
-    ];
-    
-    const teamSheet = XLSX.utils.aoa_to_sheet(teamData);
-    XLSX.utils.book_append_sheet(workbook, teamSheet, 'Equipe');
-  }
-
-  static getReportTemplates(): ReportTemplate[] {
-    return [
-      {
-        id: 'financial-summary',
-        name: 'Resumo Financeiro',
-        description: 'Relatório com resumo de receitas, despesas e lucro',
-        type: 'financial',
-        fields: ['summary', 'transactions']
-      },
-      {
-        id: 'financial-detailed',
-        name: 'Financeiro Detalhado',
-        description: 'Relatório financeiro completo com todas as transações',
-        type: 'financial',
-        fields: ['summary', 'transactions', 'categories', 'trends']
-      },
-      {
-        id: 'client-performance',
-        name: 'Performance de Clientes',
-        description: 'Análise de receita por cliente e histórico',
-        type: 'client',
-        fields: ['revenue', 'events', 'timeline']
-      },
-      {
-        id: 'event-roi',
-        name: 'ROI de Eventos',
-        description: 'Análise de retorno sobre investimento por evento',
-        type: 'event',
-        fields: ['revenue', 'expenses', 'profit', 'comparison']
-      },
-      {
-        id: 'tax-preparation',
-        name: 'Preparação Fiscal',
-        description: 'Relatório de despesas categorizadas para declaração',
-        type: 'tax',
-        fields: ['deductible-expenses', 'categories', 'receipts']
-      },
-      {
-        id: 'team-compensation',
-        name: 'Compensação da Equipe',
-        description: 'Relatório de pagamentos e participações da equipe',
-        type: 'team',
-        fields: ['payments', 'percentages', 'pending']
-      }
-    ];
+  private static formatDate(dateString: string): string {
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
   }
 }

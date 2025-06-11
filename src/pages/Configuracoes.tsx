@@ -3,9 +3,9 @@ import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
-import { NewTeamSettings } from '@/components/settings/NewTeamSettings';
+import { EnhancedTeamSettings } from '@/components/settings/EnhancedTeamSettings';
 import { PreferencesSettings } from '@/components/settings/PreferencesSettings';
-import { NotificationSettings } from '@/components/settings/NotificationSettings';
+import { EnhancedNotificationSettings } from '@/components/settings/EnhancedNotificationSettings';
 import { SystemSettings } from '@/components/settings/SystemSettings';
 import { usePermissions } from '@/hooks/usePermissions';
 import { 
@@ -27,7 +27,7 @@ const Configuracoes = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
             <p className="text-muted-foreground">
-              Gerencie as configurações da sua conta e preferências do sistema.
+              Gerencie as configurações da sua conta, equipe e preferências do sistema.
             </p>
           </div>
         </div>
@@ -66,7 +66,7 @@ const Configuracoes = () => {
 
           {permissions.canManageTeam && (
             <TabsContent value="team">
-              <NewTeamSettings />
+              <EnhancedTeamSettings />
             </TabsContent>
           )}
 
@@ -75,7 +75,7 @@ const Configuracoes = () => {
           </TabsContent>
 
           <TabsContent value="notifications">
-            <NotificationSettings />
+            <EnhancedNotificationSettings />
           </TabsContent>
 
           {permissions.canManageSettings && (
