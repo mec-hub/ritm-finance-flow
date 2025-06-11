@@ -1,80 +1,43 @@
 
 import { useState } from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowDownIcon, ArrowUpIcon, MoreVertical, Edit, Trash2, Eye, Check, X, Paperclip } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/utils/formatters';
-import { Transaction } from '@/types';
-import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { TransactionService } from '@/services/transactionService';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Transaction } from '@/types';
+import { formatCurrency } from '@/utils/formatters';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Eye, Edit, Trash2, Filter, Search, Calendar, ArrowUpDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { TransactionService } from '@/services/transactionService';
+import { toast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface TransactionsListProps {
   transactions: Transaction[];
-  onTransactionDeleted?: () => void;
+  onTransactionDeleted: () => void;
 }
 
 export function TransactionsList({ transactions, onTransactionDeleted }: TransactionsListProps) {
-  const [page, setPage] = useState(1);
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(transactions.length / itemsPerPage);
-  
-  const startIndex = (page - 1) * itemsPerPage;
-  const paginatedTransactions = transactions
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(startIndex, startIndex + itemsPerPage);
-  
-  const handlePrevious = () => {
-    setPage(p => Math.max(1, p - 1));
-  };
-  
-  const handleNext = () => {
-    setPage(p => Math.min(totalPages, p + 1));
-  };
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [sortField, setSortField] = useState<'date' | 'amount' | 'description'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
-    setIsDeleting(true);
     try {
+      setDeletingId(id);
       await TransactionService.delete(id);
       toast({
         title: "Transação excluída",
         description: "A transação foi excluída com sucesso."
       });
-      if (onTransactionDeleted) {
-        onTransactionDeleted();
-      }
+      onTransactionDeleted();
     } catch (error) {
       console.error('Error deleting transaction:', error);
       toast({
@@ -83,293 +46,253 @@ export function TransactionsList({ transactions, onTransactionDeleted }: Transac
         variant: "destructive"
       });
     } finally {
-      setIsDeleting(false);
+      setDeletingId(null);
     }
   };
 
-  const getStatusBadge = (status?: string) => {
-    if (!status) return null;
+  // Filter and search transactions
+  const filteredTransactions = transactions.filter(transaction => {
+    const matchesSearch = 
+      transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      transaction.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (transaction.notes?.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesStatus = statusFilter === 'all' || transaction.status === statusFilter;
+    const matchesType = typeFilter === 'all' || transaction.type === typeFilter;
+
+    return matchesSearch && matchesStatus && matchesType;
+  });
+
+  // Sort transactions
+  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
+    let comparison = 0;
     
-    switch(status) {
-      case 'paid':
-        return <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20"><Check className="h-3 w-3 mr-1" /> Pago</Badge>;
-      case 'not_paid':
-        return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">Não Pago</Badge>;
-      case 'canceled':
-        return <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20"><X className="h-3 w-3 mr-1" /> Cancelado</Badge>;
-      default:
-        return null;
+    switch (sortField) {
+      case 'date':
+        comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+        break;
+      case 'amount':
+        comparison = a.amount - b.amount;
+        break;
+      case 'description':
+        comparison = a.description.localeCompare(b.description);
+        break;
+    }
+    
+    return sortOrder === 'asc' ? comparison : -comparison;
+  });
+
+  const handleSort = (field: 'date' | 'amount' | 'description') => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
     }
   };
 
-  const getAttachmentCount = (attachments?: string[]) => {
-    if (!attachments || attachments.length === 0) return null;
+  if (transactions.length === 0) {
     return (
-      <div className="flex items-center">
-        <Paperclip className="h-4 w-4 mr-1 text-gray-500" />
-        <span className="text-gray-600">{attachments.length}</span>
-      </div>
-    );
-  };
-
-  const closeDialog = () => {
-    setSelectedTransaction(null);
-  };
-
-  return (
-    <>
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Transações</CardTitle>
+          <CardTitle>Transações</CardTitle>
+          <CardDescription>Seus lançamentos financeiros aparecerão aqui</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Anexos</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead className="w-[80px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedTransactions.length > 0 ? (
-                  paginatedTransactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell>{formatDate(transaction.date)}</TableCell>
-                      <TableCell className="font-medium">
-                        {transaction.description}
-                        {transaction.isRecurring && (
-                          <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">
-                            Recorrente
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>{transaction.category}</TableCell>
-                      <TableCell>
-                        {transaction.type === 'income' ? (
-                          <div className="flex items-center">
-                            <ArrowUpIcon className="h-4 w-4 text-green-500 mr-1" />
-                            <span>Receita</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center">
-                            <ArrowDownIcon className="h-4 w-4 text-red-500 mr-1" />
-                            <span>Despesa</span>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(transaction.status) || <Badge variant="outline">Não Definido</Badge>}
-                      </TableCell>
-                      <TableCell>
-                        {getAttachmentCount(transaction.attachments)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span
-                          className={
-                            transaction.type === 'income' ? 'text-green-500 font-medium' : 'text-red-500 font-medium'
-                          }
-                        >
-                          {formatCurrency(transaction.amount)}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Abrir menu</span>
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem>
-                              <Button 
-                                variant="ghost" 
-                                className="w-full justify-start"
-                                onClick={() => setSelectedTransaction(transaction)}
-                              >
-                                <Eye className="h-4 w-4 mr-2" />
-                                <span>Ver Detalhes</span>
-                              </Button>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link to={`/financas/editar/${transaction.id}`} className="flex items-center w-full">
-                                <Edit className="h-4 w-4 mr-2" />
-                                <span>Editar</span>
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Button 
-                                variant="ghost" 
-                                className="w-full justify-start text-red-500 hover:text-red-500" 
-                                onClick={() => handleDelete(transaction.id)}
-                                disabled={isDeleting}
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                <span>{isDeleting ? 'Excluindo...' : 'Excluir'}</span>
-                              </Button>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-4">
-                      Nenhuma transação encontrada.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+          <div className="text-center py-6">
+            <Calendar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold">Nenhuma transação encontrada</h3>
+            <p className="text-muted-foreground">
+              Comece criando sua primeira transação financeira.
+            </p>
           </div>
-
-          {totalPages > 1 && (
-            <div className="flex items-center justify-end space-x-2 py-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrevious}
-                disabled={page === 1}
-              >
-                Anterior
-              </Button>
-              <div className="text-sm">
-                Página {page} de {totalPages}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNext}
-                disabled={page === totalPages}
-              >
-                Próximo
-              </Button>
-            </div>
-          )}
         </CardContent>
       </Card>
+    );
+  }
 
-      {/* Transaction Details Dialog */}
-      <Dialog open={!!selectedTransaction} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent className="sm:max-w-[625px]">
-          <DialogHeader>
-            <DialogTitle>Detalhes da Transação</DialogTitle>
-            <DialogDescription>
-              Informações detalhadas sobre a transação.
-            </DialogDescription>
-          </DialogHeader>
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Lista de Transações</CardTitle>
+        <CardDescription>
+          Visualize e gerencie todas as suas transações financeiras
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {/* Filters and Search */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por descrição, categoria ou notas..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
           
-          {selectedTransaction && (
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="text-sm font-medium">Descrição</h3>
-                  <p>{selectedTransaction.description}</p>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium">Valor</h3>
-                  <p className={selectedTransaction.type === 'income' ? 'text-green-500 font-medium' : 'text-red-500 font-medium'}>
-                    {formatCurrency(selectedTransaction.amount)}
-                  </p>
-                </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os tipos</SelectItem>
+              <SelectItem value="income">Receitas</SelectItem>
+              <SelectItem value="expense">Despesas</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos status</SelectItem>
+              <SelectItem value="paid">Pago</SelectItem>
+              <SelectItem value="not_paid">Não pago</SelectItem>
+              <SelectItem value="canceled">Cancelado</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-                <div>
-                  <h3 className="text-sm font-medium">Data</h3>
-                  <p>{formatDate(selectedTransaction.date)}</p>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium">Categoria</h3>
-                  <p>{selectedTransaction.category}{selectedTransaction.subcategory ? ` / ${selectedTransaction.subcategory}` : ''}</p>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium">Tipo</h3>
-                  <p className="flex items-center">
-                    {selectedTransaction.type === 'income' ? (
-                      <>
-                        <ArrowUpIcon className="h-4 w-4 text-green-500 mr-1" />
-                        <span>Receita</span>
-                      </>
-                    ) : (
-                      <>
-                        <ArrowDownIcon className="h-4 w-4 text-red-500 mr-1" />
-                        <span>Despesa</span>
-                      </>
-                    )}
-                  </p>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium">Status</h3>
-                  <p>{getStatusBadge(selectedTransaction.status) || 'Não definido'}</p>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium">Recorrência</h3>
-                  {selectedTransaction.isRecurring ? (
-                    <p>
-                      Mensal
-                      {selectedTransaction.recurrenceMonths && ` (${selectedTransaction.recurrenceMonths} meses)`}
-                    </p>
-                  ) : (
-                    <p>Não recorrente</p>
-                  )}
-                </div>
-                
-                {selectedTransaction.notes && (
-                  <div className="col-span-2">
-                    <h3 className="text-sm font-medium">Observações</h3>
-                    <p>{selectedTransaction.notes}</p>
-                  </div>
-                )}
-                
-                {selectedTransaction.attachments && selectedTransaction.attachments.length > 0 && (
-                  <div className="col-span-2">
-                    <h3 className="text-sm font-medium">Anexos</h3>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {selectedTransaction.attachments.map((attachment, index) => (
-                        <div key={index} className="border p-2 rounded">
-                          <a href={attachment} target="_blank" rel="noopener noreferrer" className="flex items-center text-blue-500 hover:underline">
-                            Anexo {index + 1}
-                          </a>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>
+                  <Button variant="ghost" onClick={() => handleSort('description')} className="p-0 h-auto">
+                    Descrição
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
+                <TableHead>Categoria</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>
+                  <Button variant="ghost" onClick={() => handleSort('amount')} className="p-0 h-auto">
+                    Valor
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
+                <TableHead>
+                  <Button variant="ghost" onClick={() => handleSort('date')} className="p-0 h-auto">
+                    Data
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Recorrente</TableHead>
+                <TableHead>Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedTransactions.map((transaction) => (
+                <TableRow key={transaction.id}>
+                  <TableCell className="font-medium">
+                    <div>
+                      <div>{transaction.description}</div>
+                      {transaction.notes && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {transaction.notes.substring(0, 50)}
+                          {transaction.notes.length > 50 && '...'}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          
-          <DialogFooter>
-            {selectedTransaction && (
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={closeDialog}>
-                  Fechar
-                </Button>
-                <Button asChild>
-                  <Link to={`/financas/editar/${selectedTransaction.id}`}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Editar
-                  </Link>
-                </Button>
-              </div>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <div>{transaction.category}</div>
+                      {transaction.subcategory && (
+                        <div className="text-xs text-muted-foreground">
+                          {transaction.subcategory}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={transaction.type === 'income' ? 'default' : 'destructive'}>
+                      {transaction.type === 'income' ? 'Receita' : 'Despesa'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className={transaction.type === 'income' ? 'text-green-500' : 'text-red-500'}>
+                    {formatCurrency(transaction.amount)}
+                  </TableCell>
+                  <TableCell>
+                    {format(new Date(transaction.date), 'dd/MM/yyyy', { locale: ptBR })}
+                  </TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant={
+                        transaction.status === 'paid' ? 'default' : 
+                        transaction.status === 'canceled' ? 'destructive' : 'secondary'
+                      }
+                    >
+                      {transaction.status === 'paid' ? 'Pago' : 
+                       transaction.status === 'canceled' ? 'Cancelado' : 'Não Pago'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {transaction.isRecurring && (
+                      <Badge variant="outline">
+                        {transaction.recurrenceMonths}x mensais
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      <Button asChild variant="ghost" size="sm">
+                        <Link to={`/financas/detalhes/${transaction.id}`}>
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <Button asChild variant="ghost" size="sm">
+                        <Link to={`/financas/editar/${transaction.id}`}>
+                          <Edit className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" disabled={deletingId === transaction.id}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja excluir a transação "{transaction.description}"? 
+                              Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(transaction.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        {sortedTransactions.length === 0 && transactions.length > 0 && (
+          <div className="text-center py-6">
+            <Filter className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold">Nenhuma transação encontrada</h3>
+            <p className="text-muted-foreground">
+              Tente ajustar os filtros ou termos de busca.
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

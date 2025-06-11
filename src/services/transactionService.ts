@@ -15,7 +15,7 @@ export class TransactionService {
       id: transaction.id,
       amount: transaction.amount,
       description: transaction.description,
-      date: new Date(transaction.date + 'T00:00:00'),
+      date: new Date(transaction.date),
       category: transaction.category,
       subcategory: transaction.subcategory,
       isRecurring: transaction.is_recurring || false,
@@ -24,10 +24,10 @@ export class TransactionService {
       type: transaction.type as 'income' | 'expense',
       eventId: transaction.event_id,
       clientId: transaction.client_id,
-      teamMemberId: transaction.team_member_id,
-      teamPercentages: transaction.team_percentages ? JSON.parse(transaction.team_percentages) : [],
+      teamMemberId: undefined, // Will be handled by team_transaction_assignments
+      teamPercentages: [], // Will be populated from team_transaction_assignments
       notes: transaction.notes,
-      percentageValue: transaction.percentage_value,
+      percentageValue: undefined, // Legacy field
       status: transaction.status as 'paid' | 'not_paid' | 'canceled'
     }));
   }
@@ -46,7 +46,7 @@ export class TransactionService {
       id: data.id,
       amount: data.amount,
       description: data.description,
-      date: new Date(data.date + 'T00:00:00'),
+      date: new Date(data.date),
       category: data.category,
       subcategory: data.subcategory,
       isRecurring: data.is_recurring || false,
@@ -55,10 +55,10 @@ export class TransactionService {
       type: data.type as 'income' | 'expense',
       eventId: data.event_id,
       clientId: data.client_id,
-      teamMemberId: data.team_member_id,
-      teamPercentages: data.team_percentages ? JSON.parse(data.team_percentages) : [],
+      teamMemberId: undefined,
+      teamPercentages: [],
       notes: data.notes,
-      percentageValue: data.percentage_value,
+      percentageValue: undefined,
       status: data.status as 'paid' | 'not_paid' | 'canceled'
     };
   }
@@ -81,10 +81,7 @@ export class TransactionService {
         type: transaction.type,
         event_id: transaction.eventId,
         client_id: transaction.clientId,
-        team_member_id: transaction.teamMemberId,
-        team_percentages: transaction.teamPercentages ? JSON.stringify(transaction.teamPercentages) : null,
         notes: transaction.notes,
-        percentage_value: transaction.percentageValue,
         status: transaction.status || 'not_paid',
         user_id: userData.user.id
       })
@@ -109,12 +106,7 @@ export class TransactionService {
     if (updates.type !== undefined) updateData.type = updates.type;
     if (updates.eventId !== undefined) updateData.event_id = updates.eventId;
     if (updates.clientId !== undefined) updateData.client_id = updates.clientId;
-    if (updates.teamMemberId !== undefined) updateData.team_member_id = updates.teamMemberId;
-    if (updates.teamPercentages !== undefined) {
-      updateData.team_percentages = updates.teamPercentages ? JSON.stringify(updates.teamPercentages) : null;
-    }
     if (updates.notes !== undefined) updateData.notes = updates.notes;
-    if (updates.percentageValue !== undefined) updateData.percentage_value = updates.percentageValue;
     if (updates.status !== undefined) updateData.status = updates.status;
 
     const { error } = await supabase
@@ -173,7 +165,7 @@ export class TransactionService {
       id: transaction.id,
       amount: transaction.amount,
       description: transaction.description,
-      date: new Date(transaction.date + 'T00:00:00'),
+      date: new Date(transaction.date),
       category: transaction.category,
       subcategory: transaction.subcategory,
       isRecurring: transaction.is_recurring || false,
@@ -182,10 +174,10 @@ export class TransactionService {
       type: transaction.type as 'income' | 'expense',
       eventId: transaction.event_id,
       clientId: transaction.client_id,
-      teamMemberId: transaction.team_member_id,
-      teamPercentages: transaction.team_percentages ? JSON.parse(transaction.team_percentages) : [],
+      teamMemberId: undefined,
+      teamPercentages: [],
       notes: transaction.notes,
-      percentageValue: transaction.percentage_value,
+      percentageValue: undefined,
       status: transaction.status as 'paid' | 'not_paid' | 'canceled'
     }));
   }
