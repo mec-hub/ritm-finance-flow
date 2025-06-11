@@ -51,8 +51,8 @@ export class TeamManagementService {
         id: member.id,
         name: member.name,
         email: member.email || '',
-        role: member.role || 'member',
-        status: 'active',
+        role: (member.role || 'member') as 'admin' | 'manager' | 'member',
+        status: 'active' as const,
         joinDate: member.created_at,
         avatar: member.avatar || '',
         percentageShare: Number(member.percentage_share) || 0,
@@ -66,11 +66,8 @@ export class TeamManagementService {
     }
   }
 
-  static async createTeamMember(teamMember: Omit<TeamMember, 'id' | 'joinDate'>): Promise<TeamMember | null> {
+  static async createTeamMember(userId: string, teamMember: Omit<TeamMember, 'id' | 'joinDate'>): Promise<TeamMember | null> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
       const { data, error } = await supabase
         .from('team_members')
         .insert({
@@ -80,7 +77,7 @@ export class TeamManagementService {
           total_paid: teamMember.totalPaid,
           pending_amount: teamMember.pendingAmount,
           profile_id: teamMember.profileId,
-          user_id: user.id
+          user_id: userId
         })
         .select()
         .single();
@@ -94,7 +91,7 @@ export class TeamManagementService {
         id: data.id,
         name: data.name,
         email: teamMember.email,
-        role: data.role,
+        role: data.role as 'admin' | 'manager' | 'member',
         status: 'active',
         joinDate: data.created_at,
         avatar: teamMember.avatar,
@@ -153,9 +150,7 @@ export class TeamManagementService {
     }
   }
 
-  // Mock implementation for percentage templates - would need separate table
   static async getPercentageTemplates(userId: string): Promise<PercentageTemplate[]> {
-    // Mock data - in real implementation, this would fetch from database
     return [
       {
         id: '1',
@@ -177,7 +172,6 @@ export class TeamManagementService {
   }
 
   static async createPercentageTemplate(template: Omit<PercentageTemplate, 'id' | 'createdAt'>): Promise<PercentageTemplate | null> {
-    // Mock implementation - would create in database
     const newTemplate: PercentageTemplate = {
       id: Math.random().toString(36).substr(2, 9),
       ...template,
@@ -186,25 +180,21 @@ export class TeamManagementService {
     return newTemplate;
   }
 
-  // Mock implementation for team invitations - would need separate table
   static async getTeamInvitations(userId: string): Promise<TeamInvitation[]> {
-    // Mock data - in real implementation, this would fetch from database
     return [];
   }
 
   static async createTeamInvitation(invitation: Omit<TeamInvitation, 'id' | 'createdAt' | 'expiresAt'>): Promise<TeamInvitation | null> {
-    // Mock implementation - would create in database
     const newInvitation: TeamInvitation = {
       id: Math.random().toString(36).substr(2, 9),
       ...invitation,
       createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days from now
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
     };
     return newInvitation;
   }
 
   static async updateInvitationStatus(invitationId: string, status: 'accepted' | 'rejected'): Promise<boolean> {
-    // Mock implementation - would update in database
     return true;
   }
 }

@@ -25,8 +25,8 @@ export interface NotificationPreferences {
     desktop: boolean;
   };
   reminders: {
-    eventsBefore: string; // hours
-    paymentsDue: string; // days
+    eventsBefore: string;
+    paymentsDue: string;
     recurringTransactions: boolean;
   };
 }
@@ -56,7 +56,7 @@ export class NotificationService {
         return this.getDefaultPreferences();
       }
 
-      return data?.preferences || this.getDefaultPreferences();
+      return (data?.preferences as NotificationPreferences) || this.getDefaultPreferences();
     } catch (error) {
       console.error('Error in getUserPreferences:', error);
       return this.getDefaultPreferences();
@@ -69,7 +69,7 @@ export class NotificationService {
         .from('notification_preferences')
         .upsert({
           user_id: userId,
-          preferences: preferences
+          preferences: preferences as any
         });
 
       if (error) {
@@ -93,6 +93,7 @@ export class NotificationService {
           type: notification.type,
           title: notification.title,
           message: notification.message,
+          read: notification.read,
           data: notification.data || {}
         });
 
@@ -177,21 +178,25 @@ export class NotificationService {
     }
   }
 
-  static async sendEmailNotification(email: string, subject: string, content: string): Promise<boolean> {
+  static async sendEmailNotification(email: string, type: string, data: any): Promise<boolean> {
     try {
-      // For now, just create an in-app notification as a fallback
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await this.createInAppNotification({
-          userId: user.id,
-          type: 'system',
-          title: 'Teste de Email',
-          message: `Email de teste enviado para ${email}: ${subject}`
-        });
+      const { data: result, error } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: email,
+          type: type,
+          data: data
+        }
+      });
+
+      if (error) {
+        console.error('Error sending email notification:', error);
+        return false;
       }
+
+      console.log('Email sent successfully:', result);
       return true;
     } catch (error) {
-      console.error('Error sending email notification:', error);
+      console.error('Error in sendEmailNotification:', error);
       return false;
     }
   }

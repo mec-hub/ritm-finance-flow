@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,14 +7,16 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Save, Bell, Mail, Smartphone, TestTube } from 'lucide-react';
+import { Save, Bell, Mail, TestTube } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { NotificationService, NotificationPreferences } from '@/services/notificationService';
+import { supabase } from '@/integrations/supabase/client';
 
 export function NotificationSettings() {
-  const [notifications, setNotifications] = useState({
+  const [notifications, setNotifications] = useState<NotificationPreferences>({
     email: {
       enabled: true,
-      address: 'joao@empresa.com',
+      address: '',
       frequency: 'immediate',
       events: true,
       transactions: true,
@@ -30,35 +31,98 @@ export function NotificationSettings() {
       reminders: true,
       team: false
     },
-    sms: {
-      enabled: false,
-      phone: '+55 11 99999-9999',
-      urgentOnly: true
-    },
     inApp: {
       enabled: true,
       sound: true,
       desktop: true
     },
     reminders: {
-      eventsBefore: '24', // hours
-      paymentsDue: '3', // days
+      eventsBefore: '24',
+      paymentsDue: '3',
       recurringTransactions: true
     }
   });
 
-  const handleSave = () => {
-    toast({
-      title: "Configurações salvas",
-      description: "Suas preferências de notificação foram atualizadas.",
-    });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadPreferences();
+  }, []);
+
+  const loadPreferences = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const preferences = await NotificationService.getUserPreferences(user.id);
+        if (preferences) {
+          setNotifications(preferences);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading preferences:', error);
+    }
   };
 
-  const handleTestNotification = () => {
-    toast({
-      title: "Notificação de teste",
-      description: "Esta é uma notificação de teste do sistema.",
-    });
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const success = await NotificationService.updateUserPreferences(user.id, notifications);
+        if (success) {
+          toast({
+            title: "Configurações salvas",
+            description: "Suas preferências de notificação foram atualizadas.",
+          });
+        } else {
+          throw new Error('Failed to save preferences');
+        }
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar as configurações.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTestNotification = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && notifications.email.enabled && notifications.email.address) {
+        const success = await NotificationService.sendEmailNotification(
+          notifications.email.address,
+          'test',
+          {
+            message: 'Esta é uma notificação de teste do sistema.',
+            timestamp: new Date().toISOString()
+          }
+        );
+
+        if (success) {
+          toast({
+            title: "Email enviado",
+            description: "Notificação de teste enviada para " + notifications.email.address,
+          });
+        } else {
+          throw new Error('Failed to send test email');
+        }
+      } else {
+        toast({
+          title: "Notificação de teste",
+          description: "Esta é uma notificação de teste do sistema.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível enviar o email de teste.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleEmailChange = (key: string, value: any) => {
@@ -72,13 +136,6 @@ export function NotificationSettings() {
     setNotifications(prev => ({
       ...prev,
       push: { ...prev.push, [key]: value }
-    }));
-  };
-
-  const handleSmsChange = (key: string, value: any) => {
-    setNotifications(prev => ({
-      ...prev,
-      sms: { ...prev.sms, [key]: value }
     }));
   };
 
@@ -151,6 +208,7 @@ export function NotificationSettings() {
 
           <div className="space-y-4">
             <h4 className="font-medium">Tipos de Notificação</h4>
+            
             
             <div className="flex items-center justify-between">
               <div>
@@ -234,6 +292,8 @@ export function NotificationSettings() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          
+          
           <div className="flex items-center justify-between">
             <div>
               <Label>Eventos</Label>
@@ -366,9 +426,9 @@ export function NotificationSettings() {
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave}>
+        <Button onClick={handleSave} disabled={loading}>
           <Save className="h-4 w-4 mr-2" />
-          Salvar Configurações
+          {loading ? 'Salvando...' : 'Salvar Configurações'}
         </Button>
       </div>
     </div>

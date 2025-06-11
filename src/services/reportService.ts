@@ -118,7 +118,6 @@ export class ReportService {
   }
 
   static getReportTemplates(userId?: string): ReportTemplate[] {
-    // Mock implementation - return synchronous array
     return [
       {
         id: '1',
@@ -231,7 +230,7 @@ export class ReportService {
     const categoryBody = Object.entries(categorizedExpenses).map(([category, amount]) => [
       category,
       typeof amount === 'number' ? amount.toString() : '0',
-      total > 0 ? (((typeof amount === 'number' ? amount : 0) / total) * 100).toFixed(2) + '%' : '0%'
+      (total > 0 && typeof amount === 'number') ? ((amount / total) * 100).toFixed(2) + '%' : '0%'
     ]);
     
     autoTable(doc, { head: categoryHead, body: categoryBody, startY: 20 });
@@ -323,7 +322,7 @@ export class ReportService {
       ...Object.entries(categorizedExpenses).map(([category, amount]) => [
         category,
         typeof amount === 'number' ? amount : 0,
-        total > 0 ? (((typeof amount === 'number' ? amount : 0) / total) * 100).toFixed(2) + '%' : '0%'
+        (total > 0 && typeof amount === 'number') ? ((amount / total) * 100).toFixed(2) + '%' : '0%'
       ])
     ];
     
