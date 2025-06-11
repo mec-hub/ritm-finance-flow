@@ -20,13 +20,17 @@ export class TransactionService {
       category: transaction.category,
       subcategory: transaction.subcategory,
       isRecurring: transaction.is_recurring || false,
-      recurrenceInterval: transaction.recurrence_interval,
+      recurrenceInterval: transaction.recurrence_interval as 'weekly' | 'monthly' | 'quarterly' | 'yearly',
       recurrenceMonths: transaction.recurrence_months,
       type: transaction.type as 'income' | 'expense',
       eventId: transaction.event_id,
       clientId: transaction.client_id,
       teamMemberId: undefined,
-      teamPercentages: transaction.team_assignments || [],
+      teamPercentages: (transaction.team_assignments || []).map(assignment => ({
+        teamMemberId: assignment.team_member_id,
+        teamMemberName: assignment.team_member_name,
+        percentageValue: assignment.percentage_value
+      })),
       notes: transaction.notes,
       percentageValue: undefined,
       status: transaction.status as 'paid' | 'not_paid' | 'canceled'
@@ -55,9 +59,9 @@ export class TransactionService {
     if (!data) return null;
 
     const teamPercentages = data.team_transaction_assignments?.map(assignment => ({
-      team_member_id: assignment.team_member_id,
-      team_member_name: assignment.team_members?.name || '',
-      percentage_value: assignment.percentage_value
+      teamMemberId: assignment.team_member_id,
+      teamMemberName: assignment.team_members?.name || '',
+      percentageValue: assignment.percentage_value
     })) || [];
 
     return {
@@ -68,7 +72,7 @@ export class TransactionService {
       category: data.category,
       subcategory: data.subcategory,
       isRecurring: data.is_recurring || false,
-      recurrenceInterval: data.recurrence_interval,
+      recurrenceInterval: data.recurrence_interval as 'weekly' | 'monthly' | 'quarterly' | 'yearly',
       recurrenceMonths: data.recurrence_months,
       type: data.type as 'income' | 'expense',
       eventId: data.event_id,
@@ -233,9 +237,9 @@ export class TransactionService {
 
     return data.map(transaction => {
       const teamPercentages = transaction.team_transaction_assignments?.map(assignment => ({
-        team_member_id: assignment.team_member_id,
-        team_member_name: assignment.team_members?.name || '',
-        percentage_value: assignment.percentage_value
+        teamMemberId: assignment.team_member_id,
+        teamMemberName: assignment.team_members?.name || '',
+        percentageValue: assignment.percentage_value
       })) || [];
 
       return {
@@ -246,7 +250,7 @@ export class TransactionService {
         category: transaction.category,
         subcategory: transaction.subcategory,
         isRecurring: transaction.is_recurring || false,
-        recurrenceInterval: transaction.recurrence_interval,
+        recurrenceInterval: transaction.recurrence_interval as 'weekly' | 'monthly' | 'quarterly' | 'yearly',
         recurrenceMonths: transaction.recurrence_months,
         type: transaction.type as 'income' | 'expense',
         eventId: transaction.event_id,

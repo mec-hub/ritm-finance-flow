@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
@@ -241,7 +240,7 @@ const NovaTransacao = () => {
                     <Checkbox
                       id="recurring"
                       checked={isRecurring}
-                      onCheckedChange={setIsRecurring}
+                      onCheckedChange={(checked) => setIsRecurring(checked === true)}
                     />
                     <Label htmlFor="recurring">Esta é uma transação recorrente</Label>
                   </div>
