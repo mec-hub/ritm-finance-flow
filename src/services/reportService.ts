@@ -3,6 +3,26 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface ReportFilters {
+  startDate?: string;
+  endDate?: string;
+  category?: string;
+  type?: 'income' | 'expense' | 'all';
+  status?: 'paid' | 'pending' | 'not_paid' | 'all';
+  clientId?: string;
+  eventId?: string;
+}
+
+export interface ReportTemplate {
+  id: string;
+  name: string;
+  description: string;
+  type: 'financial' | 'clients' | 'events' | 'tax';
+  filters: ReportFilters;
+  userId: string;
+  createdAt: string;
+}
+
 interface Transaction {
   id: string;
   date: string;
@@ -65,6 +85,10 @@ export class ReportService {
     doc.save(`${reportType}-report-${new Date().toISOString().split('T')[0]}.pdf`);
   }
 
+  static async generatePDFReport(reportType: string, data: any, filters: any): Promise<void> {
+    return this.generatePDF(reportType, data, filters);
+  }
+
   static async generateExcel(reportType: string, data: any, filters: any): Promise<void> {
     const workbook = XLSX.utils.book_new();
     
@@ -86,6 +110,34 @@ export class ReportService {
     XLSX.writeFile(workbook, `${reportType}-report-${new Date().toISOString().split('T')[0]}.xlsx`);
   }
 
+  static async generateExcelReport(reportType: string, data: any, filters: any): Promise<void> {
+    return this.generateExcel(reportType, data, filters);
+  }
+
+  static async getReportTemplates(userId: string): Promise<ReportTemplate[]> {
+    // Mock implementation - in a real app, this would fetch from database
+    return [
+      {
+        id: '1',
+        name: 'Relatório Mensal',
+        description: 'Relatório financeiro mensal padrão',
+        type: 'financial',
+        filters: { type: 'all' },
+        userId,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: '2',
+        name: 'Relatório de Clientes VIP',
+        description: 'Clientes com maior receita',
+        type: 'clients',
+        filters: {},
+        userId,
+        createdAt: new Date().toISOString()
+      }
+    ];
+  }
+
   private static addFinancialTable(doc: jsPDF, data: any): void {
     const { transactions, summary } = data;
     
@@ -93,7 +145,7 @@ export class ReportService {
     
     const head = [['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Status']];
     const body = transactions.map((transaction: Transaction) => [
-      this.formatDate(transaction.date),
+      formatDate(transaction.date),
       transaction.description,
       transaction.category,
       transaction.type === 'income' ? 'Receita' : 'Despesa',
@@ -116,7 +168,7 @@ export class ReportService {
       client.phone || '',
       client.contact || '',
       client.totalRevenue.toString(),
-      client.lastEvent ? this.formatDate(client.lastEvent) : '',
+      client.lastEvent ? formatDate(client.lastEvent) : '',
       client.notes || ''
     ]);
     
@@ -131,7 +183,7 @@ export class ReportService {
     const head = [['Evento', 'Data', 'Local', 'Cliente', 'Status', 'Receita Estimada', 'Receita Real', 'Despesas Estimadas', 'Despesas Reais', 'Lucro']];
     const body = events.map((event: Event) => [
       event.title,
-      this.formatDate(event.date),
+      formatDate(event.date),
       event.location || '',
       event.client || '',
       event.status,
@@ -150,12 +202,10 @@ export class ReportService {
     
     doc.text('Relatório de Impostos', 10, 10);
     
-    // Calculate total for percentage calculation
     const total = Object.values(categorizedExpenses).reduce((sum: number, amount: unknown) => {
       return sum + (typeof amount === 'number' ? amount : 0);
     }, 0);
     
-    // Summary by category
     const categoryHead = [['Categoria', 'Valor Total', 'Percentual']];
     const categoryBody = Object.entries(categorizedExpenses).map(([category, amount]) => [
       category,
@@ -165,10 +215,9 @@ export class ReportService {
     
     autoTable(doc, { head: categoryHead, body: categoryBody, startY: 20 });
     
-    // Detailed transactions
     const transactionHead = [['Data', 'Descrição', 'Categoria', 'Valor', 'Observações']];
     const transactionBody = transactions.map((transaction: Transaction) => [
-      this.formatDate(transaction.date),
+      formatDate(transaction.date),
       transaction.description,
       transaction.category,
       transaction.amount.toString(),
@@ -184,7 +233,7 @@ export class ReportService {
     const transactionData = [
       ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Status'],
       ...transactions.map((transaction: Transaction) => [
-        this.formatDate(transaction.date),
+        formatDate(transaction.date),
         transaction.description,
         transaction.category,
         transaction.type === 'income' ? 'Receita' : 'Despesa',
@@ -208,7 +257,7 @@ export class ReportService {
         client.phone || '',
         client.contact || '',
         Number(client.totalRevenue) || 0,
-        client.lastEvent ? this.formatDate(client.lastEvent) : '',
+        client.lastEvent ? formatDate(client.lastEvent) : '',
         client.notes || ''
       ])
     ];
@@ -224,7 +273,7 @@ export class ReportService {
       ['Evento', 'Data', 'Local', 'Cliente', 'Status', 'Receita Estimada', 'Receita Real', 'Despesas Estimadas', 'Despesas Reais', 'Lucro'],
       ...events.map((event: Event) => [
         event.title,
-        this.formatDate(event.date),
+        formatDate(event.date),
         event.location || '',
         event.client || '',
         event.status,
@@ -243,12 +292,10 @@ export class ReportService {
   private static addTaxExcelSheet(workbook: XLSX.WorkBook, data: any): void {
     const { categorizedExpenses, transactions } = data;
     
-    // Calculate total for percentage calculation
     const total = Object.values(categorizedExpenses).reduce((sum: number, amount: unknown) => {
       return sum + (typeof amount === 'number' ? amount : 0);
     }, 0);
     
-    // Summary by category
     const categoryData = [
       ['Categoria', 'Valor Total', 'Percentual'],
       ...Object.entries(categorizedExpenses).map(([category, amount]) => [
@@ -261,11 +308,10 @@ export class ReportService {
     const ws1 = XLSX.utils.aoa_to_sheet(categoryData);
     XLSX.utils.book_append_sheet(workbook, ws1, 'Resumo por Categoria');
     
-    // Detailed transactions
     const transactionData = [
       ['Data', 'Descrição', 'Categoria', 'Valor', 'Observações'],
       ...transactions.map((transaction: Transaction) => [
-        this.formatDate(transaction.date),
+        formatDate(transaction.date),
         transaction.description,
         transaction.category,
         Number(transaction.amount) || 0,
@@ -275,10 +321,5 @@ export class ReportService {
     
     const ws2 = XLSX.utils.aoa_to_sheet(transactionData);
     XLSX.utils.book_append_sheet(workbook, ws2, 'Transações Detalhadas');
-  }
-
-  private static formatDate(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
   }
 }

@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Save, Bell, Mail, Smartphone, TestTube, Clock, Calendar } from 'lucide-react';
+import { Save, Bell, Mail, Smartphone, TestTube, Clock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { NotificationService, NotificationPreferences, InAppNotification } from '@/services/notificationService';
@@ -176,7 +176,7 @@ export function EnhancedNotificationSettings() {
                       </p>
                     </div>
                     {!notification.read && (
-                      <Badge variant="default" size="sm">Nova</Badge>
+                      <Badge variant="default">Nova</Badge>
                     )}
                   </div>
                 </div>

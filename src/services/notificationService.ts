@@ -44,100 +44,126 @@ export interface InAppNotification {
 
 export class NotificationService {
   static async getUserPreferences(userId: string): Promise<NotificationPreferences | null> {
-    const { data, error } = await supabase
-      .from('notification_preferences')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .rpc('get_user_notification_preferences', { user_id_param: userId });
 
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error fetching notification preferences:', error);
-      return null;
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching notification preferences:', error);
+        return this.getDefaultPreferences();
+      }
+
+      return data?.[0]?.preferences || this.getDefaultPreferences();
+    } catch (error) {
+      console.error('Error in getUserPreferences:', error);
+      return this.getDefaultPreferences();
     }
-
-    return data?.preferences || this.getDefaultPreferences();
   }
 
   static async updateUserPreferences(userId: string, preferences: NotificationPreferences): Promise<boolean> {
-    const { error } = await supabase
-      .from('notification_preferences')
-      .upsert({
-        user_id: userId,
-        preferences: preferences,
-        updated_at: new Date().toISOString()
-      });
+    try {
+      const { error } = await supabase
+        .rpc('upsert_notification_preferences', {
+          user_id_param: userId,
+          preferences_param: JSON.stringify(preferences)
+        });
 
-    if (error) {
-      console.error('Error updating notification preferences:', error);
+      if (error) {
+        console.error('Error updating notification preferences:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in updateUserPreferences:', error);
       return false;
     }
-
-    return true;
   }
 
   static async createInAppNotification(notification: Omit<InAppNotification, 'id' | 'createdAt'>): Promise<boolean> {
-    const { error } = await supabase
-      .from('notifications')
-      .insert({
-        user_id: notification.userId,
-        type: notification.type,
-        title: notification.title,
-        message: notification.message,
-        read: false,
-        data: notification.data || {}
-      });
+    try {
+      const { error } = await supabase
+        .rpc('create_notification', {
+          user_id_param: notification.userId,
+          type_param: notification.type,
+          title_param: notification.title,
+          message_param: notification.message,
+          data_param: JSON.stringify(notification.data || {})
+        });
 
-    if (error) {
-      console.error('Error creating notification:', error);
+      if (error) {
+        console.error('Error creating notification:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in createInAppNotification:', error);
       return false;
     }
-
-    return true;
   }
 
   static async getUserNotifications(userId: string, limit: number = 50): Promise<InAppNotification[]> {
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(limit);
+    try {
+      const { data, error } = await supabase
+        .rpc('get_user_notifications', {
+          user_id_param: userId,
+          limit_param: limit
+        });
 
-    if (error) {
-      console.error('Error fetching notifications:', error);
+      if (error) {
+        console.error('Error fetching notifications:', error);
+        return [];
+      }
+
+      return data?.map((item: any) => ({
+        id: item.id,
+        userId: item.user_id,
+        type: item.type,
+        title: item.title,
+        message: item.message,
+        read: item.read,
+        createdAt: item.created_at,
+        data: item.data
+      })) || [];
+    } catch (error) {
+      console.error('Error in getUserNotifications:', error);
       return [];
     }
-
-    return data || [];
   }
 
   static async markNotificationAsRead(notificationId: string): Promise<boolean> {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read: true })
-      .eq('id', notificationId);
+    try {
+      const { error } = await supabase
+        .rpc('mark_notification_read', { notification_id_param: notificationId });
 
-    if (error) {
-      console.error('Error marking notification as read:', error);
+      if (error) {
+        console.error('Error marking notification as read:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in markNotificationAsRead:', error);
       return false;
     }
-
-    return true;
   }
 
   static async markAllAsRead(userId: string): Promise<boolean> {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read: true })
-      .eq('user_id', userId)
-      .eq('read', false);
+    try {
+      const { error } = await supabase
+        .rpc('mark_all_notifications_read', { user_id_param: userId });
 
-    if (error) {
-      console.error('Error marking all notifications as read:', error);
+      if (error) {
+        console.error('Error marking all notifications as read:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in markAllAsRead:', error);
       return false;
     }
-
-    return true;
   }
 
   static async sendEmailNotification(email: string, subject: string, content: string): Promise<boolean> {
@@ -155,47 +181,6 @@ export class NotificationService {
     } catch (error) {
       console.error('Error invoking email function:', error);
       return false;
-    }
-  }
-
-  static async checkUpcomingEvents(): Promise<void> {
-    // This would be called by a scheduled function
-    const { data: events } = await supabase
-      .from('events')
-      .select('*, profiles!events_user_id_fkey(email)')
-      .gte('date', new Date().toISOString().split('T')[0])
-      .lte('date', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-
-    if (events) {
-      for (const event of events) {
-        await this.createInAppNotification({
-          userId: event.user_id,
-          type: 'event',
-          title: 'Evento Próximo',
-          message: `O evento "${event.title}" está agendado para amanhã.`,
-          data: { eventId: event.id }
-        });
-      }
-    }
-  }
-
-  static async checkOverduePayments(): Promise<void> {
-    const { data: transactions } = await supabase
-      .from('transactions')
-      .select('*, profiles!transactions_user_id_fkey(email)')
-      .eq('status', 'not_paid')
-      .lt('date', new Date().toISOString().split('T')[0]);
-
-    if (transactions) {
-      for (const transaction of transactions) {
-        await this.createInAppNotification({
-          userId: transaction.user_id,
-          type: 'payment',
-          title: 'Pagamento em Atraso',
-          message: `O pagamento "${transaction.description}" está em atraso.`,
-          data: { transactionId: transaction.id }
-        });
-      }
     }
   }
 
