@@ -32,6 +32,7 @@ export interface Event {
   date: Date;
   location: string;
   client: string;
+  clientId?: string; // Add this for editing functionality
   estimatedRevenue: number;
   actualRevenue?: number;
   estimatedExpenses: number;

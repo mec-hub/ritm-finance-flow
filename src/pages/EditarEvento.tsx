@@ -71,9 +71,15 @@ const EditarEvento = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!id) return;
+      if (!id) {
+        console.error('No event ID provided');
+        navigate('/eventos');
+        return;
+      }
 
       try {
+        console.log('EditarEvento - Fetching data for event ID:', id);
+        
         const [eventData, clientsData] = await Promise.all([
           EventService.getById(id),
           ClientService.getAll()
@@ -87,7 +93,7 @@ const EditarEvento = () => {
           setClients(clientsData);
           
           // Use the clientId from the event data if available
-          const clientId = (eventData as any).clientId || 'no_client';
+          const clientId = eventData.clientId || 'no_client';
           console.log('EditarEvento - Using client ID:', clientId);
           
           form.reset({
@@ -103,6 +109,7 @@ const EditarEvento = () => {
             notes: eventData.notes || '',
           });
         } else {
+          console.error('Event not found');
           toast({
             title: "Erro",
             description: "Evento não encontrado",

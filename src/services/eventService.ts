@@ -13,7 +13,7 @@ export class EventService {
       .from('events')
       .select(`
         *,
-        clients (name)
+        clients (id, name)
       `)
       .eq('user_id', userData.user.id)
       .order('date', { ascending: false });
@@ -29,6 +29,7 @@ export class EventService {
       date: new Date(event.date),
       location: event.location || '',
       client: event.clients?.name || '',
+      clientId: event.clients?.id || undefined,
       estimatedRevenue: event.estimated_revenue || 0,
       actualRevenue: event.actual_revenue || undefined,
       estimatedExpenses: event.estimated_expenses || 0,
@@ -162,7 +163,7 @@ export class EventService {
       date: new Date(data.date),
       location: data.location || '',
       client: data.clients?.name || '',
-      clientId: data.clients?.id || '', // Add clientId for editing
+      clientId: data.clients?.id || undefined,
       estimatedRevenue: data.estimated_revenue || 0,
       actualRevenue: data.actual_revenue || undefined,
       estimatedExpenses: data.estimated_expenses || 0,
