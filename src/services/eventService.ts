@@ -9,6 +9,8 @@ export class EventService {
       throw new Error('User not authenticated');
     }
 
+    console.log('EventService.getAll - Fetching events for user:', userData.user.id);
+
     const { data, error } = await supabase
       .from('events')
       .select(`
@@ -22,6 +24,8 @@ export class EventService {
       console.error('EventService.getAll error:', error);
       throw error;
     }
+
+    console.log('EventService.getAll - Raw data from database:', data);
 
     return data.map(event => ({
       id: event.id,
@@ -37,6 +41,52 @@ export class EventService {
       status: event.status as 'upcoming' | 'completed' | 'cancelled',
       notes: event.notes || ''
     }));
+  }
+
+  static async getById(id: string): Promise<Event | null> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      throw new Error('User not authenticated');
+    }
+
+    console.log('EventService.getById - Fetching event with id:', id);
+
+    const { data, error } = await supabase
+      .from('events')
+      .select(`
+        *,
+        clients (id, name)
+      `)
+      .eq('id', id)
+      .eq('user_id', userData.user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('EventService.getById error:', error);
+      throw error;
+    }
+    
+    if (!data) {
+      console.log('EventService.getById - No event found for id:', id);
+      return null;
+    }
+
+    console.log('EventService.getById - Event found:', data);
+
+    return {
+      id: data.id,
+      title: data.title,
+      date: new Date(data.date),
+      location: data.location || '',
+      client: data.clients?.name || '',
+      clientId: data.clients?.id || undefined,
+      estimatedRevenue: data.estimated_revenue || 0,
+      actualRevenue: data.actual_revenue || undefined,
+      estimatedExpenses: data.estimated_expenses || 0,
+      actualExpenses: data.actual_expenses || undefined,
+      status: data.status as 'upcoming' | 'completed' | 'cancelled',
+      notes: data.notes || ''
+    };
   }
 
   static async create(event: Omit<Event, 'id'>, clientId?: string): Promise<Event> {
@@ -58,6 +108,8 @@ export class EventService {
       notes: event.notes || null,
       user_id: userData.user.id
     };
+
+    console.log('EventService.create - Insert data:', insertData);
 
     const { data, error } = await supabase
       .from('events')
@@ -83,9 +135,9 @@ export class EventService {
     console.log('EventService.update - Updates:', updates);
     console.log('EventService.update - Client ID:', clientId);
 
+    // Build update data object with proper database column names
     const updateData: any = {};
     
-    // Only include fields that are actually being updated
     if (updates.title !== undefined) updateData.title = updates.title;
     if (updates.date !== undefined) updateData.date = updates.date.toISOString().split('T')[0];
     if (updates.location !== undefined) updateData.location = updates.location || null;
@@ -121,6 +173,8 @@ export class EventService {
       throw new Error('User not authenticated');
     }
 
+    console.log('EventService.delete - Deleting event:', id);
+
     const { error } = await supabase
       .from('events')
       .delete()
@@ -131,54 +185,7 @@ export class EventService {
       console.error('EventService.delete error:', error);
       throw error;
     }
-  }
 
-  static async getById(id: string): Promise<Event | null> {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
-      throw new Error('User not authenticated');
-    }
-
-    console.log('EventService.getById - Fetching event with id:', id);
-
-    const { data, error } = await supabase
-      .from('events')
-      .select(`
-        *,
-        clients (id, name)
-      `)
-      .eq('id', id)
-      .eq('user_id', userData.user.id)
-      .maybeSingle();
-
-    if (error) {
-      console.error('EventService.getById error:', error);
-      throw error;
-    }
-    
-    if (!data) {
-      console.log('EventService.getById - No event found for id:', id);
-      return null;
-    }
-
-    console.log('EventService.getById - Event found:', data);
-
-    const result = {
-      id: data.id,
-      title: data.title,
-      date: new Date(data.date),
-      location: data.location || '',
-      client: data.clients?.name || '',
-      clientId: data.clients?.id || undefined,
-      estimatedRevenue: data.estimated_revenue || 0,
-      actualRevenue: data.actual_revenue || undefined,
-      estimatedExpenses: data.estimated_expenses || 0,
-      actualExpenses: data.actual_expenses || undefined,
-      status: data.status as 'upcoming' | 'completed' | 'cancelled',
-      notes: data.notes || ''
-    };
-
-    console.log('EventService.getById - Returning event:', result);
-    return result;
+    console.log('EventService.delete - Delete successful');
   }
 }

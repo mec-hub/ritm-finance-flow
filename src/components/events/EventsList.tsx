@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Table,
@@ -48,7 +48,13 @@ export function EventsList({ events: initialEvents, onEventUpdated }: EventsList
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  
+
+  // Update local events when prop changes
+  useEffect(() => {
+    console.log('EventsList - Events updated:', initialEvents);
+    setEvents(initialEvents);
+  }, [initialEvents]);
+
   const filteredEvents = events.filter(event => {
     const matchesSearch = 
       event.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -77,6 +83,7 @@ export function EventsList({ events: initialEvents, onEventUpdated }: EventsList
     if (!selectedEvent) return;
 
     try {
+      console.log('EventsList - Deleting event:', selectedEvent.id);
       await EventService.delete(selectedEvent.id);
       
       // Update local state
@@ -98,7 +105,7 @@ export function EventsList({ events: initialEvents, onEventUpdated }: EventsList
       
       setSelectedEvent(null);
     } catch (error) {
-      console.error('Error deleting event:', error);
+      console.error('EventsList - Error deleting event:', error);
       toast({
         title: "Erro",
         description: "Não foi possível excluir o evento. Tente novamente.",
@@ -108,11 +115,13 @@ export function EventsList({ events: initialEvents, onEventUpdated }: EventsList
   };
   
   const handleViewDetails = (event: Event) => {
+    console.log('EventsList - View details for event:', event);
     setSelectedEvent(event);
     setViewDetailsOpen(true);
   };
   
   const handleEdit = (event: Event) => {
+    console.log('EventsList - Edit event:', event);
     navigate(`/editar-evento/${event.id}`);
   };
   
@@ -178,7 +187,7 @@ export function EventsList({ events: initialEvents, onEventUpdated }: EventsList
             {filteredEvents.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-4">
-                  Nenhum evento encontrado
+                  {searchQuery || filter !== 'all' ? 'Nenhum evento encontrado' : 'Nenhum evento cadastrado'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -186,7 +195,7 @@ export function EventsList({ events: initialEvents, onEventUpdated }: EventsList
                 <TableRow key={event.id}>
                   <TableCell className="font-medium">{event.title}</TableCell>
                   <TableCell>{formatDate(event.date)}</TableCell>
-                  <TableCell>{event.client}</TableCell>
+                  <TableCell>{event.client || 'Sem cliente'}</TableCell>
                   <TableCell>{event.location}</TableCell>
                   <TableCell>{formatCurrency(event.estimatedRevenue)}</TableCell>
                   <TableCell>{getStatusBadge(event.status)}</TableCell>
@@ -251,7 +260,7 @@ export function EventsList({ events: initialEvents, onEventUpdated }: EventsList
                   </div>
                   <div>
                     <div className="text-sm font-medium">Cliente</div>
-                    <div className="text-sm">{selectedEvent.client}</div>
+                    <div className="text-sm">{selectedEvent.client || 'Sem cliente'}</div>
                   </div>
                   <div>
                     <div className="text-sm font-medium">Local</div>

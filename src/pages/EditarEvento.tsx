@@ -51,6 +51,7 @@ const EditarEvento = () => {
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<Event | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { id } = useParams();
   
@@ -60,8 +61,8 @@ const EditarEvento = () => {
       date: new Date(),
       location: '',
       clientId: 'no_client',
-      estimatedRevenue: '',
-      estimatedExpenses: '',
+      estimatedRevenue: '0',
+      estimatedExpenses: '0',
       actualRevenue: '',
       actualExpenses: '',
       status: 'upcoming',
@@ -73,6 +74,7 @@ const EditarEvento = () => {
     const fetchData = async () => {
       if (!id) {
         console.error('EditarEvento - No event ID provided');
+        setError('ID do evento não fornecido');
         toast({
           title: "Erro",
           description: "ID do evento não fornecido",
@@ -85,7 +87,9 @@ const EditarEvento = () => {
       try {
         console.log('EditarEvento - Starting data fetch for event ID:', id);
         setLoading(true);
+        setError(null);
         
+        // Fetch both event and clients data
         const [eventData, clientsData] = await Promise.all([
           EventService.getById(id),
           ClientService.getAll()
@@ -96,6 +100,7 @@ const EditarEvento = () => {
         
         if (!eventData) {
           console.error('EditarEvento - Event not found');
+          setError('Evento não encontrado');
           toast({
             title: "Erro",
             description: "Evento não encontrado",
@@ -108,7 +113,7 @@ const EditarEvento = () => {
         setEvent(eventData);
         setClients(clientsData);
         
-        // Use the clientId from the event data, defaulting to 'no_client' if not present
+        // Populate form with event data
         const clientId = eventData.clientId || 'no_client';
         console.log('EditarEvento - Setting form with client ID:', clientId);
         
@@ -125,13 +130,15 @@ const EditarEvento = () => {
           notes: eventData.notes || '',
         });
 
-        console.log('EditarEvento - Form reset completed');
+        console.log('EditarEvento - Form populated successfully');
         
       } catch (error) {
         console.error('EditarEvento - Error fetching data:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+        setError(errorMessage);
         toast({
           title: "Erro",
-          description: "Não foi possível carregar o evento. Tente novamente.",
+          description: `Não foi possível carregar o evento: ${errorMessage}`,
           variant: "destructive"
         });
         navigate('/eventos');
@@ -146,6 +153,11 @@ const EditarEvento = () => {
   const onSubmit = async (data: EventFormData) => {
     if (!id) {
       console.error('EditarEvento - No event ID for update');
+      toast({
+        title: "Erro",
+        description: "ID do evento não encontrado",
+        variant: "destructive"
+      });
       return;
     }
     
@@ -154,9 +166,8 @@ const EditarEvento = () => {
     try {
       console.log('EditarEvento - Starting update with form data:', data);
       
-      // Handle the case where "no_client" is selected
+      // Prepare update data
       const clientId = data.clientId === 'no_client' ? undefined : data.clientId;
-      console.log('EditarEvento - Using client ID for update:', clientId);
       
       const updateData = {
         title: data.title,
@@ -171,6 +182,7 @@ const EditarEvento = () => {
       };
 
       console.log('EditarEvento - Update data prepared:', updateData);
+      console.log('EditarEvento - Client ID for update:', clientId);
       
       await EventService.update(id, updateData, clientId);
       
@@ -184,9 +196,10 @@ const EditarEvento = () => {
       navigate('/eventos');
     } catch (error) {
       console.error('EditarEvento - Error updating event:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       toast({
         title: "Erro",
-        description: "Não foi possível atualizar o evento. Tente novamente.",
+        description: `Não foi possível atualizar o evento: ${errorMessage}`,
         variant: "destructive"
       });
     } finally {
@@ -198,7 +211,25 @@ const EditarEvento = () => {
     return (
       <Layout>
         <div className="flex justify-center items-center h-64">
-          <p>Carregando dados do evento...</p>
+          <div className="text-center">
+            <p className="text-lg">Carregando dados do evento...</p>
+            <p className="text-sm text-muted-foreground mt-2">ID: {id}</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <p className="text-lg text-destructive">Erro: {error}</p>
+            <Button asChild className="mt-4">
+              <Link to="/eventos">Voltar para Eventos</Link>
+            </Button>
+          </div>
         </div>
       </Layout>
     );
@@ -208,7 +239,12 @@ const EditarEvento = () => {
     return (
       <Layout>
         <div className="flex justify-center items-center h-64">
-          <p>Evento não encontrado</p>
+          <div className="text-center">
+            <p className="text-lg">Evento não encontrado</p>
+            <Button asChild className="mt-4">
+              <Link to="/eventos">Voltar para Eventos</Link>
+            </Button>
+          </div>
         </div>
       </Layout>
     );
@@ -231,7 +267,7 @@ const EditarEvento = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Editar Evento</h1>
             <p className="text-muted-foreground">
-              Atualize as informações do evento.
+              Atualize as informações do evento: {event.title}
             </p>
           </div>
         </div>
@@ -450,13 +486,23 @@ const EditarEvento = () => {
                 )}
               />
               
-              <Button 
-                type="submit" 
-                className="w-full bg-gold-gradient text-black hover:brightness-110"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Atualizando...' : 'Atualizar Evento'}
-              </Button>
+              <div className="flex gap-4">
+                <Button 
+                  type="submit" 
+                  className="flex-1 bg-gold-gradient text-black hover:brightness-110"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Atualizando...' : 'Atualizar Evento'}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={() => navigate('/eventos')}
+                  disabled={isLoading}
+                >
+                  Cancelar
+                </Button>
+              </div>
             </form>
           </Form>
         </div>
