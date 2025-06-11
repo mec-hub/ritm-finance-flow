@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
@@ -203,7 +204,7 @@ const EditarTransacao = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column - Transaction Form */}
-          <div>
+          <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Detalhes da Transação</CardTitle>
@@ -214,7 +215,7 @@ const EditarTransacao = () => {
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)}>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-4">
                       <FormField
                         control={form.control}
                         name="description"
@@ -229,266 +230,274 @@ const EditarTransacao = () => {
                         )}
                       />
 
-                      <FormField
-                        control={form.control}
-                        name="amount"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Valor (R$)</FormLabel>
-                            <FormControl>
-                              <Input type="number" step="0.01" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="type"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Tipo</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="amount"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Valor (R$)</FormLabel>
                               <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione o tipo" />
-                                </SelectTrigger>
+                                <Input type="number" step="0.01" {...field} />
                               </FormControl>
-                              <SelectContent>
-                                <SelectItem value="income">Receita</SelectItem>
-                                <SelectItem value="expense">Despesa</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                      <FormField
-                        control={form.control}
-                        name="status"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Status</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione o status" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="paid">Pago</SelectItem>
-                                <SelectItem value="not_paid">Não Pago</SelectItem>
-                                <SelectItem value="canceled">Cancelado</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="date"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                            <FormLabel>Data</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
+                        <FormField
+                          control={form.control}
+                          name="type"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Tipo</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
-                                  <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                      "w-full pl-3 text-left font-normal",
-                                      !field.value && "text-muted-foreground"
-                                    )}
-                                  >
-                                    {field.value ? (
-                                      format(field.value, "dd/MM/yyyy", { locale: ptBR })
-                                    ) : (
-                                      <span>Selecione uma data</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione o tipo" />
+                                  </SelectTrigger>
                                 </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={field.value}
-                                  onSelect={field.onChange}
-                                  initialFocus
-                                  locale={ptBR}
-                                />
-                              </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                                <SelectContent>
+                                  <SelectItem value="income">Receita</SelectItem>
+                                  <SelectItem value="expense">Despesa</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
-                      <FormField
-                        control={form.control}
-                        name="category"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Categoria</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="status"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Status</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione o status" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="paid">Pago</SelectItem>
+                                  <SelectItem value="not_paid">Não Pago</SelectItem>
+                                  <SelectItem value="canceled">Cancelado</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="date"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel>Data</FormLabel>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant={"outline"}
+                                      className={cn(
+                                        "w-full pl-3 text-left font-normal",
+                                        !field.value && "text-muted-foreground"
+                                      )}
+                                    >
+                                      {field.value ? (
+                                        format(field.value, "dd/MM/yyyy", { locale: ptBR })
+                                      ) : (
+                                        <span>Selecione uma data</span>
+                                      )}
+                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={field.value}
+                                    onSelect={field.onChange}
+                                    initialFocus
+                                    locale={ptBR}
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="category"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Categoria</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione uma categoria" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {categories.map((category) => (
+                                    <SelectItem key={category} value={category}>
+                                      {category}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="subcategory"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Subcategoria (opcional)</FormLabel>
                               <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione uma categoria" />
-                                </SelectTrigger>
+                                <Input placeholder="Subcategoria" {...field} />
                               </FormControl>
-                              <SelectContent>
-                                {categories.map((category) => (
-                                  <SelectItem key={category} value={category}>
-                                    {category}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="clientId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Cliente (opcional)</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione um cliente" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="no_client">Nenhum cliente</SelectItem>
+                                  {clients.map((client) => (
+                                    <SelectItem key={client.id} value={client.id}>
+                                      {client.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="eventId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Evento (opcional)</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione um evento" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="no_event">Nenhum evento</SelectItem>
+                                  {events.map((event) => (
+                                    <SelectItem key={event.id} value={event.id}>
+                                      {event.title} ({format(new Date(event.date), "dd/MM/yyyy")})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
                       <FormField
                         control={form.control}
-                        name="subcategory"
+                        name="isRecurring"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Subcategoria (opcional)</FormLabel>
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base">Transação Recorrente</FormLabel>
+                              <FormDescription>
+                                Esta é uma transação mensal recorrente?
+                              </FormDescription>
+                            </div>
                             <FormControl>
-                              <Input placeholder="Subcategoria" {...field} />
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
                             </FormControl>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
 
-                      <FormField
-                        control={form.control}
-                        name="clientId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Cliente (opcional)</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                      {form.watch("isRecurring") && (
+                        <FormField
+                          control={form.control}
+                          name="recurrenceMonths"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Número de Meses</FormLabel>
                               <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione um cliente" />
-                                </SelectTrigger>
+                                <Input 
+                                  type="number" 
+                                  min="1" 
+                                  max="60" 
+                                  {...field} 
+                                />
                               </FormControl>
-                              <SelectContent>
-                                <SelectItem value="no_client">Nenhum cliente</SelectItem>
-                                {clients.map((client) => (
-                                  <SelectItem key={client.id} value={client.id}>
-                                    {client.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="eventId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Evento (opcional)</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione um evento" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="no_event">Nenhum evento</SelectItem>
-                                {events.map((event) => (
-                                  <SelectItem key={event.id} value={event.id}>
-                                    {event.title} ({format(new Date(event.date), "dd/MM/yyyy")})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="isRecurring"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">Transação Recorrente</FormLabel>
-                            <FormDescription>
-                              Esta é uma transação mensal recorrente?
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
+                              <FormDescription>
+                                Por quantos meses esta transação mensal se repetirá
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       )}
-                    />
 
-                    {form.watch("isRecurring") && (
                       <FormField
                         control={form.control}
-                        name="recurrenceMonths"
+                        name="notes"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Número de Meses</FormLabel>
+                            <FormLabel>Observações (opcional)</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
-                                min="1" 
-                                max="60" 
+                              <Textarea 
+                                placeholder="Informações adicionais sobre a transação" 
+                                className="resize-none" 
                                 {...field} 
                               />
                             </FormControl>
-                            <FormDescription>
-                              Por quantos meses esta transação mensal se repetirá
-                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                    )}
 
-                    <FormField
-                      control={form.control}
-                      name="notes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Observações (opcional)</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              placeholder="Informações adicionais sobre a transação" 
-                              className="resize-none" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <Button 
-                      type="submit" 
-                      className="w-full bg-gold-gradient text-black hover:brightness-110"
-                    >
-                      Atualizar Transação
-                    </Button>
+                      <Button 
+                        type="submit" 
+                        className="w-full bg-gold-gradient text-black hover:brightness-110"
+                      >
+                        Atualizar Transação
+                      </Button>
+                    </div>
                   </CardContent>
                 </form>
               </Form>
@@ -496,7 +505,7 @@ const EditarTransacao = () => {
           </div>
 
           {/* Right Column - Team Assignment */}
-          <div>
+          <div className="space-y-6">
             {form.watch("type") === 'income' && (
               <TeamAssignmentManager
                 initialAssignments={teamAssignments}

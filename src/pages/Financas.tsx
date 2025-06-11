@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -217,8 +216,7 @@ const Financas = () => {
 
           <TabsContent value="transactions" className="space-y-4">
             <TransactionsList 
-              transactions={filteredTransactions} 
-              onTransactionDeleted={handleTransactionDeleted}
+              filters={filters} 
             />
           </TabsContent>
 
