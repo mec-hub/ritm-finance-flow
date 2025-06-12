@@ -9,13 +9,11 @@ export interface TeamTransactionAssignment {
 }
 
 export class TransactionService {
-  // Helper function to format date consistently without timezone issues
+  // Helper function to format date consistently - using the same approach as events
   private static formatDateForDB(date: Date): string {
-    // Create a new date in the local timezone to avoid any shifts
-    const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
-    const year = localDate.getUTCFullYear();
-    const month = String(localDate.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(localDate.getUTCDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
 
