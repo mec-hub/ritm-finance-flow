@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Edit, Trash2, Calendar, DollarSign, Tag, User, Building, FileText, Users, Paperclip, Download } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Calendar, DollarSign, Tag, User, Building, FileText, Users, Paperclip } from 'lucide-react';
 import { Transaction } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
 import { format } from 'date-fns';
@@ -16,6 +16,7 @@ import { EventService } from '@/services/eventService';
 import { ClientService } from '@/services/clientService';
 import { toast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AttachmentPreview } from '@/components/transactions/AttachmentPreview';
 
 const DetalhesTransacao = () => {
   const { id } = useParams<{ id: string }>();
@@ -305,18 +306,13 @@ const DetalhesTransacao = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     {transaction.attachments.map((attachment, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center space-x-2">
-                          <FileText className="h-4 w-4" />
-                          <span className="text-sm">Anexo {index + 1}</span>
-                        </div>
-                        <Button variant="outline" size="sm">
-                          <Download className="h-4 w-4 mr-2" />
-                          Download
-                        </Button>
-                      </div>
+                      <AttachmentPreview
+                        key={index}
+                        attachment={attachment}
+                        index={index}
+                      />
                     ))}
                   </div>
                 </CardContent>
