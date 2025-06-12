@@ -74,14 +74,14 @@ export class ReportExportService {
       alternateRowStyles: { fillColor: [245, 245, 245] },
     });
     
-    // Footer
-    const pageCount = doc.internal.getNumberOfPages();
+    // Footer - Fixed API usage
+    const pageCount = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(150);
-      doc.text(`Página ${i} de ${pageCount}`, doc.internal.pageSize.width - 30, doc.internal.pageSize.height - 10);
-      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 20, doc.internal.pageSize.height - 10);
+      doc.text(`Página ${i} de ${pageCount}`, (doc as any).internal.pageSize.width - 30, (doc as any).internal.pageSize.height - 10);
+      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 20, (doc as any).internal.pageSize.height - 10);
     }
     
     doc.save('relatorio-transacoes.pdf');
@@ -126,14 +126,14 @@ export class ReportExportService {
       alternateRowStyles: { fillColor: [245, 245, 245] },
     });
     
-    // Footer
-    const pageCount = doc.internal.getNumberOfPages();
+    // Footer - Fixed API usage
+    const pageCount = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(150);
-      doc.text(`Página ${i} de ${pageCount}`, doc.internal.pageSize.width - 30, doc.internal.pageSize.height - 10);
-      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 20, doc.internal.pageSize.height - 10);
+      doc.text(`Página ${i} de ${pageCount}`, (doc as any).internal.pageSize.width - 30, (doc as any).internal.pageSize.height - 10);
+      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 20, (doc as any).internal.pageSize.height - 10);
     }
     
     doc.save('relatorio-clientes.pdf');
@@ -150,7 +150,7 @@ export class ReportExportService {
       ['Total de Receitas', formatCurrency(summary.totalIncome)],
       ['Total de Despesas', formatCurrency(summary.totalExpenses)],
       ['Lucro Líquido', formatCurrency(summary.netProfit)],
-      ['Total de Transações', summary.count],
+      ['Total de Transações', summary.count.toString()],
       [''],
       ['Período:', this.getDateRangeText(filters) || 'Todos os períodos'],
       ['Gerado em:', new Date().toLocaleDateString('pt-BR')]
@@ -171,7 +171,7 @@ export class ReportExportService {
         t.category,
         t.subcategory || '',
         t.type === 'income' ? 'Receita' : 'Despesa',
-        t.amount,
+        t.amount.toString(),
         t.status === 'paid' ? 'Pago' : t.status === 'not_paid' ? 'Não Pago' : 'Cancelado',
         t.notes || ''
       ]);
@@ -197,7 +197,7 @@ export class ReportExportService {
     const summaryData = [
       ['Relatório de Clientes'],
       [''],
-      ['Total de Clientes', clients.length],
+      ['Total de Clientes', clients.length.toString()],
       ['Receita Total', formatCurrency(totalRevenue)],
       ['Receita Média por Cliente', formatCurrency(totalRevenue / clients.length || 0)],
       [''],
@@ -218,7 +218,7 @@ export class ReportExportService {
         client.email || '',
         client.phone || '',
         client.contact || '',
-        client.totalRevenue,
+        client.totalRevenue.toString(),
         client.lastEvent ? client.lastEvent.toLocaleDateString('pt-BR') : '',
         client.notes || ''
       ]);
@@ -283,10 +283,10 @@ export class ReportExportService {
     categoryMap.forEach((data, category) => {
       result.push([
         category,
-        data.income,
-        data.expense,
-        data.income - data.expense,
-        data.count
+        data.income.toString(),
+        data.expense.toString(),
+        (data.income - data.expense).toString(),
+        data.count.toString()
       ]);
     });
     

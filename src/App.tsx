@@ -3,7 +3,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { TransactionProvider } from "@/contexts/TransactionContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -25,9 +24,6 @@ import EditarEvento from "./pages/EditarEvento";
 import NovoCliente from "./pages/NovoCliente";
 import EditarCliente from "./pages/EditarCliente";
 import NotFound from "./pages/NotFound";
-
-// Create QueryClient outside of component
-const queryClient = new QueryClient();
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -78,19 +74,17 @@ function AppRoutes() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TransactionProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <AppRoutes />
-            </BrowserRouter>
-          </TooltipProvider>
-        </TransactionProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <AuthProvider>
+      <TransactionProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </TooltipProvider>
+      </TransactionProvider>
+    </AuthProvider>
   );
 }
 
