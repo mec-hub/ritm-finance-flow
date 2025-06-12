@@ -35,18 +35,10 @@ export class ReportService {
         dateTo?: Date;
         eventId?: string;
         clientId?: string;
-      } = {};
+      } = { ...filters };
       
-      // Copy all filters except type
-      if (filters.category) serviceFilters.category = filters.category;
-      if (filters.dateFrom) serviceFilters.dateFrom = filters.dateFrom;
-      if (filters.dateTo) serviceFilters.dateTo = filters.dateTo;
-      if (filters.eventId) serviceFilters.eventId = filters.eventId;
-      if (filters.clientId) serviceFilters.clientId = filters.clientId;
-      
-      // Only include type if it's not 'all'
-      if (filters.type && filters.type !== 'all') {
-        serviceFilters.type = filters.type;
+      if (serviceFilters.type === 'all') {
+        delete serviceFilters.type;
       }
       
       const transactions = await TransactionService.getByFilters(serviceFilters);

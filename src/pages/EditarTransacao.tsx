@@ -21,10 +21,7 @@ import { toast } from '@/hooks/use-toast';
 import { TransactionService } from '@/services/transactionService';
 import { ClientService } from '@/services/clientService';
 import { EventService } from '@/services/eventService';
-import { TeamManagementService } from '@/services/teamManagementService';
-import { Transaction, Client, Event, TeamMember } from '@/types';
-import { AttachmentUpload } from '@/components/transactions/AttachmentUpload';
-import { TeamAssignmentForm } from '@/components/transactions/TeamAssignmentForm';
+import { Transaction, Client, Event } from '@/types';
 
 const formSchema = z.object({
   description: z.string().min(1, 'Descrição é obrigatória'),
@@ -52,9 +49,6 @@ const EditarTransacao = () => {
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [teamAssignments, setTeamAssignments] = useState<any[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -79,19 +73,16 @@ const EditarTransacao = () => {
       if (!id) return;
 
       try {
-        const [transactionData, clientsData, eventsData, teamMembersData] = await Promise.all([
+        const [transactionData, clientsData, eventsData] = await Promise.all([
           TransactionService.getById(id),
           ClientService.getAll(),
-          EventService.getAll(),
-          TeamManagementService.getTeamMembers()
+          EventService.getAll()
         ]);
         
         if (transactionData) {
           setTransaction(transactionData);
           setClients(clientsData);
           setEvents(eventsData);
-          setTeamMembers(teamMembersData);
-          setTeamAssignments(transactionData.teamPercentages || []);
           
           form.reset({
             description: transactionData.description,
@@ -135,17 +126,6 @@ const EditarTransacao = () => {
     if (!id || !transaction) return;
     
     try {
-      // Convert selected files to base64 for storage
-      const attachments = transaction.attachments || [];
-      for (const file of selectedFiles) {
-        const base64 = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(file);
-        });
-        attachments.push(base64);
-      }
-
       const updatedTransaction: Partial<Transaction> = {
         description: values.description,
         amount: values.amount,
@@ -160,8 +140,6 @@ const EditarTransacao = () => {
         clientId: values.clientId === 'no_client' ? undefined : values.clientId,
         eventId: values.eventId === 'no_event' ? undefined : values.eventId,
         status: values.status,
-        attachments,
-        teamPercentages: teamAssignments,
       };
       
       await TransactionService.update(id, updatedTransaction);
@@ -219,15 +197,15 @@ const EditarTransacao = () => {
           </div>
         </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Detalhes da Transação</CardTitle>
-                <CardDescription>
-                  Atualize as informações da transação conforme necessário.
-                </CardDescription>
-              </CardHeader>
+        <Card>
+          <CardHeader>
+            <CardTitle>Detalhes da Transação</CardTitle>
+            <CardDescription>
+              Atualize as informações da transação conforme necessário.
+            </CardDescription>
+          </CardHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
@@ -497,30 +475,17 @@ const EditarTransacao = () => {
                     </FormItem>
                   )}
                 />
+
+                <Button 
+                  type="submit" 
+                  className="w-full bg-gold-gradient text-black hover:brightness-110"
+                >
+                  Atualizar Transação
+                </Button>
               </CardContent>
-            </Card>
-
-            {/* Team Assignment Form */}
-            <TeamAssignmentForm
-              teamMembers={teamMembers}
-              assignments={teamAssignments}
-              onChange={setTeamAssignments}
-            />
-
-            {/* Attachment Upload */}
-            <AttachmentUpload
-              files={selectedFiles}
-              onChange={setSelectedFiles}
-            />
-
-            <Button 
-              type="submit" 
-              className="w-full bg-gold-gradient text-black hover:brightness-110"
-            >
-              Atualizar Transação
-            </Button>
-          </form>
-        </Form>
+            </form>
+          </Form>
+        </Card>
       </div>
     </Layout>
   );

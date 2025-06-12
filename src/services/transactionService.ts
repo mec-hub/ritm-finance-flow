@@ -9,15 +9,6 @@ export interface TeamTransactionAssignment {
 }
 
 export class TransactionService {
-  // Helper function to format date consistently
-  private static formatDateForDB(date: Date): string {
-    // Get the local date components to avoid timezone shifts
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
   static async getAll(): Promise<Transaction[]> {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('User not authenticated');
@@ -97,12 +88,18 @@ export class TransactionService {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('User not authenticated');
 
+    // Format date to avoid timezone issues
+    const localDate = new Date(transaction.date);
+    const formattedDate = localDate.getFullYear() + '-' + 
+      String(localDate.getMonth() + 1).padStart(2, '0') + '-' + 
+      String(localDate.getDate()).padStart(2, '0');
+
     const { data, error } = await supabase
       .from('transactions')
       .insert({
         amount: transaction.amount,
         description: transaction.description,
-        date: this.formatDateForDB(transaction.date),
+        date: formattedDate,
         category: transaction.category,
         subcategory: transaction.subcategory,
         is_recurring: transaction.isRecurring,
@@ -145,7 +142,12 @@ export class TransactionService {
     if (updates.amount !== undefined) updateData.amount = updates.amount;
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.date !== undefined) {
-      updateData.date = this.formatDateForDB(updates.date);
+      // Format date to avoid timezone issues
+      const localDate = new Date(updates.date);
+      const formattedDate = localDate.getFullYear() + '-' + 
+        String(localDate.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(localDate.getDate()).padStart(2, '0');
+      updateData.date = formattedDate;
     }
     if (updates.category !== undefined) updateData.category = updates.category;
     if (updates.subcategory !== undefined) updateData.subcategory = updates.subcategory;
