@@ -80,7 +80,7 @@ export const AttachmentPreview: React.FC<AttachmentPreviewProps> = ({ attachment
     switch (fileType) {
       case 'image':
         return (
-          <div className="max-w-full max-h-96 overflow-auto">
+          <div className="max-w-full max-h-full overflow-auto">
             <img 
               src={attachment} 
               alt={`Anexo ${index + 1}`}
