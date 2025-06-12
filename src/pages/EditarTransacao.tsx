@@ -21,7 +21,11 @@ import { toast } from '@/hooks/use-toast';
 import { TransactionService } from '@/services/transactionService';
 import { ClientService } from '@/services/clientService';
 import { EventService } from '@/services/eventService';
-import { Transaction, Client, Event } from '@/types';
+import { TeamManagementService } from '@/services/teamManagementService';
+import { Transaction, Client, Event, TeamMember } from '@/types';
+import { TeamAssignmentForm } from '@/components/transactions/TeamAssignmentForm';
+import { AttachmentUpload } from '@/components/transactions/AttachmentUpload';
+import { AttachmentPreview } from '@/components/transactions/AttachmentPreview';
 
 const formSchema = z.object({
   description: z.string().min(1, 'Descrição é obrigatória'),
@@ -49,6 +53,10 @@ const EditarTransacao = () => {
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [teamAssignments, setTeamAssignments] = useState<any[]>([]);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<string[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -73,16 +81,20 @@ const EditarTransacao = () => {
       if (!id) return;
 
       try {
-        const [transactionData, clientsData, eventsData] = await Promise.all([
+        const [transactionData, clientsData, eventsData, teamMembersData] = await Promise.all([
           TransactionService.getById(id),
           ClientService.getAll(),
-          EventService.getAll()
+          EventService.getAll(),
+          TeamManagementService.getAllMembers()
         ]);
         
         if (transactionData) {
           setTransaction(transactionData);
           setClients(clientsData);
           setEvents(eventsData);
+          setTeamMembers(teamMembersData);
+          setTeamAssignments(transactionData.teamPercentages || []);
+          setExistingAttachments(transactionData.attachments || []);
           
           form.reset({
             description: transactionData.description,
@@ -122,10 +134,26 @@ const EditarTransacao = () => {
     fetchData();
   }, [id, navigate, form]);
 
+  const convertFilesToBase64 = async (files: File[]): Promise<string[]> => {
+    const promises = files.map(file => {
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    });
+    return Promise.all(promises);
+  };
+
   const onSubmit = async (values: FormValues) => {
     if (!id || !transaction) return;
     
     try {
+      // Convert new files to base64
+      const newAttachmentsBase64 = await convertFilesToBase64(attachmentFiles);
+      const allAttachments = [...existingAttachments, ...newAttachmentsBase64];
+
       const updatedTransaction: Partial<Transaction> = {
         description: values.description,
         amount: values.amount,
@@ -140,6 +168,8 @@ const EditarTransacao = () => {
         clientId: values.clientId === 'no_client' ? undefined : values.clientId,
         eventId: values.eventId === 'no_event' ? undefined : values.eventId,
         status: values.status,
+        teamPercentages: teamAssignments,
+        attachments: allAttachments,
       };
       
       await TransactionService.update(id, updatedTransaction);
@@ -158,6 +188,11 @@ const EditarTransacao = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const removeExistingAttachment = (index: number) => {
+    const newAttachments = existingAttachments.filter((_, i) => i !== index);
+    setExistingAttachments(newAttachments);
   };
 
   const categories = [
@@ -197,15 +232,15 @@ const EditarTransacao = () => {
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Detalhes da Transação</CardTitle>
-            <CardDescription>
-              Atualize as informações da transação conforme necessário.
-            </CardDescription>
-          </CardHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Detalhes da Transação</CardTitle>
+                <CardDescription>
+                  Atualize as informações da transação conforme necessário.
+                </CardDescription>
+              </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
@@ -475,17 +510,63 @@ const EditarTransacao = () => {
                     </FormItem>
                   )}
                 />
-
-                <Button 
-                  type="submit" 
-                  className="w-full bg-gold-gradient text-black hover:brightness-110"
-                >
-                  Atualizar Transação
-                </Button>
               </CardContent>
-            </form>
-          </Form>
-        </Card>
+            </Card>
+
+            {/* Team Assignment Section */}
+            {teamMembers.length > 0 && (
+              <TeamAssignmentForm
+                teamMembers={teamMembers}
+                assignments={teamAssignments}
+                onChange={setTeamAssignments}
+              />
+            )}
+
+            {/* Attachments Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Anexos</CardTitle>
+                <CardDescription>
+                  Gerencie os arquivos anexados a esta transação.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Existing Attachments */}
+                {existingAttachments.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium">Anexos Existentes</h4>
+                    {existingAttachments.map((attachment, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <AttachmentPreview attachment={attachment} index={index} />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => removeExistingAttachment(index)}
+                        >
+                          Remover
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* New Attachments Upload */}
+                <AttachmentUpload
+                  files={attachmentFiles}
+                  onChange={setAttachmentFiles}
+                />
+              </CardContent>
+            </Card>
+
+            <Button 
+              type="submit" 
+              className="w-full bg-gold-gradient text-black hover:brightness-110"
+            >
+              Atualizar Transação
+            </Button>
+          </form>
+        </Form>
       </div>
     </Layout>
   );
