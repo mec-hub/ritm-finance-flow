@@ -1,3 +1,4 @@
+
 import { TransactionService } from './transactionService';
 import { ClientService } from './clientService';
 import { EventService } from './eventService';
@@ -219,8 +220,6 @@ export class ReportService {
   }
 
   static async generatePDFReport(transactions: Transaction[]): Promise<void> {
-    // This would require a PDF library like jsPDF
-    // For now, we'll just download as CSV
     const csvContent = await this.exportToCSV(transactions);
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -234,8 +233,6 @@ export class ReportService {
   }
 
   static async generateExcelReport(transactions: Transaction[]): Promise<void> {
-    // This would require a library like xlsx
-    // For now, we'll just download as CSV
     const csvContent = await this.exportToCSV(transactions);
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -281,8 +278,6 @@ export class ReportService {
   }
 
   static async exportToPDF(transactions: Transaction[]): Promise<void> {
-    // This would require a PDF library like jsPDF
-    // For now, we'll just download as CSV
     const csvContent = await this.exportToCSV(transactions);
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');

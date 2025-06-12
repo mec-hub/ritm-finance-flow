@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Transaction } from '@/types';
 
@@ -9,8 +10,9 @@ export interface TeamTransactionAssignment {
 }
 
 export class TransactionService {
-  // Helper function to format date consistently - using the same approach as events
+  // Helper function to format date consistently - using the exact same approach as events
   private static formatDateForDB(date: Date): string {
+    // Get the date components in local time without any timezone manipulation
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -30,7 +32,7 @@ export class TransactionService {
       id: transaction.id,
       amount: transaction.amount,
       description: transaction.description,
-      date: new Date(transaction.date),
+      date: new Date(transaction.date + 'T00:00:00'),
       category: transaction.category,
       subcategory: transaction.subcategory,
       isRecurring: transaction.is_recurring || false,
@@ -70,7 +72,7 @@ export class TransactionService {
       id: data.id,
       amount: data.amount,
       description: data.description,
-      date: new Date(data.date),
+      date: new Date(data.date + 'T00:00:00'),
       category: data.category,
       subcategory: data.subcategory,
       isRecurring: data.is_recurring || false,
@@ -96,7 +98,7 @@ export class TransactionService {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('User not authenticated');
 
-    // Use the helper function to format the date properly
+    // Format date using the same approach as events - no timezone manipulation
     const formattedDate = this.formatDateForDB(transaction.date);
 
     const { data, error } = await supabase
@@ -147,7 +149,7 @@ export class TransactionService {
     if (updates.amount !== undefined) updateData.amount = updates.amount;
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.date !== undefined) {
-      // Use the helper function to format the date properly
+      // Use the same simple date formatting as events
       updateData.date = this.formatDateForDB(updates.date);
     }
     if (updates.category !== undefined) updateData.category = updates.category;
@@ -256,7 +258,7 @@ export class TransactionService {
       id: transaction.id,
       amount: transaction.amount,
       description: transaction.description,
-      date: new Date(transaction.date),
+      date: new Date(transaction.date + 'T00:00:00'),
       category: transaction.category,
       subcategory: transaction.subcategory,
       isRecurring: transaction.is_recurring || false,
