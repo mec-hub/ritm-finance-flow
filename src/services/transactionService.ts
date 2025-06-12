@@ -10,6 +10,15 @@ export interface TeamTransactionAssignment {
 }
 
 export class TransactionService {
+  // Helper function to format date consistently without timezone issues
+  private static formatDateForDB(date: Date): string {
+    // Get the local date components
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   static async getAll(): Promise<Transaction[]> {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('User not authenticated');
@@ -89,12 +98,8 @@ export class TransactionService {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('User not authenticated');
 
-    // Format date properly to avoid timezone issues - use YYYY-MM-DD format
-    const localDate = new Date(transaction.date);
-    const year = localDate.getFullYear();
-    const month = String(localDate.getMonth() + 1).padStart(2, '0');
-    const day = String(localDate.getDate()).padStart(2, '0');
-    const formattedDate = `${year}-${month}-${day}`;
+    // Use the helper function to format the date properly
+    const formattedDate = this.formatDateForDB(transaction.date);
 
     const { data, error } = await supabase
       .from('transactions')
@@ -144,13 +149,8 @@ export class TransactionService {
     if (updates.amount !== undefined) updateData.amount = updates.amount;
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.date !== undefined) {
-      // Format date properly to avoid timezone issues - use YYYY-MM-DD format
-      const localDate = new Date(updates.date);
-      const year = localDate.getFullYear();
-      const month = String(localDate.getMonth() + 1).padStart(2, '0');
-      const day = String(localDate.getDate()).padStart(2, '0');
-      const formattedDate = `${year}-${month}-${day}`;
-      updateData.date = formattedDate;
+      // Use the helper function to format the date properly
+      updateData.date = this.formatDateForDB(updates.date);
     }
     if (updates.category !== undefined) updateData.category = updates.category;
     if (updates.subcategory !== undefined) updateData.subcategory = updates.subcategory;

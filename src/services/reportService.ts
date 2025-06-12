@@ -9,7 +9,7 @@ export interface ReportFilters {
   dateFrom?: Date;
   dateTo?: Date;
   category?: string;
-  type?: 'income' | 'expense';
+  type?: 'income' | 'expense' | 'all';
   clientId?: string;
   eventId?: string;
   teamMemberId?: string;
@@ -29,6 +29,13 @@ export interface TeamMemberPerformance {
   totalEarnings: number;
   transactionCount: number;
   averagePercentage: number;
+}
+
+export interface ReportTemplate {
+  id: string;
+  name: string;
+  description: string;
+  filters: ReportFilters;
 }
 
 export class ReportService {
@@ -178,6 +185,68 @@ export class ReportService {
     return eventAnalysis
       .filter(e => e.transactionCount > 0)
       .sort((a, b) => b.revenue - a.revenue);
+  }
+
+  static async getReportTemplates(): Promise<ReportTemplate[]> {
+    // Mock templates for now
+    return [
+      {
+        id: '1',
+        name: 'Relatório Mensal',
+        description: 'Relatório de receitas e despesas do mês',
+        filters: {
+          type: 'all' as const,
+          dateFrom: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+          dateTo: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
+        }
+      },
+      {
+        id: '2',
+        name: 'Receitas por Cliente',
+        description: 'Análise de receitas por cliente',
+        filters: {
+          type: 'income' as const
+        }
+      },
+      {
+        id: '3',
+        name: 'Performance da Equipe',
+        description: 'Análise de performance dos membros da equipe',
+        filters: {
+          type: 'income' as const
+        }
+      }
+    ];
+  }
+
+  static async generatePDFReport(transactions: Transaction[]): Promise<void> {
+    // This would require a PDF library like jsPDF
+    // For now, we'll just download as CSV
+    const csvContent = await this.exportToCSV(transactions);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `relatorio_transacoes_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  static async generateExcelReport(transactions: Transaction[]): Promise<void> {
+    // This would require a library like xlsx
+    // For now, we'll just download as CSV
+    const csvContent = await this.exportToCSV(transactions);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `relatorio_transacoes_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   static async exportToCSV(transactions: Transaction[]): Promise<string> {
