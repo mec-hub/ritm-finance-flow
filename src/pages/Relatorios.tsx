@@ -4,39 +4,52 @@ import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { AdvancedReportFilters } from '@/components/reports/AdvancedReportFilters';
-import { ReportTemplateSelector } from '@/components/reports/ReportTemplateSelector';
+import { ReportFilters } from '@/components/reports/ReportFilters';
+import { ReportExporter } from '@/components/reports/ReportExporter';
+import { TransactionsOverview } from '@/components/reports/TransactionsOverview';
 import { TransactionService } from '@/services/transactionService';
-import { ReportService, ReportFilters } from '@/services/reportService';
+import { ClientService } from '@/services/clientService';
 import { Transaction } from '@/types';
-import { formatCurrency } from '@/utils/formatters';
-import { FileText, TrendingUp, BarChart3, PieChart, Construction } from 'lucide-react';
+import { FileText, BarChart3, Download, Users, TrendingUp } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const Relatorios = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('overview');
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [availableClients, setAvailableClients] = useState<{ id: string; name: string }[]>([]);
   
-  const [filters, setFilters] = useState<ReportFilters>({
+  const [filters, setFilters] = useState<any>({
     type: 'all',
     dateFrom: undefined,
     dateTo: undefined,
     category: undefined,
-    eventId: undefined,
     clientId: undefined
   });
 
-  const fetchTransactions = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const transactionsData = await TransactionService.getAll();
+      const [transactionsData, clientsData] = await Promise.all([
+        TransactionService.getAll(),
+        ClientService.getAll()
+      ]);
+      
       setAllTransactions(transactionsData);
       setFilteredTransactions(transactionsData);
+      
+      // Extract unique categories
+      const categories = Array.from(new Set(transactionsData.map(t => t.category)));
+      setAvailableCategories(categories);
+      
+      // Format clients for filters
+      const clients = clientsData.map(c => ({ id: c.id, name: c.name }));
+      setAvailableClients(clients);
+      
     } catch (error) {
-      console.error('Error fetching transactions:', error);
+      console.error('Error fetching data:', error);
       toast({
         title: "Erro",
         description: "Não foi possível carregar os dados para os relatórios.",
@@ -48,10 +61,10 @@ const Relatorios = () => {
   };
 
   useEffect(() => {
-    fetchTransactions();
+    fetchData();
   }, []);
 
-  const applyFilters = (newFilters: ReportFilters) => {
+  const applyFilters = (newFilters: any) => {
     let filtered = [...allTransactions];
     
     if (newFilters.type && newFilters.type !== 'all') {
@@ -68,12 +81,8 @@ const Relatorios = () => {
     
     if (newFilters.category) {
       filtered = filtered.filter(t => 
-        t.category.toLowerCase().includes(newFilters.category!.toLowerCase())
+        t.category.toLowerCase().includes(newFilters.category.toLowerCase())
       );
-    }
-    
-    if (newFilters.eventId) {
-      filtered = filtered.filter(t => t.eventId === newFilters.eventId);
     }
     
     if (newFilters.clientId) {
@@ -85,12 +94,11 @@ const Relatorios = () => {
   };
 
   const clearFilters = () => {
-    const clearedFilters: ReportFilters = {
+    const clearedFilters = {
       type: 'all',
       dateFrom: undefined,
       dateTo: undefined,
       category: undefined,
-      eventId: undefined,
       clientId: undefined
     };
     applyFilters(clearedFilters);
@@ -106,35 +114,14 @@ const Relatorios = () => {
       .reduce((sum, t) => sum + t.amount, 0);
     
     const netProfit = totalIncome - totalExpenses;
-    const profitMargin = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0;
     
     return {
       totalIncome,
       totalExpenses,
       netProfit,
-      profitMargin,
       transactionCount: filteredTransactions.length
     };
   }, [filteredTransactions]);
-
-  const availableCategories = useMemo(() => 
-    Array.from(new Set(allTransactions.map(t => t.category))), 
-    [allTransactions]
-  );
-
-  const generatePDFReport = async (templateId: string) => {
-    toast({
-      title: "Em Desenvolvimento",
-      description: "Esta funcionalidade estará disponível em breve.",
-    });
-  };
-
-  const generateExcelReport = async (templateId: string) => {
-    toast({
-      title: "Em Desenvolvimento", 
-      description: "Esta funcionalidade estará disponível em breve.",
-    });
-  };
 
   if (loading) {
     return (
@@ -152,118 +139,79 @@ const Relatorios = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-              <Construction className="h-8 w-8 text-orange-500" />
-              Relatórios (Em Desenvolvimento)
+              <FileText className="h-8 w-8 text-blue-500" />
+              Relatórios
             </h1>
             <p className="text-muted-foreground">
-              Esta seção está sendo desenvolvida. Métricas básicas estão disponíveis.
+              Gere relatórios detalhados de transações e clientes em PDF ou Excel.
             </p>
           </div>
-          <Badge variant="secondary" className="flex items-center gap-1">
-            <Construction className="h-3 w-3" />
-            Beta
+          <Badge variant="default" className="flex items-center gap-1">
+            <TrendingUp className="h-3 w-3" />
+            Funcional
           </Badge>
         </div>
 
-        {/* Summary Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Receitas</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-500">
-                {formatCurrency(summaryMetrics.totalIncome)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {filteredTransactions.filter(t => t.type === 'income').length} transações
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Despesas</CardTitle>
-              <TrendingUp className="h-4 w-4 text-red-500 rotate-180" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-500">
-                {formatCurrency(summaryMetrics.totalExpenses)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {filteredTransactions.filter(t => t.type === 'expense').length} transações
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Lucro Líquido</CardTitle>
-              <BarChart3 className={`h-4 w-4 ${
-                summaryMetrics.netProfit >= 0 ? 'text-green-500' : 'text-red-500'
-              }`} />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${
-                summaryMetrics.netProfit >= 0 ? 'text-green-500' : 'text-red-500'
-              }`}>
-                {formatCurrency(summaryMetrics.netProfit)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Margem: {summaryMetrics.profitMargin.toFixed(1)}%
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Transações</CardTitle>
-              <PieChart className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {summaryMetrics.transactionCount}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {availableCategories.length} categorias
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Advanced Filters */}
-        <AdvancedReportFilters
+        {/* Filters */}
+        <ReportFilters
           filters={filters}
           onFiltersChange={applyFilters}
           onClearFilters={clearFilters}
           availableCategories={availableCategories}
-          availableEvents={[]}
-          availableClients={[]}
+          availableClients={availableClients}
         />
 
         {/* Main Content */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Relatórios Detalhados
-            </CardTitle>
-            <CardDescription>
-              Funcionalidades avançadas de relatórios em desenvolvimento
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ReportTemplateSelector
-              templates={[]}
-              selectedTemplate={selectedTemplate}
-              onTemplateSelect={setSelectedTemplate}
-              onGeneratePDF={generatePDFReport}
-              onGenerateExcel={generateExcelReport}
-              isGenerating={false}
+        <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Visão Geral
+            </TabsTrigger>
+            <TabsTrigger value="export" className="flex items-center gap-2">
+              <Download className="h-4 w-4" />
+              Exportar Relatórios
+            </TabsTrigger>
+            <TabsTrigger value="clients" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Análise de Clientes
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-4">
+            <TransactionsOverview transactions={filteredTransactions} />
+          </TabsContent>
+
+          <TabsContent value="export" className="space-y-4">
+            <ReportExporter 
+              transactions={filteredTransactions} 
+              filters={filters}
             />
-          </CardContent>
-        </Card>
+          </TabsContent>
+
+          <TabsContent value="clients" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Análise de Clientes
+                </CardTitle>
+                <CardDescription>
+                  Análise detalhada dos seus clientes será implementada em breve.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <Users className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Em Desenvolvimento</h3>
+                  <p className="text-muted-foreground">
+                    Esta funcionalidade estará disponível em breve com análises avançadas de clientes.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
