@@ -90,7 +90,7 @@ export const AttachmentPreview: React.FC<AttachmentPreviewProps> = ({ attachment
         );
       case 'pdf':
         return (
-          <div className="max-w-full max-h-full overflow-auto">
+          <div className="w-full h-96 overflow-auto">
             <iframe
               src={attachment}
               className="w-full h-auto border rounded-lg"
