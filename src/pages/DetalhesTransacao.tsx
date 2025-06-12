@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Edit, Trash2, Calendar, DollarSign, Tag, User, Building, FileText } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Calendar, DollarSign, Tag, User, Building, FileText, Users, Paperclip, Download } from 'lucide-react';
 import { Transaction } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { TransactionService } from '@/services/transactionService';
+import { EventService } from '@/services/eventService';
+import { ClientService } from '@/services/clientService';
 import { toast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
@@ -19,6 +21,8 @@ const DetalhesTransacao = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [transaction, setTransaction] = useState<Transaction | null>(null);
+  const [eventData, setEventData] = useState<any>(null);
+  const [clientData, setClientData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
 
@@ -30,6 +34,26 @@ const DetalhesTransacao = () => {
         const transactionData = await TransactionService.getById(id);
         if (transactionData) {
           setTransaction(transactionData);
+          
+          // Fetch related event data
+          if (transactionData.eventId) {
+            try {
+              const event = await EventService.getById(transactionData.eventId);
+              setEventData(event);
+            } catch (error) {
+              console.error('Error fetching event:', error);
+            }
+          }
+          
+          // Fetch related client data
+          if (transactionData.clientId) {
+            try {
+              const client = await ClientService.getById(transactionData.clientId);
+              setClientData(client);
+            } catch (error) {
+              console.error('Error fetching client:', error);
+            }
+          }
         } else {
           toast({
             title: "Transação não encontrada",
@@ -202,6 +226,10 @@ const DetalhesTransacao = () => {
                           transaction.status === 'paid' ? 'default' : 
                           transaction.status === 'canceled' ? 'destructive' : 'secondary'
                         }
+                        className={
+                          transaction.status === 'paid' ? 'bg-green-500 hover:bg-green-600' : 
+                          transaction.status === 'canceled' ? '' : ''
+                        }
                       >
                         {transaction.status === 'paid' ? 'Pago' : 
                          transaction.status === 'canceled' ? 'Cancelado' : 'Não Pago'}
@@ -234,6 +262,66 @@ const DetalhesTransacao = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Team Assignments */}
+            {transaction.teamPercentages && transaction.teamPercentages.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Distribuição da Equipe
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {transaction.teamPercentages.map((assignment, index) => {
+                      const memberAmount = (transaction.amount * assignment.percentageValue) / 100;
+                      return (
+                        <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                          <div>
+                            <p className="font-medium">{assignment.teamMemberName || 'Membro não encontrado'}</p>
+                            <p className="text-sm text-muted-foreground">{assignment.percentageValue}% da transação</p>
+                          </div>
+                          <div className="text-right">
+                            <p className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                              {formatCurrency(memberAmount)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Attachments */}
+            {transaction.attachments && transaction.attachments.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Paperclip className="h-5 w-5" />
+                    Anexos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {transaction.attachments.map((attachment, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <FileText className="h-4 w-4" />
+                          <span className="text-sm">Anexo {index + 1}</span>
+                        </div>
+                        <Button variant="outline" size="sm">
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {transaction.notes && (
               <Card>
@@ -289,7 +377,7 @@ const DetalhesTransacao = () => {
               </CardContent>
             </Card>
 
-            {(transaction.clientId || transaction.eventId) && (
+            {(clientData || eventData) && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -298,16 +386,24 @@ const DetalhesTransacao = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {transaction.clientId && (
+                  {clientData && (
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Cliente</label>
-                      <p className="font-medium">Cliente vinculado</p>
+                      <div className="mt-1">
+                        <p className="font-medium">{clientData.name}</p>
+                        <p className="text-sm text-muted-foreground">{clientData.email}</p>
+                      </div>
                     </div>
                   )}
-                  {transaction.eventId && (
+                  {eventData && (
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Evento</label>
-                      <p className="font-medium">Evento vinculado</p>
+                      <div className="mt-1">
+                        <p className="font-medium">{eventData.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(eventData.date), 'dd/MM/yyyy', { locale: ptBR })} - {eventData.location}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </CardContent>

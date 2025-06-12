@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Transaction } from '@/types';
 
@@ -89,12 +88,18 @@ export class TransactionService {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('User not authenticated');
 
+    // Format date to avoid timezone issues
+    const localDate = new Date(transaction.date);
+    const formattedDate = localDate.getFullYear() + '-' + 
+      String(localDate.getMonth() + 1).padStart(2, '0') + '-' + 
+      String(localDate.getDate()).padStart(2, '0');
+
     const { data, error } = await supabase
       .from('transactions')
       .insert({
         amount: transaction.amount,
         description: transaction.description,
-        date: transaction.date.toISOString().split('T')[0],
+        date: formattedDate,
         category: transaction.category,
         subcategory: transaction.subcategory,
         is_recurring: transaction.isRecurring,
@@ -136,7 +141,14 @@ export class TransactionService {
     
     if (updates.amount !== undefined) updateData.amount = updates.amount;
     if (updates.description !== undefined) updateData.description = updates.description;
-    if (updates.date !== undefined) updateData.date = updates.date.toISOString().split('T')[0];
+    if (updates.date !== undefined) {
+      // Format date to avoid timezone issues
+      const localDate = new Date(updates.date);
+      const formattedDate = localDate.getFullYear() + '-' + 
+        String(localDate.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(localDate.getDate()).padStart(2, '0');
+      updateData.date = formattedDate;
+    }
     if (updates.category !== undefined) updateData.category = updates.category;
     if (updates.subcategory !== undefined) updateData.subcategory = updates.subcategory;
     if (updates.isRecurring !== undefined) updateData.is_recurring = updates.isRecurring;

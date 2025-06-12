@@ -28,7 +28,15 @@ export class ReportService {
   static async generateFinancialReport(filters: ReportFilters = {}) {
     try {
       // Filter out 'all' type before passing to TransactionService
-      const serviceFilters = { ...filters };
+      const serviceFilters: {
+        category?: string;
+        type?: 'income' | 'expense';
+        dateFrom?: Date;
+        dateTo?: Date;
+        eventId?: string;
+        clientId?: string;
+      } = { ...filters };
+      
       if (serviceFilters.type === 'all') {
         delete serviceFilters.type;
       }

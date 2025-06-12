@@ -226,6 +226,10 @@ export function TransactionsList({ transactions, onTransactionDeleted }: Transac
                         transaction.status === 'paid' ? 'default' : 
                         transaction.status === 'canceled' ? 'destructive' : 'secondary'
                       }
+                      className={
+                        transaction.status === 'paid' ? 'bg-green-500 hover:bg-green-600 text-white' : 
+                        transaction.status === 'canceled' ? '' : ''
+                      }
                     >
                       {transaction.status === 'paid' ? 'Pago' : 
                        transaction.status === 'canceled' ? 'Cancelado' : 'Não Pago'}
