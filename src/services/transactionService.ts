@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Transaction } from '@/types';
 
@@ -88,11 +89,12 @@ export class TransactionService {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('User not authenticated');
 
-    // Format date to avoid timezone issues
+    // Format date properly to avoid timezone issues - use YYYY-MM-DD format
     const localDate = new Date(transaction.date);
-    const formattedDate = localDate.getFullYear() + '-' + 
-      String(localDate.getMonth() + 1).padStart(2, '0') + '-' + 
-      String(localDate.getDate()).padStart(2, '0');
+    const year = localDate.getFullYear();
+    const month = String(localDate.getMonth() + 1).padStart(2, '0');
+    const day = String(localDate.getDate()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
 
     const { data, error } = await supabase
       .from('transactions')
@@ -142,11 +144,12 @@ export class TransactionService {
     if (updates.amount !== undefined) updateData.amount = updates.amount;
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.date !== undefined) {
-      // Format date to avoid timezone issues
+      // Format date properly to avoid timezone issues - use YYYY-MM-DD format
       const localDate = new Date(updates.date);
-      const formattedDate = localDate.getFullYear() + '-' + 
-        String(localDate.getMonth() + 1).padStart(2, '0') + '-' + 
-        String(localDate.getDate()).padStart(2, '0');
+      const year = localDate.getFullYear();
+      const month = String(localDate.getMonth() + 1).padStart(2, '0');
+      const day = String(localDate.getDate()).padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}`;
       updateData.date = formattedDate;
     }
     if (updates.category !== undefined) updateData.category = updates.category;
