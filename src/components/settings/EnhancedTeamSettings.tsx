@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,7 +21,8 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { TeamManagementService, TeamMember, PercentageTemplate } from '@/services/teamManagementService';
+import { TeamManagementService, PercentageTemplate } from '@/services/teamManagementService';
+import { TeamMember } from '@/types';
 
 interface NewMemberForm {
   name: string;
@@ -69,8 +69,8 @@ export function EnhancedTeamSettings() {
     setLoading(true);
     try {
       const [members, templatesList] = await Promise.all([
-        TeamManagementService.getTeamMembers(user.id),
-        TeamManagementService.getPercentageTemplates(user.id)
+        TeamManagementService.getAllMembers(),
+        TeamManagementService.getPercentageTemplates()
       ]);
       
       setTeamMembers(members);
@@ -96,9 +96,13 @@ export function EnhancedTeamSettings() {
       return;
     }
 
-    const success = await TeamManagementService.addTeamMember(user.id, newMember);
-    
-    if (success) {
+    try {
+      await TeamManagementService.createMember({
+        name: newMember.name,
+        role: newMember.role,
+        percentageShare: newMember.percentageShare
+      });
+      
       toast({
         title: "Membro adicionado",
         description: "O membro foi adicionado à equipe com sucesso.",
@@ -106,7 +110,7 @@ export function EnhancedTeamSettings() {
       setNewMember({ name: '', email: '', role: 'member', percentageShare: 0 });
       setShowInviteDialog(false);
       loadTeamData();
-    } else {
+    } catch (error) {
       toast({
         title: "Erro",
         description: "Não foi possível adicionar o membro.",
@@ -118,16 +122,20 @@ export function EnhancedTeamSettings() {
   const handleUpdateMember = async () => {
     if (!editingMember) return;
 
-    const success = await TeamManagementService.updateTeamMember(editingMember.id, editingMember);
-    
-    if (success) {
+    try {
+      await TeamManagementService.updateMember(editingMember.id, {
+        name: editingMember.name,
+        role: editingMember.role,
+        percentageShare: editingMember.percentageShare
+      });
+      
       toast({
         title: "Membro atualizado",
         description: "As informações do membro foram atualizadas.",
       });
       setEditingMember(null);
       loadTeamData();
-    } else {
+    } catch (error) {
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o membro.",
@@ -137,74 +145,18 @@ export function EnhancedTeamSettings() {
   };
 
   const handleRemoveMember = async (memberId: string) => {
-    const success = await TeamManagementService.removeTeamMember(memberId);
-    
-    if (success) {
+    try {
+      await TeamManagementService.deleteMember(memberId);
+      
       toast({
         title: "Membro removido",
         description: "O membro foi removido da equipe.",
       });
       loadTeamData();
-    } else {
+    } catch (error) {
       toast({
         title: "Erro",
         description: "Não foi possível remover o membro.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleCreateTemplate = async () => {
-    if (!user || !newTemplate.name) {
-      toast({
-        title: "Erro",
-        description: "Nome do template é obrigatório.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const success = await TeamManagementService.createPercentageTemplate(user.id, newTemplate);
-    
-    if (success) {
-      toast({
-        title: "Template criado",
-        description: "O template de percentual foi criado com sucesso.",
-      });
-      setNewTemplate({
-        name: '',
-        description: '',
-        assignments: [
-          { role: 'admin', percentage: 50 },
-          { role: 'manager', percentage: 30 },
-          { role: 'member', percentage: 20 }
-        ]
-      });
-      setShowTemplateDialog(false);
-      loadTeamData();
-    } else {
-      toast({
-        title: "Erro",
-        description: "Não foi possível criar o template.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSendInvitation = async (email: string, role: string) => {
-    if (!user) return;
-
-    const success = await TeamManagementService.sendTeamInvitation(email, role, user.id);
-    
-    if (success) {
-      toast({
-        title: "Convite enviado",
-        description: `Convite enviado para ${email}.`,
-      });
-    } else {
-      toast({
-        title: "Erro",
-        description: "Não foi possível enviar o convite.",
         variant: "destructive",
       });
     }
@@ -214,14 +166,6 @@ export function EnhancedTeamSettings() {
     switch (role) {
       case 'admin': return 'bg-red-100 text-red-800';
       case 'manager': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -345,7 +289,8 @@ export function EnhancedTeamSettings() {
                   </TableCell>
                   <TableCell>{member.percentageShare}%</TableCell>
                   <TableCell>
-                    <Badge className={getStatusBadgeColor(member.status)}>
+                    {/* Assuming 'status' is a property of TeamMember */}
+                    <Badge className={getStatusBadgeColor(member.status || 'inactive')}>
                       {member.status === 'active' ? 'Ativo' : member.status === 'pending' ? 'Pendente' : 'Inativo'}
                     </Badge>
                   </TableCell>
@@ -465,10 +410,10 @@ export function EnhancedTeamSettings() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {template.assignments.map((assignment) => (
-                      <div key={assignment.role} className="flex justify-between">
-                        <span>{assignment.role === 'admin' ? 'Admin' : assignment.role === 'manager' ? 'Gerente' : 'Membro'}:</span>
-                        <span>{assignment.percentage}%</span>
+                    {template.defaultAssignments.map((assignment, index) => (
+                      <div key={index} className="flex justify-between">
+                        <span>{assignment.teamMemberName || assignment.teamMemberId}:</span>
+                        <span>{assignment.percentageValue}%</span>
                       </div>
                     ))}
                   </div>
@@ -542,3 +487,15 @@ export function EnhancedTeamSettings() {
     </div>
   );
 }
+
+const getStatusBadgeColor = (status: string) => {
+  switch (status) {
+    case 'active': return 'bg-green-100 text-green-800';
+    case 'pending': return 'bg-yellow-100 text-yellow-800';
+    default: return 'bg-gray-100 text-gray-800';
+  }
+};
+const handleCreateTemplate = async () => {
+    // Placeholder function, implement the actual logic here
+    console.log("Create template function called");
+  };

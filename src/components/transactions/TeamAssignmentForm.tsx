@@ -1,48 +1,24 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Trash2 } from 'lucide-react';
-import { TeamPercentageAssignment } from '@/types';
-import { TeamManagementService, TeamMember } from '@/services/teamManagementService';
-import { toast } from '@/hooks/use-toast';
+import { TeamPercentageAssignment, TeamMember } from '@/types';
 
 interface TeamAssignmentFormProps {
+  teamMembers: TeamMember[];
   assignments: TeamPercentageAssignment[];
   onChange: (assignments: TeamPercentageAssignment[]) => void;
 }
 
 export const TeamAssignmentForm: React.FC<TeamAssignmentFormProps> = ({
+  teamMembers,
   assignments,
   onChange
 }) => {
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchTeamMembers = async () => {
-      try {
-        // For now, we'll use a dummy user ID since we need to implement proper auth context
-        const members = await TeamManagementService.getTeamMembers('dummy-user-id');
-        setTeamMembers(members);
-      } catch (error) {
-        console.error('Error fetching team members:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar os membros da equipe.",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTeamMembers();
-  }, []);
-
   const addAssignment = () => {
     const newAssignment: TeamPercentageAssignment = {
       teamMemberId: '',
@@ -74,10 +50,6 @@ export const TeamAssignmentForm: React.FC<TeamAssignmentFormProps> = ({
 
   const totalPercentage = getTotalPercentage();
   const isValidTotal = totalPercentage === 100;
-
-  if (loading) {
-    return <div>Carregando membros da equipe...</div>;
-  }
 
   return (
     <Card>

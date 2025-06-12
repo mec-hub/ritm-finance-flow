@@ -9,7 +9,7 @@ export interface ReportFilters {
   dateFrom?: Date;
   dateTo?: Date;
   category?: string;
-  type?: 'income' | 'expense';
+  type?: 'income' | 'expense' | 'all';
   clientId?: string;
   eventId?: string;
   teamMemberId?: string;
@@ -21,6 +21,7 @@ export interface ReportTemplate {
   description: string;
   filters: ReportFilters;
   type: 'financial' | 'team' | 'client' | 'event';
+  fields?: string[];
 }
 
 export class ReportService {
@@ -98,14 +99,16 @@ export class ReportService {
         name: 'Relatório Mensal',
         description: 'Relatório financeiro mensal completo',
         type: 'financial',
-        filters: {}
+        filters: {},
+        fields: ['description', 'amount', 'date', 'category']
       },
       {
         id: '2',
         name: 'Relatório por Equipe',
         description: 'Análise de performance da equipe',
         type: 'team',
-        filters: {}
+        filters: {},
+        fields: ['team_member', 'percentage', 'amount']
       }
     ];
   }
