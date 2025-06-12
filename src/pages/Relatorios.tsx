@@ -3,16 +3,14 @@ import { useState, useMemo, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AdvancedReportFilters } from '@/components/reports/AdvancedReportFilters';
 import { ReportTemplateSelector } from '@/components/reports/ReportTemplateSelector';
-import { InteractiveDashboard } from '@/components/reports/InteractiveDashboard';
 import { TransactionService } from '@/services/transactionService';
 import { ReportService, ReportFilters } from '@/services/reportService';
-import { Transaction, Event, Client } from '@/types';
+import { Transaction } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
-import { FileText, TrendingUp, BarChart3, PieChart, Download, Zap } from 'lucide-react';
+import { FileText, TrendingUp, BarChart3, PieChart, Construction } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const Relatorios = () => {
@@ -20,7 +18,6 @@ const Relatorios = () => {
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   
   const [filters, setFilters] = useState<ReportFilters>({
@@ -32,16 +29,10 @@ const Relatorios = () => {
     clientId: undefined
   });
 
-  // Mock data for events and clients - replace with actual service calls
-  const mockEvents: Event[] = [];
-  const mockClients: Client[] = [];
-
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      console.log('Relatorios - Fetching transactions...');
       const transactionsData = await TransactionService.getAll();
-      console.log('Relatorios - Transactions data:', transactionsData);
       setAllTransactions(transactionsData);
       setFilteredTransactions(transactionsData);
     } catch (error) {
@@ -60,7 +51,6 @@ const Relatorios = () => {
     fetchTransactions();
   }, []);
 
-  // Apply filters to transactions
   const applyFilters = (newFilters: ReportFilters) => {
     let filtered = [...allTransactions];
     
@@ -106,7 +96,6 @@ const Relatorios = () => {
     applyFilters(clearedFilters);
   };
 
-  // Calculate summary metrics
   const summaryMetrics = useMemo(() => {
     const totalIncome = filteredTransactions
       .filter(t => t.type === 'income')
@@ -128,155 +117,22 @@ const Relatorios = () => {
     };
   }, [filteredTransactions]);
 
-  // Get available filter options
   const availableCategories = useMemo(() => 
     Array.from(new Set(allTransactions.map(t => t.category))), 
     [allTransactions]
   );
 
-  const availableEvents = useMemo(() => 
-    mockEvents.map(e => ({ id: e.id, title: e.title })), 
-    [mockEvents]
-  );
-
-  const availableClients = useMemo(() => 
-    mockClients.map(c => ({ id: c.id, name: c.name })), 
-    [mockClients]
-  );
-
-  // Report generation functions
   const generatePDFReport = async (templateId: string) => {
-    try {
-      setIsGenerating(true);
-      
-      const reportData = prepareReportData(templateId);
-      ReportService.generatePDFReport(getReportType(templateId), reportData, filters);
-      
-      toast({
-        title: "Relatório gerado",
-        description: "O relatório PDF foi baixado com sucesso."
-      });
-    } catch (error) {
-      console.error('Error generating PDF report:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível gerar o relatório PDF.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const generateExcelReport = async (templateId: string) => {
-    try {
-      setIsGenerating(true);
-      
-      const reportData = prepareReportData(templateId);
-      ReportService.generateExcelReport(getReportType(templateId), reportData, filters);
-      
-      toast({
-        title: "Relatório gerado",
-        description: "O relatório Excel foi baixado com sucesso."
-      });
-    } catch (error) {
-      console.error('Error generating Excel report:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível gerar o relatório Excel.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const prepareReportData = (templateId: string) => {
-    const reportType = getReportType(templateId);
-    
-    switch (reportType) {
-      case 'financial':
-        return {
-          transactions: filteredTransactions,
-          summary: summaryMetrics
-        };
-      case 'client':
-        return {
-          clients: mockClients,
-          totalRevenue: summaryMetrics.totalIncome
-        };
-      case 'event':
-        return {
-          events: mockEvents,
-          summary: summaryMetrics
-        };
-      case 'tax':
-        const categorizedExpenses = filteredTransactions
-          .filter(t => t.type === 'expense')
-          .reduce((acc, t) => {
-            acc[t.category] = (acc[t.category] || 0) + t.amount;
-            return acc;
-          }, {} as { [key: string]: number });
-        
-        return {
-          categorizedExpenses,
-          totalDeductible: summaryMetrics.totalExpenses,
-          transactions: filteredTransactions.filter(t => t.type === 'expense')
-        };
-      case 'team':
-        return {
-          teamMembers: [], // Add team data when available
-          totalPaid: 0
-        };
-      default:
-        return { transactions: filteredTransactions, summary: summaryMetrics };
-    }
-  };
-
-  const getReportType = (templateId: string): string => {
-    if (templateId.includes('financial')) return 'financial';
-    if (templateId.includes('client')) return 'client';
-    if (templateId.includes('event')) return 'event';
-    if (templateId.includes('tax')) return 'tax';
-    if (templateId.includes('team')) return 'team';
-    return 'financial';
-  };
-
-  const handleDrillDown = (type: string, filter: any) => {
-    // Apply drill-down filters
-    const newFilters = { ...filters, ...filter };
-    applyFilters(newFilters);
-    
-    // Switch to appropriate tab
-    if (type === 'profit' || type === 'income' || type === 'expenses') {
-      setActiveTab('financial');
-    } else if (type === 'events') {
-      setActiveTab('events');
-    } else if (type === 'client') {
-      setActiveTab('clients');
-    }
-    
     toast({
-      title: "Filtro aplicado",
-      description: `Visualizando dados filtrados por ${type}.`
+      title: "Em Desenvolvimento",
+      description: "Esta funcionalidade estará disponível em breve.",
     });
   };
 
-  const handleExportSegment = (data: any, type: string) => {
-    // Export specific data segment
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `dados-${type}-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
+  const generateExcelReport = async (templateId: string) => {
     toast({
-      title: "Dados exportados",
-      description: `Os dados de ${type} foram exportados com sucesso.`
+      title: "Em Desenvolvimento", 
+      description: "Esta funcionalidade estará disponível em breve.",
     });
   };
 
@@ -295,19 +151,18 @@ const Relatorios = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Relatórios Avançados</h1>
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+              <Construction className="h-8 w-8 text-orange-500" />
+              Relatórios (Em Desenvolvimento)
+            </h1>
             <p className="text-muted-foreground">
-              Dashboard interativo com relatórios profissionais e análises detalhadas.
+              Esta seção está sendo desenvolvida. Métricas básicas estão disponíveis.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {Object.values(filters).some(v => v !== undefined && v !== 'all' && v !== '') && (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                <Zap className="h-3 w-3" />
-                Filtros ativos
-              </Badge>
-            )}
-          </div>
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Construction className="h-3 w-3" />
+            Beta
+          </Badge>
         </div>
 
         {/* Summary Metrics */}
@@ -383,62 +238,32 @@ const Relatorios = () => {
           onFiltersChange={applyFilters}
           onClearFilters={clearFilters}
           availableCategories={availableCategories}
-          availableEvents={availableEvents}
-          availableClients={availableClients}
+          availableEvents={[]}
+          availableClients={[]}
         />
 
-        {/* Main Content Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-4">
-            <TabsTrigger value="dashboard">Dashboard Interativo</TabsTrigger>
-            <TabsTrigger value="financial">Relatórios Financeiros</TabsTrigger>
-            <TabsTrigger value="events">Relatórios de Eventos</TabsTrigger>
-            <TabsTrigger value="clients">Relatórios de Clientes</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="dashboard" className="space-y-4">
-            <InteractiveDashboard
-              transactions={filteredTransactions}
-              events={mockEvents}
-              clients={mockClients}
-              onDrillDown={handleDrillDown}
-              onExportSegment={handleExportSegment}
-            />
-          </TabsContent>
-
-          <TabsContent value="financial" className="space-y-4">
+        {/* Main Content */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Relatórios Detalhados
+            </CardTitle>
+            <CardDescription>
+              Funcionalidades avançadas de relatórios em desenvolvimento
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
             <ReportTemplateSelector
-              templates={ReportService.getReportTemplates().filter(t => t.type === 'financial')}
+              templates={[]}
               selectedTemplate={selectedTemplate}
               onTemplateSelect={setSelectedTemplate}
               onGeneratePDF={generatePDFReport}
               onGenerateExcel={generateExcelReport}
-              isGenerating={isGenerating}
+              isGenerating={false}
             />
-          </TabsContent>
-
-          <TabsContent value="events" className="space-y-4">
-            <ReportTemplateSelector
-              templates={ReportService.getReportTemplates().filter(t => t.type === 'events')}
-              selectedTemplate={selectedTemplate}
-              onTemplateSelect={setSelectedTemplate}
-              onGeneratePDF={generatePDFReport}
-              onGenerateExcel={generateExcelReport}
-              isGenerating={isGenerating}
-            />
-          </TabsContent>
-
-          <TabsContent value="clients" className="space-y-4">
-            <ReportTemplateSelector
-              templates={ReportService.getReportTemplates().filter(t => t.type === 'clients')}
-              selectedTemplate={selectedTemplate}
-              onTemplateSelect={setSelectedTemplate}
-              onGeneratePDF={generatePDFReport}
-              onGenerateExcel={generateExcelReport}
-              isGenerating={isGenerating}
-            />
-          </TabsContent>
-        </Tabs>
+          </CardContent>
+        </Card>
       </div>
     </Layout>
   );
