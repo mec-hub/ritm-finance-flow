@@ -90,10 +90,10 @@ export const AttachmentPreview: React.FC<AttachmentPreviewProps> = ({ attachment
         );
       case 'pdf':
         return (
-          <div className="w-full h-full overflow-auto">
+          <div className="w-full h-96">
             <iframe
               src={attachment}
-              className="w-full h-auto rounded-lg"
+              className="w-full h-full border rounded-lg"
               title={`PDF Anexo ${index + 1}`}
             />
           </div>
