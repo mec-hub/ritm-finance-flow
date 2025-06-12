@@ -1,431 +1,464 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Users, Plus, Edit, Trash2, DollarSign, TrendingUp, Clock } from 'lucide-react';
-import { TeamMember } from '@/types';
-import { TeamManagementService } from '@/services/teamManagementService';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Users, UserPlus, Settings, Shield, Trash2, Edit, Mail, Phone, Calendar, DollarSign } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
-import { toast } from '@/hooks/use-toast';
 
-export function EnhancedTeamSettings() {
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
-  const [newMember, setNewMember] = useState({
+interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'manager' | 'member';
+  status: 'active' | 'inactive' | 'pending';
+  avatar?: string;
+  phone?: string;
+  joinDate: Date;
+  lastActive?: Date;
+  permissions: string[];
+}
+
+interface NewMemberForm {
+  name: string;
+  email: string;
+  role: 'admin' | 'manager' | 'member';
+  phone: string;
+}
+
+const EnhancedTeamSettings = () => {
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
+    {
+      id: '1',
+      name: 'João Silva',
+      email: 'joao@example.com',
+      role: 'admin',
+      status: 'active',
+      phone: '+55 11 99999-9999',
+      joinDate: new Date('2023-01-15'),
+      lastActive: new Date(),
+      permissions: ['all']
+    },
+    {
+      id: '2',
+      name: 'Maria Santos',
+      email: 'maria@example.com',
+      role: 'manager',
+      status: 'active',
+      phone: '+55 11 88888-8888',
+      joinDate: new Date('2023-03-20'),
+      lastActive: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      permissions: ['transactions', 'clients', 'reports']
+    }
+  ]);
+
+  const [newMember, setNewMember] = useState<NewMemberForm>({
     name: '',
-    role: '',
-    percentageShare: 0
+    email: '',
+    role: 'member',
+    phone: ''
   });
 
-  const fetchTeamMembers = async () => {
-    try {
-      const members = await TeamManagementService.getAllMembers();
-      setTeamMembers(members);
-    } catch (error) {
-      console.error('Error fetching team members:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os membros da equipe.",
-        variant: "destructive"
+  const [isAddingMember, setIsAddingMember] = useState(false);
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+
+  const handleAddMember = () => {
+    if (newMember.name && newMember.email) {
+      const member: TeamMember = {
+        id: Date.now().toString(),
+        ...newMember,
+        status: 'pending',
+        joinDate: new Date(),
+        permissions: newMember.role === 'admin' ? ['all'] : ['transactions']
+      };
+      
+      setTeamMembers([...teamMembers, member]);
+      setNewMember({
+        name: '',
+        email: '',
+        role: 'member',
+        phone: ''
       });
-    } finally {
-      setLoading(false);
+      setIsAddingMember(false);
     }
   };
 
-  useEffect(() => {
-    fetchTeamMembers();
-  }, []);
-
-  const handleAddMember = async () => {
-    try {
-      if (!newMember.name || !newMember.role) {
-        toast({
-          title: "Erro",
-          description: "Nome e função são obrigatórios.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      await TeamManagementService.createMember({
-        name: newMember.name,
-        role: newMember.role,
-        percentageShare: newMember.percentageShare,
-        totalPaid: 0,
-        pendingAmount: 0
-      });
-
-      toast({
-        title: "Sucesso",
-        description: "Membro da equipe adicionado com sucesso."
-      });
-
-      setNewMember({ name: '', role: '', percentageShare: 0 });
-      setIsAddDialogOpen(false);
-      fetchTeamMembers();
-    } catch (error) {
-      console.error('Error adding team member:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível adicionar o membro da equipe.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleEditMember = async () => {
-    try {
-      if (!editingMember) return;
-
-      await TeamManagementService.updateMember(editingMember.id, {
-        name: editingMember.name,
-        role: editingMember.role,
-        percentageShare: editingMember.percentageShare,
-        totalPaid: editingMember.totalPaid,
-        pendingAmount: editingMember.pendingAmount
-      });
-
-      toast({
-        title: "Sucesso",
-        description: "Membro da equipe atualizado com sucesso."
-      });
-
-      setIsEditDialogOpen(false);
+  const handleEditMember = (member: TeamMember) => {
+    if (editingMember) {
+      const updatedMembers = teamMembers.map(m => 
+        m.id === editingMember.id ? editingMember : m
+      );
+      setTeamMembers(updatedMembers);
       setEditingMember(null);
-      fetchTeamMembers();
-    } catch (error) {
-      console.error('Error updating team member:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o membro da equipe.",
-        variant: "destructive"
-      });
     }
   };
 
-  const handleDeleteMember = async (memberId: string) => {
-    try {
-      await TeamManagementService.deleteMember(memberId);
-      toast({
-        title: "Sucesso",
-        description: "Membro da equipe removido com sucesso."
-      });
-      fetchTeamMembers();
-    } catch (error) {
-      console.error('Error deleting team member:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível remover o membro da equipe.",
-        variant: "destructive"
-      });
+  const handleDeleteMember = (id: string) => {
+    setTeamMembers(teamMembers.filter(m => m.id !== id));
+  };
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'admin': return 'bg-red-100 text-red-800';
+      case 'manager': return 'bg-blue-100 text-blue-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const totalPercentage = teamMembers.reduce((sum, member) => sum + member.percentageShare, 0);
-  const totalPaid = teamMembers.reduce((sum, member) => sum + member.totalPaid, 0);
-  const totalPending = teamMembers.reduce((sum, member) => sum + member.pendingAmount, 0);
-
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex justify-center items-center h-32">
-            <p>Carregando membros da equipe...</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-800';
+      case 'inactive': return 'bg-gray-100 text-gray-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center">
-              <Users className="h-4 w-4 mr-2" />
-              Total Membros
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{teamMembers.length}</div>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <Users className="h-6 w-6" />
+            Gerenciamento de Equipe
+          </h2>
+          <p className="text-muted-foreground">
+            Gerencie membros da equipe, funções e permissões
+          </p>
+        </div>
         
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center">
-              <TrendingUp className="h-4 w-4 mr-2" />
-              % Distribuído
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${totalPercentage === 100 ? 'text-green-500' : 'text-red-500'}`}>
-              {totalPercentage.toFixed(1)}%
+        <Dialog open={isAddingMember} onOpenChange={setIsAddingMember}>
+          <DialogTrigger asChild>
+            <Button>
+              <UserPlus className="mr-2 h-4 w-4" />
+              Adicionar Membro
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Adicionar Novo Membro</DialogTitle>
+              <DialogDescription>
+                Adicione um novo membro à sua equipe
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome</Label>
+                <Input
+                  id="name"
+                  value={newMember.name}
+                  onChange={(e) => setNewMember({...newMember, name: e.target.value})}
+                  placeholder="Nome completo"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={newMember.email}
+                  onChange={(e) => setNewMember({...newMember, email: e.target.value})}
+                  placeholder="email@example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Telefone</Label>
+                <Input
+                  id="phone"
+                  value={newMember.phone}
+                  onChange={(e) => setNewMember({...newMember, phone: e.target.value})}
+                  placeholder="+55 11 99999-9999"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="role">Função</Label>
+                <Select value={newMember.role} onValueChange={(value: 'admin' | 'manager' | 'member') => setNewMember({...newMember, role: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="member">Membro</SelectItem>
+                    <SelectItem value="manager">Gerente</SelectItem>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center">
-              <DollarSign className="h-4 w-4 mr-2" />
-              Total Pago
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-500">
-              {formatCurrency(totalPaid)}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center">
-              <Clock className="h-4 w-4 mr-2" />
-              Total Pendente
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-500">
-              {formatCurrency(totalPending)}
-            </div>
-          </CardContent>
-        </Card>
+            <DialogFooter>
+              <Button type="submit" onClick={handleAddMember}>
+                Adicionar Membro
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Team Members Management */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Membros da Equipe</CardTitle>
+      <Tabs defaultValue="members" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="members">Membros</TabsTrigger>
+          <TabsTrigger value="roles">Funções & Permissões</TabsTrigger>
+          <TabsTrigger value="settings">Configurações</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="members" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Membros da Equipe ({teamMembers.length})</CardTitle>
               <CardDescription>
-                Gerencie os membros da sua equipe e suas participações
+                Gerencie todos os membros da sua equipe
               </CardDescription>
-            </div>
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Membro
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Adicionar Novo Membro</DialogTitle>
-                  <DialogDescription>
-                    Preencha as informações do novo membro da equipe
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="name">Nome</Label>
-                    <Input
-                      id="name"
-                      value={newMember.name}
-                      onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
-                      placeholder="Nome completo"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="role">Função</Label>
-                    <Input
-                      id="role"
-                      value={newMember.role}
-                      onChange={(e) => setNewMember({ ...newMember, role: e.target.value })}
-                      placeholder="Ex: DJ, Técnico de Som, etc."
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="percentage">Participação (%)</Label>
-                    <Input
-                      id="percentage"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      value={newMember.percentageShare}
-                      onChange={(e) => setNewMember({ ...newMember, percentageShare: parseFloat(e.target.value) || 0 })}
-                      placeholder="0.0"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleAddMember}>
-                    Adicionar
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {teamMembers.length === 0 ? (
-            <div className="text-center py-8">
-              <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold">Nenhum membro cadastrado</h3>
-              <p className="text-muted-foreground">
-                Adicione membros à sua equipe para começar a gerenciar participações.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {teamMembers.map((member) => (
-                <div key={member.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3">
-                      <div>
-                        <h4 className="font-semibold">{member.name}</h4>
-                        <p className="text-sm text-muted-foreground">{member.role}</p>
-                      </div>
-                      <Badge variant="outline">
-                        {member.percentageShare.toFixed(1)}%
-                      </Badge>
-                    </div>
-                    <div className="mt-2 flex space-x-4 text-sm">
-                      <span className="text-green-600">
-                        Pago: {formatCurrency(member.totalPaid)}
-                      </span>
-                      <span className="text-yellow-600">
-                        Pendente: {formatCurrency(member.pendingAmount)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Dialog open={isEditDialogOpen && editingMember?.id === member.id} onOpenChange={(open) => {
-                      setIsEditDialogOpen(open);
-                      if (!open) setEditingMember(null);
-                    }}>
-                      <DialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setEditingMember({ ...member })}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Editar Membro</DialogTitle>
-                          <DialogDescription>
-                            Atualize as informações do membro da equipe
-                          </DialogDescription>
-                        </DialogHeader>
-                        {editingMember && (
-                          <div className="space-y-4">
-                            <div>
-                              <Label htmlFor="edit-name">Nome</Label>
-                              <Input
-                                id="edit-name"
-                                value={editingMember.name}
-                                onChange={(e) => setEditingMember({ ...editingMember, name: e.target.value })}
-                              />
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Membro</TableHead>
+                    <TableHead>Função</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Último Acesso</TableHead>
+                    <TableHead>Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {teamMembers.map((member) => (
+                    <TableRow key={member.id}>
+                      <TableCell>
+                        <div className="flex items-center space-x-3">
+                          <Avatar>
+                            <AvatarImage src={member.avatar} />
+                            <AvatarFallback>
+                              {member.name.split(' ').map(n => n[0]).join('')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{member.name}</div>
+                            <div className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Mail className="h-3 w-3" />
+                              {member.email}
                             </div>
-                            <div>
-                              <Label htmlFor="edit-role">Função</Label>
-                              <Input
-                                id="edit-role"
-                                value={editingMember.role}
-                                onChange={(e) => setEditingMember({ ...editingMember, role: e.target.value })}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="edit-percentage">Participação (%)</Label>
-                              <Input
-                                id="edit-percentage"
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.1"
-                                value={editingMember.percentageShare}
-                                onChange={(e) => setEditingMember({ ...editingMember, percentageShare: parseFloat(e.target.value) || 0 })}
-                              />
-                            </div>
-                            <Separator />
-                            <div>
-                              <Label htmlFor="edit-paid">Total Pago</Label>
-                              <Input
-                                id="edit-paid"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={editingMember.totalPaid}
-                                onChange={(e) => setEditingMember({ ...editingMember, totalPaid: parseFloat(e.target.value) || 0 })}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="edit-pending">Valor Pendente</Label>
-                              <Input
-                                id="edit-pending"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={editingMember.pendingAmount}
-                                onChange={(e) => setEditingMember({ ...editingMember, pendingAmount: parseFloat(e.target.value) || 0 })}
-                              />
-                            </div>
+                            {member.phone && (
+                              <div className="text-sm text-muted-foreground flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                {member.phone}
+                              </div>
+                            )}
                           </div>
-                        )}
-                        <DialogFooter>
-                          <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                            Cancelar
-                          </Button>
-                          <Button onClick={handleEditMember}>
-                            Salvar
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                    
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Tem certeza que deseja remover "{member.name}" da equipe? Esta ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteMember(member.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getRoleColor(member.role)}>
+                          {member.role === 'admin' ? 'Administrador' : 
+                           member.role === 'manager' ? 'Gerente' : 'Membro'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(member.status)}>
+                          {member.status === 'active' ? 'Ativo' : 
+                           member.status === 'inactive' ? 'Inativo' : 'Pendente'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {member.lastActive ? (
+                            <>
+                              <div>{member.lastActive.toLocaleDateString('pt-BR')}</div>
+                              <div className="text-muted-foreground">
+                                {member.lastActive.toLocaleTimeString('pt-BR', { 
+                                  hour: '2-digit', 
+                                  minute: '2-digit' 
+                                })}
+                              </div>
+                            </>
+                          ) : (
+                            'Nunca'
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingMember(member)}
                           >
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteMember(member.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="roles" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Funções e Permissões</CardTitle>
+              <CardDescription>
+                Configure permissões para cada função
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Role definitions */}
+                <div className="grid gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Shield className="h-4 w-4" />
+                      Administrador
+                    </h4>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Acesso total ao sistema, incluindo configurações e gerenciamento de equipe
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      <Badge variant="secondary">Todas as permissões</Badge>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Gerente
+                    </h4>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Gerencia transações, clientes e relatórios
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      <Badge variant="secondary">Transações</Badge>
+                      <Badge variant="secondary">Clientes</Badge>
+                      <Badge variant="secondary">Relatórios</Badge>
+                      <Badge variant="secondary">Eventos</Badge>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-medium">Membro</h4>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Acesso básico para visualizar e criar transações
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      <Badge variant="secondary">Transações</Badge>
+                      <Badge variant="secondary">Visualizar Relatórios</Badge>
+                    </div>
                   </div>
                 </div>
-              ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configurações de Equipe</CardTitle>
+              <CardDescription>
+                Configure as configurações gerais da equipe
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-center py-8">
+                <Settings className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">Em Desenvolvimento</h3>
+                <p className="text-muted-foreground">
+                  Configurações avançadas de equipe estarão disponíveis em breve.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Edit Member Dialog */}
+      {editingMember && (
+        <Dialog open={!!editingMember} onOpenChange={() => setEditingMember(null)}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Editar Membro</DialogTitle>
+              <DialogDescription>
+                Edite as informações do membro da equipe
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Nome</Label>
+                <Input
+                  id="edit-name"
+                  value={editingMember.name}
+                  onChange={(e) => setEditingMember({...editingMember, name: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">Email</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editingMember.email}
+                  onChange={(e) => setEditingMember({...editingMember, email: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-phone">Telefone</Label>
+                <Input
+                  id="edit-phone"
+                  value={editingMember.phone || ''}
+                  onChange={(e) => setEditingMember({...editingMember, phone: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-role">Função</Label>
+                <Select value={editingMember.role} onValueChange={(value: 'admin' | 'manager' | 'member') => setEditingMember({...editingMember, role: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="member">Membro</SelectItem>
+                    <SelectItem value="manager">Gerente</SelectItem>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-status">Status</Label>
+                <Select value={editingMember.status} onValueChange={(value: 'active' | 'inactive' | 'pending') => setEditingMember({...editingMember, status: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Ativo</SelectItem>
+                    <SelectItem value="inactive">Inativo</SelectItem>
+                    <SelectItem value="pending">Pendente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <DialogFooter>
+              <Button type="submit" onClick={() => handleEditMember(editingMember)}>
+                Salvar Alterações
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
-}
+};
+
+export default EnhancedTeamSettings;

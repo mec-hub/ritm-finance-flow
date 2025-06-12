@@ -132,12 +132,12 @@ export const ReportFilters = ({
           {/* Category */}
           <div className="space-y-2">
             <Label>Categoria</Label>
-            <Select value={filters.category || ''} onValueChange={(value) => updateFilter('category', value || undefined)}>
+            <Select value={filters.category || 'all_categories'} onValueChange={(value) => updateFilter('category', value === 'all_categories' ? undefined : value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas as categorias</SelectItem>
+                <SelectItem value="all_categories">Todas as categorias</SelectItem>
                 {availableCategories.map((category) => (
                   <SelectItem key={category} value={category}>
                     {category}
