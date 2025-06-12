@@ -1,120 +1,81 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
-import { 
-  Plus, 
-  Trash2, 
-  Edit, 
-  Mail, 
-  UserPlus, 
-  Settings as SettingsIcon,
-  Copy,
-  Check,
-  Users
-} from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { TeamManagementService, PercentageTemplate } from '@/services/teamManagementService';
+import { TeamManagementService } from '@/services/teamManagementService';
 import { TeamMember } from '@/types';
+import { Plus, Edit, Trash2, Users, TrendingUp, DollarSign, UserCheck } from 'lucide-react';
 
-interface NewMemberForm {
-  name: string;
-  email: string;
-  role: 'admin' | 'manager' | 'member';
-  percentageShare: number;
-}
-
-export function EnhancedTeamSettings() {
-  const { user } = useAuth();
+export const EnhancedTeamSettings = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [templates, setTemplates] = useState<PercentageTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showInviteDialog, setShowInviteDialog] = useState(false);
-  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
-  
-  const [newMember, setNewMember] = useState<NewMemberForm>({
+  const [newMember, setNewMember] = useState({
     name: '',
-    email: '',
-    role: 'member',
-    percentageShare: 0
+    role: '',
+    percentage_share: 0
   });
 
-  const [newTemplate, setNewTemplate] = useState({
-    name: '',
-    description: '',
-    assignments: [
-      { role: 'admin', percentage: 50 },
-      { role: 'manager', percentage: 30 },
-      { role: 'member', percentage: 20 }
-    ]
-  });
-
-  useEffect(() => {
-    if (user) {
-      loadTeamData();
-    }
-  }, [user]);
-
-  const loadTeamData = async () => {
-    if (!user) return;
-    
-    setLoading(true);
+  const fetchTeamMembers = async () => {
     try {
-      const [members, templatesList] = await Promise.all([
-        TeamManagementService.getAllMembers(),
-        TeamManagementService.getPercentageTemplates()
-      ]);
-      
+      setLoading(true);
+      const members = await TeamManagementService.getTeamMembers();
       setTeamMembers(members);
-      setTemplates(templatesList);
     } catch (error) {
-      console.error('Error loading team data:', error);
+      console.error('Error fetching team members:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar os dados da equipe.",
-        variant: "destructive",
+        description: "Não foi possível carregar os membros da equipe.",
+        variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const handleAddMember = async () => {
-    if (!user || !newMember.name || !newMember.email) {
-      toast({
-        title: "Erro",
-        description: "Preencha todos os campos obrigatórios.",
-        variant: "destructive",
-      });
-      return;
-    }
+  useEffect(() => {
+    fetchTeamMembers();
+  }, []);
 
+  const handleAddMember = async () => {
     try {
-      await TeamManagementService.createMember({
+      if (!newMember.name.trim()) {
+        toast({
+          title: "Erro",
+          description: "Nome é obrigatório.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      await TeamManagementService.createTeamMember({
         name: newMember.name,
         role: newMember.role,
-        percentageShare: newMember.percentageShare
+        percentage_share: newMember.percentage_share
       });
+
+      setNewMember({ name: '', role: '', percentage_share: 0 });
+      setIsAddDialogOpen(false);
+      fetchTeamMembers();
       
       toast({
-        title: "Membro adicionado",
-        description: "O membro foi adicionado à equipe com sucesso.",
+        title: "Sucesso",
+        description: "Membro adicionado à equipe com sucesso."
       });
-      setNewMember({ name: '', email: '', role: 'member', percentageShare: 0 });
-      setShowInviteDialog(false);
-      loadTeamData();
     } catch (error) {
+      console.error('Error adding team member:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível adicionar o membro.",
-        variant: "destructive",
+        description: "Não foi possível adicionar o membro à equipe.",
+        variant: "destructive"
       });
     }
   };
@@ -123,76 +84,83 @@ export function EnhancedTeamSettings() {
     if (!editingMember) return;
 
     try {
-      await TeamManagementService.updateMember(editingMember.id, {
+      await TeamManagementService.updateTeamMember(editingMember.id, {
         name: editingMember.name,
         role: editingMember.role,
-        percentageShare: editingMember.percentageShare
+        percentage_share: editingMember.percentage_share
       });
+
+      setEditingMember(null);
+      fetchTeamMembers();
       
       toast({
-        title: "Membro atualizado",
-        description: "As informações do membro foram atualizadas.",
+        title: "Sucesso",
+        description: "Membro atualizado com sucesso."
       });
-      setEditingMember(null);
-      loadTeamData();
     } catch (error) {
+      console.error('Error updating team member:', error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o membro.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
 
-  const handleRemoveMember = async (memberId: string) => {
+  const handleDeleteMember = async (memberId: string) => {
     try {
-      await TeamManagementService.deleteMember(memberId);
+      await TeamManagementService.deleteTeamMember(memberId);
+      fetchTeamMembers();
       
       toast({
-        title: "Membro removido",
-        description: "O membro foi removido da equipe.",
+        title: "Sucesso",
+        description: "Membro removido da equipe."
       });
-      loadTeamData();
     } catch (error) {
+      console.error('Error deleting team member:', error);
       toast({
         title: "Erro",
         description: "Não foi possível remover o membro.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'admin': return 'bg-red-100 text-red-800';
-      case 'manager': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const getTotalPercentage = () => {
+    return teamMembers.reduce((total, member) => total + (member.percentage_share || 0), 0);
   };
 
+  const totalPercentage = getTotalPercentage();
+  const isValidPercentage = totalPercentage <= 100;
+
   if (loading) {
-    return <div>Carregando configurações da equipe...</div>;
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Carregando...</CardTitle>
+        </CardHeader>
+      </Card>
+    );
   }
 
   return (
     <div className="space-y-6">
-      {/* Team Members Section */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Membros da Equipe
+                Gestão da Equipe
               </CardTitle>
               <CardDescription>
-                Gerencie os membros da sua equipe e suas permissões.
+                Gerencie os membros da sua equipe e suas participações nos projetos.
               </CardDescription>
             </div>
-            <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
-                  <UserPlus className="h-4 w-4 mr-2" />
+                  <Plus className="h-4 w-4 mr-2" />
                   Adicionar Membro
                 </Button>
               </DialogTrigger>
@@ -204,298 +172,227 @@ export function EnhancedTeamSettings() {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="memberName">Nome</Label>
+                  <div>
+                    <Label htmlFor="name">Nome</Label>
                     <Input
-                      id="memberName"
+                      id="name"
                       value={newMember.name}
-                      onChange={(e) => setNewMember(prev => ({ ...prev, name: e.target.value }))}
+                      onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
                       placeholder="Nome do membro"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="memberEmail">Email</Label>
+                  <div>
+                    <Label htmlFor="role">Função</Label>
                     <Input
-                      id="memberEmail"
-                      type="email"
-                      value={newMember.email}
-                      onChange={(e) => setNewMember(prev => ({ ...prev, email: e.target.value }))}
-                      placeholder="email@exemplo.com"
+                      id="role"
+                      value={newMember.role}
+                      onChange={(e) => setNewMember({ ...newMember, role: e.target.value })}
+                      placeholder="Função na equipe"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="memberRole">Função</Label>
-                    <Select
-                      value={newMember.role}
-                      onValueChange={(value: 'admin' | 'manager' | 'member') => 
-                        setNewMember(prev => ({ ...prev, role: value }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="member">Membro</SelectItem>
-                        <SelectItem value="manager">Gerente</SelectItem>
-                        <SelectItem value="admin">Administrador</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="memberPercentage">Percentual de Participação (%)</Label>
+                  <div>
+                    <Label htmlFor="percentage">Participação (%)</Label>
                     <Input
-                      id="memberPercentage"
+                      id="percentage"
                       type="number"
                       min="0"
                       max="100"
-                      value={newMember.percentageShare}
-                      onChange={(e) => setNewMember(prev => ({ ...prev, percentageShare: Number(e.target.value) }))}
+                      step="0.01"
+                      value={newMember.percentage_share}
+                      onChange={(e) => setNewMember({ ...newMember, percentage_share: Number(e.target.value) })}
+                      placeholder="0"
                     />
                   </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
-                      Cancelar
-                    </Button>
-                    <Button onClick={handleAddMember}>
-                      Adicionar Membro
-                    </Button>
-                  </div>
                 </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleAddMember}>
+                    Adicionar
+                  </Button>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Função</TableHead>
-                <TableHead>Participação</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {teamMembers.map((member) => (
-                <TableRow key={member.id}>
-                  <TableCell>{member.name}</TableCell>
-                  <TableCell>{member.email}</TableCell>
-                  <TableCell>
-                    <Badge className={getRoleBadgeColor(member.role)}>
-                      {member.role === 'admin' ? 'Admin' : member.role === 'manager' ? 'Gerente' : 'Membro'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{member.percentageShare}%</TableCell>
-                  <TableCell>
-                    {/* Assuming 'status' is a property of TeamMember */}
-                    <Badge className={getStatusBadgeColor(member.status || 'inactive')}>
-                      {member.status === 'active' ? 'Ativo' : member.status === 'pending' ? 'Pendente' : 'Inativo'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEditingMember(member)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRemoveMember(member.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+          <Tabs defaultValue="members" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="members">Membros</TabsTrigger>
+              <TabsTrigger value="analytics">Análises</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="members" className="space-y-4">
+              {/* Percentage Overview */}
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Distribuição Total</span>
+                  <Badge variant={isValidPercentage ? "default" : "destructive"}>
+                    {totalPercentage.toFixed(1)}%
+                  </Badge>
+                </div>
+                <Progress value={totalPercentage} className="h-2" />
+                {!isValidPercentage && (
+                  <p className="text-sm text-destructive mt-1">
+                    A distribuição total não pode exceder 100%
+                  </p>
+                )}
+              </div>
+
+              {/* Team Members List */}
+              <div className="space-y-3">
+                {teamMembers.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Nenhum membro na equipe ainda.</p>
+                    <p className="text-sm">Adicione membros para começar a gerenciar sua equipe.</p>
+                  </div>
+                ) : (
+                  teamMembers.map((member) => (
+                    <Card key={member.id} className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1">
+                              <h4 className="font-medium">{member.name}</h4>
+                              {member.role && (
+                                <p className="text-sm text-muted-foreground">{member.role}</p>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <Badge variant="outline">
+                                {(member.percentage_share || 0).toFixed(1)}%
+                              </Badge>
+                            </div>
+                          </div>
+                          
+                          {/* Financial Summary */}
+                          <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Total Pago</p>
+                              <p className="font-medium">R$ {(member.total_paid || 0).toFixed(2)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Pendente</p>
+                              <p className="font-medium text-orange-600">R$ {(member.pending_amount || 0).toFixed(2)}</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 ml-4">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => setEditingMember(member)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Editar Membro</DialogTitle>
+                              </DialogHeader>
+                              {editingMember && (
+                                <div className="space-y-4">
+                                  <div>
+                                    <Label htmlFor="edit-name">Nome</Label>
+                                    <Input
+                                      id="edit-name"
+                                      value={editingMember.name}
+                                      onChange={(e) => setEditingMember({ ...editingMember, name: e.target.value })}
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="edit-role">Função</Label>
+                                    <Input
+                                      id="edit-role"
+                                      value={editingMember.role || ''}
+                                      onChange={(e) => setEditingMember({ ...editingMember, role: e.target.value })}
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="edit-percentage">Participação (%)</Label>
+                                    <Input
+                                      id="edit-percentage"
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      step="0.01"
+                                      value={editingMember.percentage_share || 0}
+                                      onChange={(e) => setEditingMember({ ...editingMember, percentage_share: Number(e.target.value) })}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                              <DialogFooter>
+                                <Button variant="outline" onClick={() => setEditingMember(null)}>
+                                  Cancelar
+                                </Button>
+                                <Button onClick={handleUpdateMember}>
+                                  Salvar
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                          
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleDeleteMember(member.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="analytics" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total de Membros</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{teamMembers.length}</div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Pago</CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      R$ {teamMembers.reduce((sum, member) => sum + (member.total_paid || 0), 0).toFixed(2)}
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Pendente</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-orange-600">
+                      R$ {teamMembers.reduce((sum, member) => sum + (member.pending_amount || 0), 0).toFixed(2)}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
-
-      {/* Percentage Templates Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <SettingsIcon className="h-5 w-5" />
-                Templates de Percentual
-              </CardTitle>
-              <CardDescription>
-                Crie templates para facilitar a atribuição de percentuais em transações.
-              </CardDescription>
-            </div>
-            <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Template
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Criar Template de Percentual</DialogTitle>
-                  <DialogDescription>
-                    Crie um template para facilitar a atribuição de percentuais.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="templateName">Nome do Template</Label>
-                    <Input
-                      id="templateName"
-                      value={newTemplate.name}
-                      onChange={(e) => setNewTemplate(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="Nome do template"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="templateDescription">Descrição</Label>
-                    <Input
-                      id="templateDescription"
-                      value={newTemplate.description}
-                      onChange={(e) => setNewTemplate(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Descrição do template"
-                    />
-                  </div>
-                  <Separator />
-                  <div className="space-y-4">
-                    <Label>Atribuições de Percentual</Label>
-                    {newTemplate.assignments.map((assignment, index) => (
-                      <div key={assignment.role} className="flex items-center space-x-4">
-                        <Label className="w-20">{assignment.role === 'admin' ? 'Admin' : assignment.role === 'manager' ? 'Gerente' : 'Membro'}:</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={assignment.percentage}
-                          onChange={(e) => {
-                            const newAssignments = [...newTemplate.assignments];
-                            newAssignments[index].percentage = Number(e.target.value);
-                            setNewTemplate(prev => ({ ...prev, assignments: newAssignments }));
-                          }}
-                          className="w-20"
-                        />
-                        <span>%</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={() => setShowTemplateDialog(false)}>
-                      Cancelar
-                    </Button>
-                    <Button onClick={handleCreateTemplate}>
-                      Criar Template
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {templates.map((template) => (
-              <Card key={template.id}>
-                <CardHeader>
-                  <CardTitle className="text-lg">{template.name}</CardTitle>
-                  <CardDescription>{template.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {template.defaultAssignments.map((assignment, index) => (
-                      <div key={index} className="flex justify-between">
-                        <span>{assignment.teamMemberName || assignment.teamMemberId}:</span>
-                        <span>{assignment.percentageValue}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Edit Member Dialog */}
-      {editingMember && (
-        <Dialog open={!!editingMember} onOpenChange={() => setEditingMember(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Editar Membro</DialogTitle>
-              <DialogDescription>
-                Edite as informações do membro da equipe.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="editName">Nome</Label>
-                <Input
-                  id="editName"
-                  value={editingMember.name}
-                  onChange={(e) => setEditingMember(prev => prev ? ({ ...prev, name: e.target.value }) : null)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="editRole">Função</Label>
-                <Select
-                  value={editingMember.role}
-                  onValueChange={(value: 'admin' | 'manager' | 'member') => 
-                    setEditingMember(prev => prev ? ({ ...prev, role: value }) : null)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="member">Membro</SelectItem>
-                    <SelectItem value="manager">Gerente</SelectItem>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="editPercentage">Percentual de Participação (%)</Label>
-                <Input
-                  id="editPercentage"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={editingMember.percentageShare}
-                  onChange={(e) => setEditingMember(prev => prev ? ({ ...prev, percentageShare: Number(e.target.value) }) : null)}
-                />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setEditingMember(null)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleUpdateMember}>
-                  Salvar Alterações
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
-}
-
-const getStatusBadgeColor = (status: string) => {
-  switch (status) {
-    case 'active': return 'bg-green-100 text-green-800';
-    case 'pending': return 'bg-yellow-100 text-yellow-800';
-    default: return 'bg-gray-100 text-gray-800';
-  }
 };
-const handleCreateTemplate = async () => {
-    // Placeholder function, implement the actual logic here
-    console.log("Create template function called");
-  };

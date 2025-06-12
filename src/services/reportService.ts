@@ -27,7 +27,13 @@ export interface ReportTemplate {
 export class ReportService {
   static async generateFinancialReport(filters: ReportFilters = {}) {
     try {
-      const transactions = await TransactionService.getByFilters(filters);
+      // Filter out 'all' type before passing to TransactionService
+      const serviceFilters = { ...filters };
+      if (serviceFilters.type === 'all') {
+        delete serviceFilters.type;
+      }
+      
+      const transactions = await TransactionService.getByFilters(serviceFilters);
       
       const income = transactions
         .filter(t => t.type === 'income')
@@ -92,7 +98,7 @@ export class ReportService {
     return null;
   }
 
-  static async getReportTemplates(): Promise<ReportTemplate[]> {
+  static getReportTemplates(): ReportTemplate[] {
     return [
       {
         id: '1',
