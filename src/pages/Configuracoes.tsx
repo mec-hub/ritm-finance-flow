@@ -9,7 +9,7 @@ import { SystemSettings } from '@/components/settings/SystemSettings';
 import { TeamSettings } from '@/components/settings/TeamSettings';
 import EnhancedTeamSettings from '@/components/settings/EnhancedTeamSettings';
 import { PreferencesSettings } from '@/components/settings/PreferencesSettings';
-import { Settings, User, Bell, System, Users, Palette } from 'lucide-react';
+import { Settings, User, Bell, Cog, Users, Palette } from 'lucide-react';
 
 const Configuracoes = () => {
   const [activeTab, setActiveTab] = useState('profile');
@@ -33,7 +33,7 @@ const Configuracoes = () => {
               Notificações
             </TabsTrigger>
             <TabsTrigger value="system" className="flex items-center gap-2">
-              <System className="h-4 w-4" />
+              <Cog className="h-4 w-4" />
               Sistema
             </TabsTrigger>
             <TabsTrigger value="team" className="flex items-center gap-2">
