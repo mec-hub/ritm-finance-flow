@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { 
@@ -22,7 +23,6 @@ import {
   PerformanceTracker 
 } from '@/components/analises';
 import { TeamAnalysisCharts } from '@/components/analises/TeamAnalysisCharts';
-import { EnhancedTeamAnalysis } from '@/components/analises/EnhancedTeamAnalysis';
 import { formatCurrency } from '@/utils/formatters';
 import { Calendar as CalendarIcon, ChartBar, PieChart, TrendingUp, Users } from 'lucide-react';
 import { TransactionService } from '@/services/transactionService';
@@ -427,11 +427,98 @@ const Analises = () => {
           <TabsContent value="team" className="space-y-4">
             {/* Enhanced Team Analysis */}
             {teamEarnings.length > 0 ? (
-              <EnhancedTeamAnalysis 
-                teamMembers={teamEarnings}
-                transactions={filteredTransactions}
-                timeRange={selectedTimeRange}
-              />
+              <div className="space-y-6">
+                {/* Team Member Earnings Summary */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Resumo dos Ganhos da Equipe</CardTitle>
+                    <CardDescription>
+                      Baseado em percentuais de transações pagas e cálculos do banco de dados
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {teamEarnings.map(member => {
+                        return (
+                          <div key={member.id} className="p-4 border rounded-lg">
+                            <h4 className="font-medium">{member.name}</h4>
+                            <p className="text-xs text-muted-foreground mb-2">{member.role}</p>
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span>Receitas:</span>
+                                <span className="text-green-500">
+                                  {formatCurrency(member.income)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span>Despesas:</span>
+                                <span className="text-red-500">
+                                  {formatCurrency(member.expenses)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm font-medium pt-1 border-t">
+                                <span>Líquido:</span>
+                                <span className={member.profit >= 0 ? 'text-green-500' : 'text-red-500'}>
+                                  {formatCurrency(member.profit)}
+                                </span>
+                              </div>
+                              {member.lastCalculated && (
+                                <div className="text-xs text-muted-foreground">
+                                  Atualizado: {new Date(member.lastCalculated).toLocaleDateString('pt-BR')}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Enhanced Team Charts */}
+                <TeamAnalysisCharts 
+                  teamMembers={teamEarnings}
+                  transactions={filteredTransactions}
+                  timeRange={selectedTimeRange}
+                />
+
+                {/* Team Performance Comparison */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Ranking de Performance da Equipe</CardTitle>
+                    <CardDescription>
+                      Classificação por lucro líquido baseado em transações pagas
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {teamEarnings
+                        .sort((a, b) => b.profit - a.profit)
+                        .map((member, index) => (
+                          <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-medium">
+                                {index + 1}
+                              </div>
+                              <div>
+                                <h4 className="font-medium">{member.name}</h4>
+                                <p className="text-xs text-muted-foreground">{member.role}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className={`font-medium ${member.profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                {formatCurrency(member.profit)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatCurrency(member.income)} - {formatCurrency(member.expenses)}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             ) : (
               <Card>
                 <CardHeader>
