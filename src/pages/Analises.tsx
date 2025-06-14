@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { 
@@ -200,18 +201,14 @@ const Analises = () => {
 
   // Calculate team member earnings based on filtered transactions for the selected time period
   const getFilteredTeamEarnings = () => {
-    const earnings: Record<string, { income: number; expenses: number; lastCalculated?: string }> = {};
+    const earnings: Record<string, { income: number; expenses: number }> = {};
     
-    // Initialize with team members
+    // Initialize with all team members from earnings data
     teamEarnings.forEach(member => {
-      earnings[member.id] = { 
-        income: 0, 
-        expenses: 0, 
-        lastCalculated: member.lastCalculated 
-      };
+      earnings[member.id] = { income: 0, expenses: 0 };
     });
 
-    // Calculate earnings from filtered transactions
+    // Calculate earnings from filtered transactions only
     filteredTransactions
       .filter(t => t.teamPercentages && t.teamPercentages.length > 0)
       .forEach(transaction => {
@@ -229,10 +226,13 @@ const Analises = () => {
 
     // Map back to team member format with calculated values for the time period
     return teamEarnings.map(member => ({
-      ...member,
+      id: member.id,
+      name: member.name,
+      role: member.role,
       income: earnings[member.id]?.income || 0,
       expenses: earnings[member.id]?.expenses || 0,
-      profit: (earnings[member.id]?.income || 0) - (earnings[member.id]?.expenses || 0)
+      profit: (earnings[member.id]?.income || 0) - (earnings[member.id]?.expenses || 0),
+      lastCalculated: member.lastCalculated
     }));
   };
 
