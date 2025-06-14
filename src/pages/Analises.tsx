@@ -21,7 +21,7 @@ import {
   CategoryPieChart,
   PerformanceTracker 
 } from '@/components/analises';
-import { TeamMemberSelector } from '@/components/analises/TeamMemberSelector';
+import { CompactTeamFilter } from '@/components/analises/CompactTeamFilter';
 import { FilteredTeamCharts } from '@/components/analises/FilteredTeamCharts';
 import { formatCurrency } from '@/utils/formatters';
 import { Calendar as CalendarIcon, ChartBar, PieChart, TrendingUp, Users } from 'lucide-react';
@@ -493,24 +493,18 @@ const Analises = () => {
                   </CardContent>
                 </Card>
 
-                {/* Team Member Selection and Charts */}
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                  <div className="lg:col-span-1">
-                    <TeamMemberSelector
-                      teamMembers={filteredTeamEarnings}
-                      selectedMembers={selectedTeamMembers}
-                      onSelectionChange={setSelectedTeamMembers}
-                    />
-                  </div>
-                  
-                  <div className="lg:col-span-3">
-                    <FilteredTeamCharts
-                      selectedTeamMembers={selectedTeamMembersData}
-                      transactions={filteredTransactions}
-                      timeRange={selectedTimeRange}
-                    />
-                  </div>
-                </div>
+                {/* Compact Team Member Filter and Charts */}
+                <CompactTeamFilter
+                  teamMembers={filteredTeamEarnings}
+                  selectedMembers={selectedTeamMembers}
+                  onSelectionChange={setSelectedTeamMembers}
+                />
+                
+                <FilteredTeamCharts
+                  selectedTeamMembers={selectedTeamMembersData}
+                  transactions={filteredTransactions}
+                  timeRange={selectedTimeRange}
+                />
               </div>
             ) : (
               <Card>
