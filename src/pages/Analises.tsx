@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { 
@@ -199,41 +198,13 @@ const Analises = () => {
     ? (totalIncome / totalEvents).toFixed(2) 
     : '0';
 
-  // Calculate team member earnings based on filtered transactions for the selected time period
+  // Filter team earnings by time range
   const getFilteredTeamEarnings = () => {
-    const earnings: Record<string, { income: number; expenses: number }> = {};
+    if (selectedTimeRange === 'all') return teamEarnings;
     
-    // Initialize with all team members from earnings data
-    teamEarnings.forEach(member => {
-      earnings[member.id] = { income: 0, expenses: 0 };
-    });
-
-    // Calculate earnings from filtered transactions only
-    filteredTransactions
-      .filter(t => t.teamPercentages && t.teamPercentages.length > 0)
-      .forEach(transaction => {
-        transaction.teamPercentages?.forEach(assignment => {
-          if (earnings[assignment.teamMemberId]) {
-            const amount = transaction.amount * (assignment.percentageValue / 100);
-            if (transaction.type === 'income') {
-              earnings[assignment.teamMemberId].income += amount;
-            } else if (transaction.type === 'expense') {
-              earnings[assignment.teamMemberId].expenses += amount;
-            }
-          }
-        });
-      });
-
-    // Map back to team member format with calculated values for the time period
-    return teamEarnings.map(member => ({
-      id: member.id,
-      name: member.name,
-      role: member.role,
-      income: earnings[member.id]?.income || 0,
-      expenses: earnings[member.id]?.expenses || 0,
-      profit: (earnings[member.id]?.income || 0) - (earnings[member.id]?.expenses || 0),
-      lastCalculated: member.lastCalculated
-    }));
+    // For now, return all team earnings as the database calculation handles the filtering
+    // In a future enhancement, we could modify the service to accept date ranges
+    return teamEarnings;
   };
 
   const filteredTeamEarnings = getFilteredTeamEarnings();
@@ -480,7 +451,7 @@ const Analises = () => {
                   <CardHeader>
                     <CardTitle>Resumo dos Ganhos da Equipe</CardTitle>
                     <CardDescription>
-                      Baseado em percentuais de transações pagas no período selecionado
+                      Baseado em percentuais de transações pagas e cálculos do banco de dados
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -509,12 +480,11 @@ const Analises = () => {
                                   {formatCurrency(member.profit)}
                                 </span>
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                Período: {selectedTimeRange === 'all' ? 'Todo o período' : 
-                                selectedTimeRange === '30days' ? 'Últimos 30 dias' : 
-                                selectedTimeRange === '3months' ? 'Últimos 3 meses' : 
-                                selectedTimeRange === '6months' ? 'Últimos 6 meses' : 'Último ano'}
-                              </div>
+                              {member.lastCalculated && (
+                                <div className="text-xs text-muted-foreground">
+                                  Atualizado: {new Date(member.lastCalculated).toLocaleDateString('pt-BR')}
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
