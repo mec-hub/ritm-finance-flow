@@ -9,6 +9,7 @@ import { ClientEventChart } from '@/components/clients/ClientEventChart';
 import { Link } from 'react-router-dom';
 import { ClientService } from '@/services/clientService';
 import { EventService } from '@/services/eventService';
+import { ClientRevenueService } from '@/services/clientRevenueService';
 import { Client, Event } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 
@@ -30,6 +31,19 @@ const Clientes = () => {
       
       setClients(clientsData);
       setEvents(eventsData);
+
+      // Update client revenues based on actual transactions
+      try {
+        await ClientRevenueService.updateAllClientRevenues();
+        // Refresh clients data after revenue update
+        const updatedClientsData = await ClientService.getAll();
+        setClients(updatedClientsData);
+        console.log('Clientes - Client revenues updated successfully');
+      } catch (revenueError) {
+        console.error('Clientes - Error updating client revenues:', revenueError);
+        // Continue with existing data even if revenue update fails
+      }
+      
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
