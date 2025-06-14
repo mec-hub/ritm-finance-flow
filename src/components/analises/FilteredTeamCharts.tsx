@@ -36,20 +36,86 @@ interface FilteredTeamChartsProps {
 const COLORS = ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#84CC16', '#F97316'];
 
 export function FilteredTeamCharts({ selectedTeamMembers, transactions, timeRange }: FilteredTeamChartsProps) {
+  // Filter transactions by time range
+  const getFilteredTransactions = () => {
+    let filtered = transactions.filter(transaction => transaction.status === 'paid');
+
+    if (timeRange !== 'all') {
+      const now = new Date();
+      let cutoffDate = new Date();
+      
+      switch (timeRange) {
+        case '30days':
+          cutoffDate.setDate(now.getDate() - 30);
+          break;
+        case '3months':
+          cutoffDate.setMonth(now.getMonth() - 3);
+          break;
+        case '6months':
+          cutoffDate.setMonth(now.getMonth() - 6);
+          break;
+        case '1year':
+          cutoffDate.setFullYear(now.getFullYear() - 1);
+          break;
+      }
+      
+      filtered = filtered.filter(transaction => 
+        new Date(transaction.date) >= cutoffDate && new Date(transaction.date) <= now
+      );
+    }
+
+    return filtered;
+  };
+
+  const filteredTransactions = getFilteredTransactions();
+
+  // Calculate team member earnings based on filtered transactions
+  const calculateTeamMemberEarnings = () => {
+    const earnings: Record<string, { income: number; expenses: number }> = {};
+    
+    // Initialize earnings for selected members
+    selectedTeamMembers.forEach(member => {
+      earnings[member.id] = { income: 0, expenses: 0 };
+    });
+
+    // Calculate earnings from filtered transactions
+    filteredTransactions
+      .filter(t => t.teamPercentages && t.teamPercentages.length > 0)
+      .forEach(transaction => {
+        transaction.teamPercentages?.forEach(assignment => {
+          if (earnings[assignment.teamMemberId]) {
+            const amount = transaction.amount * (assignment.percentageValue / 100);
+            if (transaction.type === 'income') {
+              earnings[assignment.teamMemberId].income += amount;
+            } else if (transaction.type === 'expense') {
+              earnings[assignment.teamMemberId].expenses += amount;
+            }
+          }
+        });
+      });
+
+    return earnings;
+  };
+
+  const timeRangeEarnings = calculateTeamMemberEarnings();
+
   // Prepare data for income vs expenses comparison
-  const incomeExpensesData = selectedTeamMembers.map(member => ({
-    name: member.name,
-    income: member.income,
-    expenses: member.expenses,
-    role: member.role
-  })).sort((a, b) => (b.income - b.expenses) - (a.income - a.expenses));
+  const incomeExpensesData = selectedTeamMembers.map(member => {
+    const earnings = timeRangeEarnings[member.id] || { income: 0, expenses: 0 };
+    return {
+      name: member.name,
+      income: earnings.income,
+      expenses: earnings.expenses,
+      role: member.role
+    };
+  }).sort((a, b) => (b.income - b.expenses) - (a.income - a.expenses));
 
   // Prepare monthly data for selected team members
   const getMonthlyData = () => {
     const monthlyData: Record<string, Record<string, { income: number; expenses: number }>> = {};
     
-    transactions
-      .filter(t => (t.status === 'paid' || !t.status) && t.teamPercentages && t.teamPercentages.length > 0)
+    filteredTransactions
+      .filter(t => t.teamPercentages && t.teamPercentages.length > 0)
       .forEach(transaction => {
         const monthKey = `${transaction.date.getFullYear()}-${String(transaction.date.getMonth() + 1).padStart(2, '0')}`;
         
@@ -105,7 +171,7 @@ export function FilteredTeamCharts({ selectedTeamMembers, transactions, timeRang
             <CardHeader>
               <CardTitle>Receitas vs Despesas - Membros Selecionados</CardTitle>
               <CardDescription>
-                Comparação detalhada de receitas e despesas dos membros escolhidos
+                Comparação detalhada de receitas e despesas dos membros escolhidos no período selecionado
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -142,7 +208,7 @@ export function FilteredTeamCharts({ selectedTeamMembers, transactions, timeRang
               <CardHeader>
                 <CardTitle>Evolução Mensal - Lucro Líquido por Membro</CardTitle>
                 <CardDescription>
-                  Evolução mensal do lucro líquido (receitas - despesas) dos membros selecionados
+                  Evolução mensal do lucro líquido (receitas - despesas) dos membros selecionados no período
                 </CardDescription>
               </CardHeader>
               <CardContent>
