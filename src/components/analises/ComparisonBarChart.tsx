@@ -10,7 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Transaction, Event } from '@/types';
+import { Transaction, Event, TeamMember } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -19,7 +19,7 @@ interface ComparisonBarChartProps {
   events: Event[];
   timeRange: string;
   selectedContributor: string;
-  teamMembers: Array<{ id: string; name: string; role: string }>;
+  teamMembers: TeamMember[];
 }
 
 export function ComparisonBarChart({
@@ -36,7 +36,7 @@ export function ComparisonBarChart({
       { name: string; income: number; expenses: number; profit: number }
     > = {};
 
-    // Initialize with all team members
+    // Initialize with all team members from database
     teamMembers.forEach((member) => {
       memberContributions[member.id] = {
         name: member.name,
@@ -46,21 +46,10 @@ export function ComparisonBarChart({
       };
     });
 
-    // Calculate totals for each member
+    // Calculate totals for each member based on actual transaction percentages
     transactions.forEach((transaction) => {
-      // Check if transaction is directly assigned
-      if (transaction.teamMemberId) {
-        const memberId = transaction.teamMemberId;
-        if (memberContributions[memberId]) {
-          if (transaction.type === 'income') {
-            memberContributions[memberId].income += transaction.amount;
-          } else {
-            memberContributions[memberId].expenses += transaction.amount;
-          }
-        }
-      }
-      // Check for percentage assignments
-      else if (transaction.teamPercentages && transaction.teamPercentages.length > 0) {
+      // Check for percentage assignments (primary method)
+      if (transaction.teamPercentages && transaction.teamPercentages.length > 0) {
         transaction.teamPercentages.forEach((tp) => {
           if (memberContributions[tp.teamMemberId]) {
             const amount = (transaction.amount * tp.percentageValue) / 100;
@@ -72,6 +61,17 @@ export function ComparisonBarChart({
           }
         });
       }
+      // Check if transaction is directly assigned (legacy support)
+      else if (transaction.teamMemberId) {
+        const memberId = transaction.teamMemberId;
+        if (memberContributions[memberId]) {
+          if (transaction.type === 'income') {
+            memberContributions[memberId].income += transaction.amount;
+          } else {
+            memberContributions[memberId].expenses += transaction.amount;
+          }
+        }
+      }
     });
 
     // Calculate profit for each member
@@ -80,7 +80,9 @@ export function ComparisonBarChart({
         memberContributions[key].income - memberContributions[key].expenses;
     });
 
-    return Object.values(memberContributions);
+    return Object.values(memberContributions).filter(member => 
+      member.income > 0 || member.expenses > 0 || member.profit !== 0
+    );
   };
 
   // Compare categories
@@ -240,27 +242,33 @@ export function ComparisonBarChart({
           <CardHeader>
             <CardTitle>Comparação de Desempenho da Equipe</CardTitle>
             <CardDescription>
-              Análise de contribuição por membro da equipe
+              Análise de contribuição por membro da equipe baseada em percentuais reais
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={teamData}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" />
-                  <YAxis tickFormatter={(value) => `R$${value / 1000}k`} />
-                  <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                  <Legend />
-                  <Bar dataKey="income" name="Receitas" fill="#22c55e" />
-                  <Bar dataKey="expenses" name="Despesas" fill="#ef4444" />
-                  <Bar dataKey="profit" name="Lucro" fill="#3b82f6" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {teamData.length > 0 ? (
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={teamData}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="name" />
+                    <YAxis tickFormatter={(value) => `R$${value / 1000}k`} />
+                    <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                    <Legend />
+                    <Bar dataKey="income" name="Receitas" fill="#22c55e" />
+                    <Bar dataKey="expenses" name="Despesas" fill="#ef4444" />
+                    <Bar dataKey="profit" name="Lucro" fill="#3b82f6" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhum dado de equipe disponível no período selecionado
+              </div>
+            )}
           </CardContent>
         </Card>
       </TabsContent>

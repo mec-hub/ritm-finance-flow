@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { 
   Card, 
@@ -9,7 +9,6 @@ import {
   CardTitle 
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -26,31 +25,119 @@ import {
   PerformanceTracker,
   ProjectionChart 
 } from '@/components/analises';
-import { 
-  mockTransactions,
-  mockEvents,
-  mockClients,
-} from '@/data/mockData';
 import { formatCurrency } from '@/utils/formatters';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Calendar as CalendarIcon, ChartBar, PieChart, ArrowUpDown, Percent, TrendingUp, FileText } from 'lucide-react';
-
-// Pre-defined team members for analysis
-const teamMembers = [
-  { id: '1', name: 'DJ Davizão', role: 'Proprietário' },
-  { id: '2', name: 'Rian Dultra', role: 'CEO' },
-  { id: '3', name: 'Maria Clara', role: 'Lider de Marketing' },
-];
+import { TransactionService } from '@/services/transactionService';
+import { EventService } from '@/services/eventService';
+import { ClientService } from '@/services/clientService';
+import { TeamService } from '@/services/teamService';
+import { Transaction, Event, Client, TeamMember } from '@/types';
+import { toast } from '@/hooks/use-toast';
 
 const Analises = () => {
   const [selectedContributor, setSelectedContributor] = useState<string>('all');
   const [selectedTimeRange, setSelectedTimeRange] = useState('6months');
   const [selectedAnalysisType, setSelectedAnalysisType] = useState('revenue');
+  
+  // Real data states
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Process the transactions based on filters - Fix for 30 days view
+  // Fetch real data from database
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        console.log('Analises - Fetching real data from database...');
+        
+        const [transactionsData, eventsData, clientsData, teamMembersData] = await Promise.all([
+          TransactionService.getAll(),
+          EventService.getAll(),
+          ClientService.getAll(),
+          TeamService.getAll()
+        ]);
+
+        console.log('Analises - Data fetched:', {
+          transactions: transactionsData.length,
+          events: eventsData.length,
+          clients: clientsData.length,
+          teamMembers: teamMembersData.length
+        });
+
+        setTransactions(transactionsData);
+        setEvents(eventsData);
+        setClients(clientsData);
+        setTeamMembers(teamMembersData);
+        
+      } catch (error) {
+        console.error('Error fetching analysis data:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os dados para análise.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Calculate team member earnings from transactions
+  const calculateTeamMemberEarnings = () => {
+    const memberEarnings = new Map<string, { income: number; expenses: number; transactions: number }>();
+    
+    // Initialize all team members
+    teamMembers.forEach(member => {
+      memberEarnings.set(member.id, { income: 0, expenses: 0, transactions: 0 });
+    });
+
+    transactions.forEach(transaction => {
+      // Check if transaction has team percentage assignments
+      if (transaction.teamPercentages && transaction.teamPercentages.length > 0) {
+        transaction.teamPercentages.forEach(assignment => {
+          const currentEarnings = memberEarnings.get(assignment.teamMemberId);
+          if (currentEarnings) {
+            const memberAmount = (transaction.amount * assignment.percentageValue) / 100;
+            
+            if (transaction.type === 'income') {
+              currentEarnings.income += memberAmount;
+            } else {
+              currentEarnings.expenses += memberAmount;
+            }
+            currentEarnings.transactions += 1;
+            
+            memberEarnings.set(assignment.teamMemberId, currentEarnings);
+          }
+        });
+      }
+      
+      // Check if transaction is directly assigned to a team member (legacy support)
+      if (transaction.teamMemberId) {
+        const currentEarnings = memberEarnings.get(transaction.teamMemberId);
+        if (currentEarnings) {
+          if (transaction.type === 'income') {
+            currentEarnings.income += transaction.amount;
+          } else {
+            currentEarnings.expenses += transaction.amount;
+          }
+          currentEarnings.transactions += 1;
+          
+          memberEarnings.set(transaction.teamMemberId, currentEarnings);
+        }
+      }
+    });
+
+    return memberEarnings;
+  };
+
+  // Process the transactions based on filters
   const processTransactions = () => {
-    let filtered = [...mockTransactions];
+    let filtered = [...transactions];
 
     // Filter by contributor if selected
     if (selectedContributor !== 'all') {
@@ -67,7 +154,7 @@ const Analises = () => {
       });
     }
 
-    // Filter by time range - FIX for 30 days view
+    // Filter by time range
     const now = new Date();
     if (selectedTimeRange !== 'all') {
       let cutoffDate = new Date();
@@ -95,8 +182,9 @@ const Analises = () => {
     return filtered;
   };
 
-  // Get filtered transactions
+  // Get filtered transactions and calculate team earnings
   const filteredTransactions = processTransactions();
+  const teamMemberEarnings = calculateTeamMemberEarnings();
 
   // Calculate summary stats
   const totalIncome = filteredTransactions
@@ -121,8 +209,8 @@ const Analises = () => {
   const mostProfitableCategory = Object.entries(incomeByCategory)
     .sort((a, b) => b[1] - a[1])[0] || ['Nenhum', 0];
 
-  // Calculate event stats - Fix for 30 days filter
-  const filteredEvents = mockEvents.filter(event => {
+  // Calculate event stats
+  const filteredEvents = events.filter(event => {
     if (selectedTimeRange === 'all') return true;
     
     const eventDate = new Date(event.date);
@@ -150,18 +238,26 @@ const Analises = () => {
   // Calculate active client stats
   const clientsWithEvents = new Set();
   filteredEvents.forEach(event => {
-    clientsWithEvents.add(event.client);
+    if (event.clientId) {
+      clientsWithEvents.add(event.clientId);
+    }
   });
   
   const activeClients = clientsWithEvents.size;
-  
-  // Calculate the total number of events
   const totalEvents = filteredEvents.length;
-  
-  // Calculate average revenue per event
   const averageRevenuePerEvent = totalEvents > 0 
     ? (totalIncome / totalEvents).toFixed(2) 
     : '0';
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <p>Carregando dados de análise...</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -170,7 +266,7 @@ const Analises = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Análises</h1>
             <p className="text-muted-foreground">
-              Insights detalhados sobre seu negócio
+              Insights detalhados sobre seu negócio baseados em dados reais
             </p>
           </div>
           
@@ -197,10 +293,10 @@ const Analises = () => {
               onValueChange={setSelectedContributor}
             >
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Colaborador" />
+                <SelectValue placeholder="Membro da Equipe" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos colaboradores</SelectItem>
+                <SelectItem value="all">Todos os membros</SelectItem>
                 {teamMembers.map(member => (
                   <SelectItem key={member.id} value={member.id}>
                     {member.name}
@@ -274,6 +370,54 @@ const Analises = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Team Member Earnings Summary */}
+        {teamMembers.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Ganhos da Equipe</CardTitle>
+              <CardDescription>Baseado em percentuais de transações</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {teamMembers.map(member => {
+                  const earnings = teamMemberEarnings.get(member.id);
+                  const netEarnings = earnings ? earnings.income - earnings.expenses : 0;
+                  
+                  return (
+                    <div key={member.id} className="p-4 border rounded-lg">
+                      <h4 className="font-medium">{member.name}</h4>
+                      <p className="text-xs text-muted-foreground mb-2">{member.role}</p>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span>Receitas:</span>
+                          <span className="text-green-500">
+                            {formatCurrency(earnings?.income || 0)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Despesas:</span>
+                          <span className="text-red-500">
+                            {formatCurrency(earnings?.expenses || 0)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm font-medium pt-1 border-t">
+                          <span>Líquido:</span>
+                          <span className={netEarnings >= 0 ? 'text-green-500' : 'text-red-500'}>
+                            {formatCurrency(netEarnings)}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {earnings?.transactions || 0} transações
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
         
         <Tabs defaultValue="revenue" value={selectedAnalysisType} onValueChange={setSelectedAnalysisType}>
           <TabsList className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 mb-6">
@@ -399,7 +543,7 @@ const Analises = () => {
             <PerformanceTracker 
               transactions={filteredTransactions}
               events={filteredEvents}
-              clients={mockClients}
+              clients={clients}
               timeRange={selectedTimeRange}
             />
           </TabsContent>
@@ -416,7 +560,7 @@ const Analises = () => {
           
           <TabsContent value="projections" className="space-y-4">
             <ProjectionChart 
-              transactions={mockTransactions}
+              transactions={transactions}
               timeRange={selectedTimeRange}
             />
             
