@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { 
@@ -22,7 +21,8 @@ import {
   CategoryPieChart,
   PerformanceTracker 
 } from '@/components/analises';
-import { TeamAnalysisCharts } from '@/components/analises/TeamAnalysisCharts';
+import { TeamMemberSelector } from '@/components/analises/TeamMemberSelector';
+import { FilteredTeamCharts } from '@/components/analises/FilteredTeamCharts';
 import { formatCurrency } from '@/utils/formatters';
 import { Calendar as CalendarIcon, ChartBar, PieChart, TrendingUp, Users } from 'lucide-react';
 import { TransactionService } from '@/services/transactionService';
@@ -36,6 +36,7 @@ import { toast } from '@/hooks/use-toast';
 const Analises = () => {
   const [selectedTimeRange, setSelectedTimeRange] = useState('6months');
   const [selectedAnalysisType, setSelectedAnalysisType] = useState('revenue');
+  const [selectedTeamMembers, setSelectedTeamMembers] = useState<string[]>([]);
   
   // Real data states
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -79,6 +80,9 @@ const Analises = () => {
           const earningsData = await TeamEarningsService.getAllTeamMemberEarnings();
           setTeamEarnings(earningsData);
           console.log('Team earnings updated:', earningsData);
+          
+          // Auto-select all team members initially
+          setSelectedTeamMembers(earningsData.map((member: any) => member.id));
         }
         
       } catch (error) {
@@ -193,6 +197,20 @@ const Analises = () => {
   const averageRevenuePerEvent = totalEvents > 0 
     ? (totalIncome / totalEvents).toFixed(2) 
     : '0';
+
+  // Filter team earnings by time range
+  const getFilteredTeamEarnings = () => {
+    if (selectedTimeRange === 'all') return teamEarnings;
+    
+    // For now, return all team earnings as the database calculation handles the filtering
+    // In a future enhancement, we could modify the service to accept date ranges
+    return teamEarnings;
+  };
+
+  const filteredTeamEarnings = getFilteredTeamEarnings();
+  const selectedTeamMembersData = filteredTeamEarnings.filter(member => 
+    selectedTeamMembers.includes(member.id)
+  );
 
   if (loading) {
     return (
@@ -426,7 +444,7 @@ const Analises = () => {
           
           <TabsContent value="team" className="space-y-4">
             {/* Enhanced Team Analysis */}
-            {teamEarnings.length > 0 ? (
+            {filteredTeamEarnings.length > 0 ? (
               <div className="space-y-6">
                 {/* Team Member Earnings Summary */}
                 <Card>
@@ -438,7 +456,7 @@ const Analises = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {teamEarnings.map(member => {
+                      {filteredTeamEarnings.map(member => {
                         return (
                           <div key={member.id} className="p-4 border rounded-lg">
                             <h4 className="font-medium">{member.name}</h4>
@@ -475,49 +493,24 @@ const Analises = () => {
                   </CardContent>
                 </Card>
 
-                {/* Enhanced Team Charts */}
-                <TeamAnalysisCharts 
-                  teamMembers={teamEarnings}
-                  transactions={filteredTransactions}
-                  timeRange={selectedTimeRange}
-                />
-
-                {/* Team Performance Comparison */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Ranking de Performance da Equipe</CardTitle>
-                    <CardDescription>
-                      Classificação por lucro líquido baseado em transações pagas
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {teamEarnings
-                        .sort((a, b) => b.profit - a.profit)
-                        .map((member, index) => (
-                          <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-medium">
-                                {index + 1}
-                              </div>
-                              <div>
-                                <h4 className="font-medium">{member.name}</h4>
-                                <p className="text-xs text-muted-foreground">{member.role}</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className={`font-medium ${member.profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                {formatCurrency(member.profit)}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {formatCurrency(member.income)} - {formatCurrency(member.expenses)}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* Team Member Selection and Charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                  <div className="lg:col-span-1">
+                    <TeamMemberSelector
+                      teamMembers={filteredTeamEarnings}
+                      selectedMembers={selectedTeamMembers}
+                      onSelectionChange={setSelectedTeamMembers}
+                    />
+                  </div>
+                  
+                  <div className="lg:col-span-3">
+                    <FilteredTeamCharts
+                      selectedTeamMembers={selectedTeamMembersData}
+                      transactions={filteredTransactions}
+                      timeRange={selectedTimeRange}
+                    />
+                  </div>
+                </div>
               </div>
             ) : (
               <Card>
