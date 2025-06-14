@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { 
@@ -15,18 +16,14 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import { 
   FinancialAreaChart,
   FinancialBarChart,
   CategoryPieChart,
-  ComparisonBarChart,
-  PerformanceTracker,
-  ProjectionChart 
+  PerformanceTracker 
 } from '@/components/analises';
 import { formatCurrency } from '@/utils/formatters';
-import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, ChartBar, PieChart, ArrowUpDown, Percent, TrendingUp, FileText } from 'lucide-react';
+import { Calendar as CalendarIcon, ChartBar, PieChart, TrendingUp, Users } from 'lucide-react';
 import { TransactionService } from '@/services/transactionService';
 import { EventService } from '@/services/eventService';
 import { ClientService } from '@/services/clientService';
@@ -36,7 +33,6 @@ import { Transaction, Event, Client, TeamMember } from '@/types';
 import { toast } from '@/hooks/use-toast';
 
 const Analises = () => {
-  const [selectedContributor, setSelectedContributor] = useState<string>('all');
   const [selectedTimeRange, setSelectedTimeRange] = useState('6months');
   const [selectedAnalysisType, setSelectedAnalysisType] = useState('revenue');
   
@@ -99,24 +95,9 @@ const Analises = () => {
     fetchData();
   }, []);
 
-  // Process the transactions based on filters
+  // Process the transactions based on filters - only paid transactions
   const processTransactions = () => {
-    let filtered = [...transactions];
-
-    // Filter by contributor if selected
-    if (selectedContributor !== 'all') {
-      filtered = filtered.filter(transaction => {
-        // Check if transaction is assigned to this contributor
-        if (transaction.teamMemberId === selectedContributor) return true;
-        
-        // Check if transaction has teamPercentages with the selected contributor
-        if (transaction.teamPercentages?.some(tp => tp.teamMemberId === selectedContributor)) {
-          return true;
-        }
-        
-        return false;
-      });
-    }
+    let filtered = transactions.filter(transaction => transaction.status === 'paid');
 
     // Filter by time range
     const now = new Date();
@@ -149,7 +130,7 @@ const Analises = () => {
   // Get filtered transactions
   const filteredTransactions = processTransactions();
 
-  // Calculate summary stats
+  // Calculate summary stats - only paid transactions
   const totalIncome = filteredTransactions
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -229,7 +210,7 @@ const Analises = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Análises</h1>
             <p className="text-muted-foreground">
-              Insights detalhados sobre seu negócio baseados em dados reais
+              Insights detalhados sobre seu negócio baseados em transações pagas
             </p>
           </div>
           
@@ -248,23 +229,6 @@ const Analises = () => {
                 <SelectItem value="6months">Últimos 6 meses</SelectItem>
                 <SelectItem value="1year">Último ano</SelectItem>
                 <SelectItem value="all">Todo o período</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Select
-              value={selectedContributor}
-              onValueChange={setSelectedContributor}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Membro da Equipe" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os membros</SelectItem>
-                {teamMembers.map(member => (
-                  <SelectItem key={member.id} value={member.id}>
-                    {member.name}
-                  </SelectItem>
-                ))}
               </SelectContent>
             </Select>
           </div>
@@ -333,58 +297,9 @@ const Analises = () => {
             </CardContent>
           </Card>
         </div>
-
-        {/* Team Member Earnings Summary - Updated with real calculated data */}
-        {teamEarnings.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Ganhos da Equipe (Calculados)</CardTitle>
-              <CardDescription>
-                Baseado em percentuais de transações e cálculos do banco de dados
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {teamEarnings.map(member => {
-                  return (
-                    <div key={member.id} className="p-4 border rounded-lg">
-                      <h4 className="font-medium">{member.name}</h4>
-                      <p className="text-xs text-muted-foreground mb-2">{member.role}</p>
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span>Receitas:</span>
-                          <span className="text-green-500">
-                            {formatCurrency(member.income)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Despesas:</span>
-                          <span className="text-red-500">
-                            {formatCurrency(member.expenses)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm font-medium pt-1 border-t">
-                          <span>Líquido:</span>
-                          <span className={member.profit >= 0 ? 'text-green-500' : 'text-red-500'}>
-                            {formatCurrency(member.profit)}
-                          </span>
-                        </div>
-                        {member.lastCalculated && (
-                          <div className="text-xs text-muted-foreground">
-                            Atualizado: {new Date(member.lastCalculated).toLocaleDateString('pt-BR')}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
         
         <Tabs defaultValue="revenue" value={selectedAnalysisType} onValueChange={setSelectedAnalysisType}>
-          <TabsList className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 mb-6">
+          <TabsList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6">
             <TabsTrigger value="revenue" className="flex items-center">
               <ChartBar className="mr-2 h-4 w-4" /> 
               Receitas & Despesas
@@ -397,13 +312,9 @@ const Analises = () => {
               <TrendingUp className="mr-2 h-4 w-4" />
               Performance
             </TabsTrigger>
-            <TabsTrigger value="comparisons" className="flex items-center">
-              <ArrowUpDown className="mr-2 h-4 w-4" />
-              Comparações
-            </TabsTrigger>
-            <TabsTrigger value="projections" className="flex items-center">
-              <Percent className="mr-2 h-4 w-4" />
-              Projeções
+            <TabsTrigger value="team" className="flex items-center">
+              <Users className="mr-2 h-4 w-4" />
+              Equipe
             </TabsTrigger>
           </TabsList>
           
@@ -418,7 +329,7 @@ const Analises = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Top 5 Receitas</CardTitle>
-                  <CardDescription>Maiores transações de receita</CardDescription>
+                  <CardDescription>Maiores transações de receita pagas</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
@@ -443,7 +354,7 @@ const Analises = () => {
                     
                     {filteredTransactions.filter(t => t.type === 'income').length === 0 && (
                       <div className="text-center py-4 text-muted-foreground">
-                        Nenhuma receita no período selecionado
+                        Nenhuma receita paga no período selecionado
                       </div>
                     )}
                   </div>
@@ -453,7 +364,7 @@ const Analises = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Top 5 Despesas</CardTitle>
-                  <CardDescription>Maiores transações de despesa</CardDescription>
+                  <CardDescription>Maiores transações de despesa pagas</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
@@ -478,7 +389,7 @@ const Analises = () => {
                     
                     {filteredTransactions.filter(t => t.type === 'expense').length === 0 && (
                       <div className="text-center py-4 text-muted-foreground">
-                        Nenhuma despesa no período selecionado
+                        Nenhuma despesa paga no período selecionado
                       </div>
                     )}
                   </div>
@@ -512,90 +423,147 @@ const Analises = () => {
             />
           </TabsContent>
           
-          <TabsContent value="comparisons" className="space-y-4">
-            <ComparisonBarChart 
-              transactions={filteredTransactions}
-              events={filteredEvents}
-              timeRange={selectedTimeRange}
-              selectedContributor={selectedContributor}
-              teamMembers={teamMembers}
-              teamEarnings={teamEarnings}
-            />
-          </TabsContent>
-          
-          <TabsContent value="projections" className="space-y-4">
-            <ProjectionChart 
-              transactions={transactions}
-              timeRange={selectedTimeRange}
-            />
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Recomendações</CardTitle>
-                <CardDescription>
-                  Baseadas nos dados históricos e projeções
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-muted rounded-lg p-4">
-                  <h3 className="font-medium mb-2">Oportunidades de Crescimento</h3>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-start">
-                      <span className="mr-2">•</span>
-                      <span>
-                        {mostProfitableCategory[0] !== 'Nenhum'
-                          ? `Invista mais em "${mostProfitableCategory[0]}" - sua categoria mais rentável (${formatCurrency(mostProfitableCategory[1])}).`
-                          : 'Ainda não há dados suficientes para análise de categorias.'}
-                      </span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="mr-2">•</span>
-                      <span>
-                        {filteredEvents.length > 0
-                          ? `A média de ${formatCurrency(parseFloat(averageRevenuePerEvent))} por evento pode ser melhorada com estratégias de cross-selling.`
-                          : 'Não há eventos no período selecionado para análise.'}
-                      </span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="mr-2">•</span>
-                      <span>
-                        {activeClients > 0
-                          ? `Concentre esforços em fidelizar os ${activeClients} clientes ativos que geraram eventos no período.`
-                          : 'Considere estratégias para atrair novos clientes e eventos.'}
-                      </span>
-                    </li>
-                  </ul>
-                </div>
-                
-                <div className="bg-muted rounded-lg p-4">
-                  <h3 className="font-medium mb-2">Áreas de Otimização</h3>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-start">
-                      <span className="mr-2">•</span>
-                      <span>
-                        {parseFloat(profitMargin) < 20
-                          ? `Margem de lucro atual (${profitMargin}%) está abaixo do ideal. Considere revisar custos operacionais.`
-                          : `Sua margem de lucro (${profitMargin}%) está saudável. Continue monitorando custos.`}
-                      </span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="mr-2">•</span>
-                      <span>
-                        Analise a sazonalidade de vendas para otimizar a alocação de recursos durante os períodos de pico.
-                      </span>
-                    </li>
-                  </ul>
-                </div>
-              </CardContent>
-              <div className="px-6 py-4 border-t">
-                <Button variant="outline" className="w-full" asChild>
-                  <a href="#" className="flex items-center justify-center">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Gerar Relatório Completo
-                  </a>
-                </Button>
+          <TabsContent value="team" className="space-y-4">
+            {/* Team Member Earnings Summary */}
+            {teamEarnings.length > 0 ? (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Ganhos da Equipe (Calculados)</CardTitle>
+                    <CardDescription>
+                      Baseado em percentuais de transações pagas e cálculos do banco de dados
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {teamEarnings.map(member => {
+                        return (
+                          <div key={member.id} className="p-4 border rounded-lg">
+                            <h4 className="font-medium">{member.name}</h4>
+                            <p className="text-xs text-muted-foreground mb-2">{member.role}</p>
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span>Receitas:</span>
+                                <span className="text-green-500">
+                                  {formatCurrency(member.income)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span>Despesas:</span>
+                                <span className="text-red-500">
+                                  {formatCurrency(member.expenses)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm font-medium pt-1 border-t">
+                                <span>Líquido:</span>
+                                <span className={member.profit >= 0 ? 'text-green-500' : 'text-red-500'}>
+                                  {formatCurrency(member.profit)}
+                                </span>
+                              </div>
+                              {member.lastCalculated && (
+                                <div className="text-xs text-muted-foreground">
+                                  Atualizado: {new Date(member.lastCalculated).toLocaleDateString('pt-BR')}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Team Performance Comparison */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Comparação de Performance da Equipe</CardTitle>
+                    <CardDescription>
+                      Análise comparativa baseada em transações pagas
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {teamEarnings
+                        .sort((a, b) => b.profit - a.profit)
+                        .map((member, index) => (
+                          <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-medium">
+                                {index + 1}
+                              </div>
+                              <div>
+                                <h4 className="font-medium">{member.name}</h4>
+                                <p className="text-xs text-muted-foreground">{member.role}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className={`font-medium ${member.profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                {formatCurrency(member.profit)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatCurrency(member.income)} - {formatCurrency(member.expenses)}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Team Insights */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Insights da Equipe</CardTitle>
+                    <CardDescription>
+                      Análise baseada nos dados de transações pagas
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="bg-muted rounded-lg p-4">
+                      <h3 className="font-medium mb-2">Performance Individual</h3>
+                      <ul className="space-y-2 text-sm">
+                        {teamEarnings.length > 0 && (
+                          <>
+                            <li className="flex items-start">
+                              <span className="mr-2">🏆</span>
+                              <span>
+                                <strong>{teamEarnings.sort((a, b) => b.profit - a.profit)[0].name}</strong> tem o maior lucro líquido: {formatCurrency(teamEarnings.sort((a, b) => b.profit - a.profit)[0].profit)}
+                              </span>
+                            </li>
+                            <li className="flex items-start">
+                              <span className="mr-2">💰</span>
+                              <span>
+                                <strong>{teamEarnings.sort((a, b) => b.income - a.income)[0].name}</strong> tem a maior receita individual: {formatCurrency(teamEarnings.sort((a, b) => b.income - a.income)[0].income)}
+                              </span>
+                            </li>
+                            <li className="flex items-start">
+                              <span className="mr-2">📊</span>
+                              <span>
+                                Receita total da equipe: {formatCurrency(teamEarnings.reduce((sum, member) => sum + member.income, 0))}
+                              </span>
+                            </li>
+                          </>
+                        )}
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Análise da Equipe</CardTitle>
+                  <CardDescription>
+                    Nenhum dado de equipe disponível
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8 text-muted-foreground">
+                    Não há membros da equipe com transações pagas no período selecionado para análise.
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
       </div>
