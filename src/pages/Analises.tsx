@@ -22,6 +22,7 @@ import {
   CategoryPieChart,
   PerformanceTracker 
 } from '@/components/analises';
+import { TeamAnalysisCharts } from '@/components/analises/TeamAnalysisCharts';
 import { formatCurrency } from '@/utils/formatters';
 import { Calendar as CalendarIcon, ChartBar, PieChart, TrendingUp, Users } from 'lucide-react';
 import { TransactionService } from '@/services/transactionService';
@@ -424,12 +425,13 @@ const Analises = () => {
           </TabsContent>
           
           <TabsContent value="team" className="space-y-4">
-            {/* Team Member Earnings Summary */}
+            {/* Enhanced Team Analysis */}
             {teamEarnings.length > 0 ? (
               <div className="space-y-6">
+                {/* Team Member Earnings Summary */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Ganhos da Equipe (Calculados)</CardTitle>
+                    <CardTitle>Resumo dos Ganhos da Equipe</CardTitle>
                     <CardDescription>
                       Baseado em percentuais de transações pagas e cálculos do banco de dados
                     </CardDescription>
@@ -473,12 +475,19 @@ const Analises = () => {
                   </CardContent>
                 </Card>
 
+                {/* Enhanced Team Charts */}
+                <TeamAnalysisCharts 
+                  teamMembers={teamEarnings}
+                  transactions={filteredTransactions}
+                  timeRange={selectedTimeRange}
+                />
+
                 {/* Team Performance Comparison */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Comparação de Performance da Equipe</CardTitle>
+                    <CardTitle>Ranking de Performance da Equipe</CardTitle>
                     <CardDescription>
-                      Análise comparativa baseada em transações pagas
+                      Classificação por lucro líquido baseado em transações pagas
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -506,45 +515,6 @@ const Analises = () => {
                             </div>
                           </div>
                         ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Team Insights */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Insights da Equipe</CardTitle>
-                    <CardDescription>
-                      Análise baseada nos dados de transações pagas
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="bg-muted rounded-lg p-4">
-                      <h3 className="font-medium mb-2">Performance Individual</h3>
-                      <ul className="space-y-2 text-sm">
-                        {teamEarnings.length > 0 && (
-                          <>
-                            <li className="flex items-start">
-                              <span className="mr-2">🏆</span>
-                              <span>
-                                <strong>{teamEarnings.sort((a, b) => b.profit - a.profit)[0].name}</strong> tem o maior lucro líquido: {formatCurrency(teamEarnings.sort((a, b) => b.profit - a.profit)[0].profit)}
-                              </span>
-                            </li>
-                            <li className="flex items-start">
-                              <span className="mr-2">💰</span>
-                              <span>
-                                <strong>{teamEarnings.sort((a, b) => b.income - a.income)[0].name}</strong> tem a maior receita individual: {formatCurrency(teamEarnings.sort((a, b) => b.income - a.income)[0].income)}
-                              </span>
-                            </li>
-                            <li className="flex items-start">
-                              <span className="mr-2">📊</span>
-                              <span>
-                                Receita total da equipe: {formatCurrency(teamEarnings.reduce((sum, member) => sum + member.income, 0))}
-                              </span>
-                            </li>
-                          </>
-                        )}
-                      </ul>
                     </div>
                   </CardContent>
                 </Card>

@@ -54,12 +54,14 @@ const Financas = () => {
     fetchTransactions();
   }, []);
   
-  // Calculate financial summary data using filtered transactions
-  const totalIncome = filteredTransactions
+  // Calculate financial summary data using filtered transactions - ONLY PAID TRANSACTIONS
+  const paidTransactions = filteredTransactions.filter(t => t.status === 'paid');
+  
+  const totalIncome = paidTransactions
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
   
-  const totalExpenses = filteredTransactions
+  const totalExpenses = paidTransactions
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
     
@@ -138,7 +140,7 @@ const Financas = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Finanças</h1>
             <p className="text-muted-foreground">
-              Gerencie suas receitas e despesas.
+              Gerencie suas receitas e despesas (apenas transações pagas são contabilizadas).
             </p>
           </div>
           <div className="flex gap-2">
@@ -166,40 +168,40 @@ const Financas = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className={netProfit >= 0 ? "border-green-500/50" : "border-red-500/50"}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Saldo Líquido</CardTitle>
+              <CardTitle className="text-sm font-medium">Saldo Líquido (Pago)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className={`text-2xl font-bold ${netProfit >= 0 ? "text-green-500" : "text-red-500"}`}>
                 {formatCurrency(netProfit)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Diferença entre receitas e despesas
+                Diferença entre receitas e despesas pagas
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Total Receitas</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Receitas (Pagas)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-500">
                 {formatCurrency(totalIncome)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Soma de todas as receitas
+                Soma de todas as receitas pagas
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Total Despesas</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Despesas (Pagas)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-500">
                 {formatCurrency(totalExpenses)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Soma de todas as despesas
+                Soma de todas as despesas pagas
               </p>
             </CardContent>
           </Card>
@@ -221,15 +223,15 @@ const Financas = () => {
           </TabsContent>
 
           <TabsContent value="summary" className="space-y-4">
-            <FinancialSummary transactions={filteredTransactions} />
+            <FinancialSummary transactions={paidTransactions} />
           </TabsContent>
 
           <TabsContent value="recurring" className="space-y-4">
-            <RecurringTransactions transactions={filteredTransactions.filter(t => t.isRecurring)} />
+            <RecurringTransactions transactions={paidTransactions.filter(t => t.isRecurring)} />
           </TabsContent>
 
           <TabsContent value="budget" className="space-y-4">
-            <BudgetManager transactions={filteredTransactions} />
+            <BudgetManager transactions={paidTransactions} />
           </TabsContent>
         </Tabs>
       </div>
