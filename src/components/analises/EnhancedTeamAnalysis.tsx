@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/utils/formatters';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart } from 'recharts';
 import { useState } from 'react';
+import { Users, TrendingUp, DollarSign } from 'lucide-react';
 
 interface TeamMember {
   id: string;
@@ -106,6 +107,12 @@ export function EnhancedTeamAnalysis({ teamMembers, transactions, timeRange }: E
 
   const selectedMemberData = getSelectedMemberData();
 
+  // Calculate totals for summary
+  const totalTeamIncome = selectedMemberData.reduce((sum, member) => sum + member.income, 0);
+  const totalTeamExpenses = selectedMemberData.reduce((sum, member) => sum + member.expenses, 0);
+  const totalTeamProfit = totalTeamIncome - totalTeamExpenses;
+  const averageProfitPerMember = selectedMemberData.length > 0 ? totalTeamProfit / selectedMemberData.length : 0;
+
   // Monthly analysis data
   const getMonthlyData = () => {
     const monthlyData: Record<string, Record<string, { income: number; expenses: number }>> = {};
@@ -121,7 +128,7 @@ export function EnhancedTeamAnalysis({ teamMembers, transactions, timeRange }: E
         
         transaction.teamPercentages?.forEach(assignment => {
           if (selectedMembers.includes(assignment.teamMemberId)) {
-            const memberName = assignment.teamMemberName || 'Unknown';
+            const memberName = teamMembers.find(m => m.id === assignment.teamMemberId)?.name || 'Unknown';
             if (!monthlyData[monthKey][memberName]) {
               monthlyData[monthKey][memberName] = { income: 0, expenses: 0 };
             }
@@ -168,6 +175,74 @@ export function EnhancedTeamAnalysis({ teamMembers, transactions, timeRange }: E
 
   return (
     <div className="space-y-6">
+      {/* Team Earnings Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <DollarSign className="mr-2 h-4 w-4" />
+              Receita Total da Equipe
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-500">
+              {formatCurrency(totalTeamIncome)}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {selectedMembers.length} membros selecionados
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <TrendingUp className="mr-2 h-4 w-4" />
+              Lucro Total da Equipe
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${totalTeamProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {formatCurrency(totalTeamProfit)}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Receita - Despesas
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <Users className="mr-2 h-4 w-4" />
+              Membros Ativos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {selectedMemberData.filter(m => m.income > 0 || m.expenses > 0).length}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Com transações no período
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Lucro Médio</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(averageProfitPerMember)}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Por membro selecionado
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Team Member Selection */}
       <Card>
         <CardHeader>
@@ -303,7 +378,7 @@ export function EnhancedTeamAnalysis({ teamMembers, transactions, timeRange }: E
       )}
 
       {/* Monthly Evolution Chart */}
-      {chartType === 'monthly' && selectedMembers.length > 0 && (
+      {chartType === 'monthly' && selectedMembers.length > 0 && monthlyData.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Evolução Mensal do Lucro</CardTitle>
@@ -333,6 +408,16 @@ export function EnhancedTeamAnalysis({ teamMembers, transactions, timeRange }: E
                   ))}
                 </LineChart>
               </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {chartType === 'monthly' && selectedMembers.length > 0 && monthlyData.length === 0 && (
+        <Card>
+          <CardContent className="py-8">
+            <div className="text-center text-muted-foreground">
+              Não há dados mensais suficientes para os membros selecionados no período escolhido
             </div>
           </CardContent>
         </Card>
