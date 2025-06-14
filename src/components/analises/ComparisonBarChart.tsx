@@ -20,6 +20,7 @@ interface ComparisonBarChartProps {
   timeRange: string;
   selectedContributor: string;
   teamMembers: TeamMember[];
+  teamEarnings?: any[];
 }
 
 export function ComparisonBarChart({
@@ -28,9 +29,21 @@ export function ComparisonBarChart({
   timeRange,
   selectedContributor,
   teamMembers,
+  teamEarnings = [],
 }: ComparisonBarChartProps) {
-  // Compare team member contributions
+  // Compare team member contributions using real calculated data
   const getTeamComparison = () => {
+    if (teamEarnings.length > 0) {
+      // Use real calculated earnings from database
+      return teamEarnings.map(member => ({
+        name: member.name,
+        income: member.income,
+        expenses: member.expenses,
+        profit: member.profit
+      }));
+    }
+
+    // Fallback to old calculation method if no calculated earnings available
     const memberContributions: Record<
       string,
       { name: string; income: number; expenses: number; profit: number }
@@ -242,7 +255,9 @@ export function ComparisonBarChart({
           <CardHeader>
             <CardTitle>Comparação de Desempenho da Equipe</CardTitle>
             <CardDescription>
-              Análise de contribuição por membro da equipe baseada em percentuais reais
+              {teamEarnings.length > 0 
+                ? 'Análise baseada em cálculos armazenados no banco de dados'
+                : 'Análise de contribuição por membro da equipe baseada em percentuais reais'}
             </CardDescription>
           </CardHeader>
           <CardContent>

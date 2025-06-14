@@ -16,8 +16,8 @@ export class TeamService {
       name: member.name,
       role: member.role || '',
       percentageShare: member.percentage_share || 0,
-      totalPaid: member.total_paid || 0,
-      pendingAmount: member.pending_amount || 0
+      totalPaid: member.calculated_income || 0,
+      pendingAmount: member.calculated_expenses || 0
     }));
   }
 

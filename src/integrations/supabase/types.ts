@@ -262,8 +262,11 @@ export type Database = {
       }
       team_members: {
         Row: {
+          calculated_expenses: number | null
+          calculated_income: number | null
           created_at: string | null
           id: string
+          last_calculation_date: string | null
           name: string
           pending_amount: number | null
           percentage_share: number | null
@@ -274,8 +277,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          calculated_expenses?: number | null
+          calculated_income?: number | null
           created_at?: string | null
           id?: string
+          last_calculation_date?: string | null
           name: string
           pending_amount?: number | null
           percentage_share?: number | null
@@ -286,8 +292,11 @@ export type Database = {
           user_id: string
         }
         Update: {
+          calculated_expenses?: number | null
+          calculated_income?: number | null
           created_at?: string | null
           id?: string
+          last_calculation_date?: string | null
           name?: string
           pending_amount?: number | null
           percentage_share?: number | null
@@ -467,6 +476,14 @@ export type Database = {
           attachments: string[]
           team_assignments: Json
         }[]
+      }
+      update_all_team_member_earnings: {
+        Args: { user_id_param: string }
+        Returns: undefined
+      }
+      update_team_member_earnings: {
+        Args: { member_id_param: string }
+        Returns: undefined
       }
     }
     Enums: {

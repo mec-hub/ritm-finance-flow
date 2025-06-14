@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { 
@@ -32,6 +31,7 @@ import { TransactionService } from '@/services/transactionService';
 import { EventService } from '@/services/eventService';
 import { ClientService } from '@/services/clientService';
 import { TeamService } from '@/services/teamService';
+import { TeamEarningsService } from '@/services/teamEarningsService';
 import { Transaction, Event, Client, TeamMember } from '@/types';
 import { toast } from '@/hooks/use-toast';
 
@@ -45,6 +45,7 @@ const Analises = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [teamEarnings, setTeamEarnings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch real data from database
@@ -71,6 +72,17 @@ const Analises = () => {
         setEvents(eventsData);
         setClients(clientsData);
         setTeamMembers(teamMembersData);
+
+        // Update team member earnings calculations
+        if (teamMembersData.length > 0) {
+          console.log('Updating team member earnings calculations...');
+          await TeamEarningsService.updateAllTeamMemberEarnings();
+          
+          // Fetch updated earnings
+          const earningsData = await TeamEarningsService.getAllTeamMemberEarnings();
+          setTeamEarnings(earningsData);
+          console.log('Team earnings updated:', earningsData);
+        }
         
       } catch (error) {
         console.error('Error fetching analysis data:', error);
@@ -86,54 +98,6 @@ const Analises = () => {
 
     fetchData();
   }, []);
-
-  // Calculate team member earnings from transactions
-  const calculateTeamMemberEarnings = () => {
-    const memberEarnings = new Map<string, { income: number; expenses: number; transactions: number }>();
-    
-    // Initialize all team members
-    teamMembers.forEach(member => {
-      memberEarnings.set(member.id, { income: 0, expenses: 0, transactions: 0 });
-    });
-
-    transactions.forEach(transaction => {
-      // Check if transaction has team percentage assignments
-      if (transaction.teamPercentages && transaction.teamPercentages.length > 0) {
-        transaction.teamPercentages.forEach(assignment => {
-          const currentEarnings = memberEarnings.get(assignment.teamMemberId);
-          if (currentEarnings) {
-            const memberAmount = (transaction.amount * assignment.percentageValue) / 100;
-            
-            if (transaction.type === 'income') {
-              currentEarnings.income += memberAmount;
-            } else {
-              currentEarnings.expenses += memberAmount;
-            }
-            currentEarnings.transactions += 1;
-            
-            memberEarnings.set(assignment.teamMemberId, currentEarnings);
-          }
-        });
-      }
-      
-      // Check if transaction is directly assigned to a team member (legacy support)
-      if (transaction.teamMemberId) {
-        const currentEarnings = memberEarnings.get(transaction.teamMemberId);
-        if (currentEarnings) {
-          if (transaction.type === 'income') {
-            currentEarnings.income += transaction.amount;
-          } else {
-            currentEarnings.expenses += transaction.amount;
-          }
-          currentEarnings.transactions += 1;
-          
-          memberEarnings.set(transaction.teamMemberId, currentEarnings);
-        }
-      }
-    });
-
-    return memberEarnings;
-  };
 
   // Process the transactions based on filters
   const processTransactions = () => {
@@ -182,9 +146,8 @@ const Analises = () => {
     return filtered;
   };
 
-  // Get filtered transactions and calculate team earnings
+  // Get filtered transactions
   const filteredTransactions = processTransactions();
-  const teamMemberEarnings = calculateTeamMemberEarnings();
 
   // Calculate summary stats
   const totalIncome = filteredTransactions
@@ -371,19 +334,18 @@ const Analises = () => {
           </Card>
         </div>
 
-        {/* Team Member Earnings Summary */}
-        {teamMembers.length > 0 && (
+        {/* Team Member Earnings Summary - Updated with real calculated data */}
+        {teamEarnings.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Ganhos da Equipe</CardTitle>
-              <CardDescription>Baseado em percentuais de transações</CardDescription>
+              <CardTitle>Ganhos da Equipe (Calculados)</CardTitle>
+              <CardDescription>
+                Baseado em percentuais de transações e cálculos do banco de dados
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {teamMembers.map(member => {
-                  const earnings = teamMemberEarnings.get(member.id);
-                  const netEarnings = earnings ? earnings.income - earnings.expenses : 0;
-                  
+                {teamEarnings.map(member => {
                   return (
                     <div key={member.id} className="p-4 border rounded-lg">
                       <h4 className="font-medium">{member.name}</h4>
@@ -392,24 +354,26 @@ const Analises = () => {
                         <div className="flex justify-between text-sm">
                           <span>Receitas:</span>
                           <span className="text-green-500">
-                            {formatCurrency(earnings?.income || 0)}
+                            {formatCurrency(member.income)}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span>Despesas:</span>
                           <span className="text-red-500">
-                            {formatCurrency(earnings?.expenses || 0)}
+                            {formatCurrency(member.expenses)}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm font-medium pt-1 border-t">
                           <span>Líquido:</span>
-                          <span className={netEarnings >= 0 ? 'text-green-500' : 'text-red-500'}>
-                            {formatCurrency(netEarnings)}
+                          <span className={member.profit >= 0 ? 'text-green-500' : 'text-red-500'}>
+                            {formatCurrency(member.profit)}
                           </span>
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {earnings?.transactions || 0} transações
-                        </div>
+                        {member.lastCalculated && (
+                          <div className="text-xs text-muted-foreground">
+                            Atualizado: {new Date(member.lastCalculated).toLocaleDateString('pt-BR')}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -555,6 +519,7 @@ const Analises = () => {
               timeRange={selectedTimeRange}
               selectedContributor={selectedContributor}
               teamMembers={teamMembers}
+              teamEarnings={teamEarnings}
             />
           </TabsContent>
           
