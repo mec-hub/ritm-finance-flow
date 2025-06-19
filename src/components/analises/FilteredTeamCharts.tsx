@@ -36,7 +36,7 @@ interface FilteredTeamChartsProps {
 const COLORS = ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#84CC16', '#F97316'];
 
 export function FilteredTeamCharts({ selectedTeamMembers, transactions, timeRange }: FilteredTeamChartsProps) {
-  // Prepare data for income vs expenses comparison
+  // Prepare data for income vs expenses comparison - use calculated values from selectedTeamMembers
   const incomeExpensesData = selectedTeamMembers.map(member => ({
     name: member.name,
     income: member.income,
@@ -44,12 +44,13 @@ export function FilteredTeamCharts({ selectedTeamMembers, transactions, timeRang
     role: member.role
   })).sort((a, b) => (b.income - b.expenses) - (a.income - a.expenses));
 
-  // Prepare monthly data for selected team members
+  // Prepare monthly data for selected team members using the filtered transactions
   const getMonthlyData = () => {
     const monthlyData: Record<string, Record<string, { income: number; expenses: number }>> = {};
     
+    // Only use transactions that are already filtered by the parent component
     transactions
-      .filter(t => (t.status === 'paid' || !t.status) && t.teamPercentages && t.teamPercentages.length > 0)
+      .filter(t => t.teamPercentages && t.teamPercentages.length > 0)
       .forEach(transaction => {
         const monthKey = `${transaction.date.getFullYear()}-${String(transaction.date.getMonth() + 1).padStart(2, '0')}`;
         
@@ -105,7 +106,7 @@ export function FilteredTeamCharts({ selectedTeamMembers, transactions, timeRang
             <CardHeader>
               <CardTitle>Receitas vs Despesas - Membros Selecionados</CardTitle>
               <CardDescription>
-                Comparação detalhada de receitas e despesas dos membros escolhidos
+                Comparação detalhada de receitas e despesas dos membros escolhidos no período selecionado
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -142,7 +143,7 @@ export function FilteredTeamCharts({ selectedTeamMembers, transactions, timeRang
               <CardHeader>
                 <CardTitle>Evolução Mensal - Lucro Líquido por Membro</CardTitle>
                 <CardDescription>
-                  Evolução mensal do lucro líquido (receitas - despesas) dos membros selecionados
+                  Evolução mensal do lucro líquido (receitas - despesas) dos membros selecionados no período filtrado
                 </CardDescription>
               </CardHeader>
               <CardContent>

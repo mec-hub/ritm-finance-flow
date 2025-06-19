@@ -23,13 +23,13 @@ import {
 } from '@/components/analises';
 import { CompactTeamFilter } from '@/components/analises/CompactTeamFilter';
 import { FilteredTeamCharts } from '@/components/analises/FilteredTeamCharts';
+import { AnnualTeamChart } from '@/components/analises/AnnualTeamChart';
 import { formatCurrency } from '@/utils/formatters';
 import { Calendar as CalendarIcon, ChartBar, PieChart, TrendingUp, Users } from 'lucide-react';
 import { TransactionService } from '@/services/transactionService';
 import { EventService } from '@/services/eventService';
 import { ClientService } from '@/services/clientService';
 import { TeamService } from '@/services/teamService';
-import { TeamEarningsService } from '@/services/teamEarningsService';
 import { Transaction, Event, Client, TeamMember } from '@/types';
 import { toast } from '@/hooks/use-toast';
 
@@ -43,8 +43,10 @@ const Analises = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [teamEarnings, setTeamEarnings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Get available years from transactions for annual analysis
+  const availableYears = [...new Set(transactions.map(t => new Date(t.date).getFullYear()))].sort((a, b) => b - a);
 
   // Fetch real data from database
   useEffect(() => {
@@ -71,19 +73,8 @@ const Analises = () => {
         setClients(clientsData);
         setTeamMembers(teamMembersData);
 
-        // Update team member earnings calculations
-        if (teamMembersData.length > 0) {
-          console.log('Updating team member earnings calculations...');
-          await TeamEarningsService.updateAllTeamMemberEarnings();
-          
-          // Fetch updated earnings
-          const earningsData = await TeamEarningsService.getAllTeamMemberEarnings();
-          setTeamEarnings(earningsData);
-          console.log('Team earnings updated:', earningsData);
-          
-          // Auto-select all team members initially
-          setSelectedTeamMembers(earningsData.map((member: any) => member.id));
-        }
+        // Auto-select all team members initially
+        setSelectedTeamMembers(teamMembersData.map(member => member.id));
         
       } catch (error) {
         console.error('Error fetching analysis data:', error);
@@ -132,8 +123,44 @@ const Analises = () => {
     return filtered;
   };
 
+  // Calculate team member earnings from filtered transactions
+  const calculateTeamEarningsFromTransactions = (filteredTransactions: Transaction[]) => {
+    return teamMembers.map(member => {
+      let income = 0;
+      let expenses = 0;
+
+      filteredTransactions.forEach(transaction => {
+        if (transaction.teamPercentages && transaction.teamPercentages.length > 0) {
+          const assignment = transaction.teamPercentages.find(tp => tp.teamMemberId === member.id);
+          if (assignment) {
+            const amount = transaction.amount * (assignment.percentageValue / 100);
+            if (transaction.type === 'income') {
+              income += amount;
+            } else if (transaction.type === 'expense') {
+              expenses += amount;
+            }
+          }
+        }
+      });
+
+      return {
+        ...member,
+        income,
+        expenses,
+        profit: income - expenses,
+        lastCalculated: new Date()
+      };
+    });
+  };
+
   // Get filtered transactions
   const filteredTransactions = processTransactions();
+
+  // Calculate team earnings based on filtered transactions
+  const calculatedTeamEarnings = calculateTeamEarningsFromTransactions(filteredTransactions);
+  const selectedTeamMembersData = calculatedTeamEarnings.filter(member => 
+    selectedTeamMembers.includes(member.id)
+  );
 
   // Calculate summary stats - only paid transactions
   const totalIncome = filteredTransactions
@@ -158,7 +185,7 @@ const Analises = () => {
   const mostProfitableCategory = Object.entries(incomeByCategory)
     .sort((a, b) => b[1] - a[1])[0] || ['Nenhum', 0];
 
-  // Calculate event stats
+  // Filter events by time range
   const filteredEvents = events.filter(event => {
     if (selectedTimeRange === 'all') return true;
     
@@ -197,20 +224,6 @@ const Analises = () => {
   const averageRevenuePerEvent = totalEvents > 0 
     ? (totalIncome / totalEvents).toFixed(2) 
     : '0';
-
-  // Filter team earnings by time range
-  const getFilteredTeamEarnings = () => {
-    if (selectedTimeRange === 'all') return teamEarnings;
-    
-    // For now, return all team earnings as the database calculation handles the filtering
-    // In a future enhancement, we could modify the service to accept date ranges
-    return teamEarnings;
-  };
-
-  const filteredTeamEarnings = getFilteredTeamEarnings();
-  const selectedTeamMembersData = filteredTeamEarnings.filter(member => 
-    selectedTeamMembers.includes(member.id)
-  );
 
   if (loading) {
     return (
@@ -338,7 +351,6 @@ const Analises = () => {
           </TabsList>
           
           <TabsContent value="revenue" className="space-y-4">
-            {/* Financial Charts */}
             <FinancialAreaChart 
               transactions={filteredTransactions} 
               timeRange={selectedTimeRange}
@@ -444,19 +456,19 @@ const Analises = () => {
           
           <TabsContent value="team" className="space-y-4">
             {/* Enhanced Team Analysis */}
-            {filteredTeamEarnings.length > 0 ? (
+            {calculatedTeamEarnings.length > 0 ? (
               <div className="space-y-6">
                 {/* Team Member Earnings Summary */}
                 <Card>
                   <CardHeader>
                     <CardTitle>Resumo dos Ganhos da Equipe</CardTitle>
                     <CardDescription>
-                      Baseado em percentuais de transações pagas e cálculos do banco de dados
+                      Baseado em percentuais de transações pagas no período selecionado
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {filteredTeamEarnings.map(member => {
+                      {calculatedTeamEarnings.map(member => {
                         return (
                           <div key={member.id} className="p-4 border rounded-lg">
                             <h4 className="font-medium">{member.name}</h4>
@@ -480,11 +492,6 @@ const Analises = () => {
                                   {formatCurrency(member.profit)}
                                 </span>
                               </div>
-                              {member.lastCalculated && (
-                                <div className="text-xs text-muted-foreground">
-                                  Atualizado: {new Date(member.lastCalculated).toLocaleDateString('pt-BR')}
-                                </div>
-                              )}
                             </div>
                           </div>
                         );
@@ -495,7 +502,7 @@ const Analises = () => {
 
                 {/* Compact Team Member Filter and Charts */}
                 <CompactTeamFilter
-                  teamMembers={filteredTeamEarnings}
+                  teamMembers={calculatedTeamEarnings}
                   selectedMembers={selectedTeamMembers}
                   onSelectionChange={setSelectedTeamMembers}
                 />
@@ -505,6 +512,16 @@ const Analises = () => {
                   transactions={filteredTransactions}
                   timeRange={selectedTimeRange}
                 />
+
+                {/* Annual Team Analysis */}
+                {availableYears.length > 0 && (
+                  <AnnualTeamChart
+                    teamMembers={teamMembers}
+                    transactions={transactions}
+                    availableYears={availableYears}
+                    selectedTeamMembers={selectedTeamMembers}
+                  />
+                )}
               </div>
             ) : (
               <Card>
