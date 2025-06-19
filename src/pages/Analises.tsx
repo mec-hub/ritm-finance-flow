@@ -68,12 +68,6 @@ const Analises = () => {
           teamMembers: teamMembersData.length
         });
 
-        // Debug: Log sample transaction data
-        if (transactionsData.length > 0) {
-          console.log('Sample transaction:', transactionsData[0]);
-          console.log('Sample teamPercentages:', transactionsData[0].teamPercentages);
-        }
-
         setTransactions(transactionsData);
         setEvents(eventsData);
         setClients(clientsData);
@@ -126,8 +120,6 @@ const Analises = () => {
       );
     }
 
-    console.log('Filtered transactions:', filtered.length);
-    console.log('Filtered transactions sample:', filtered.slice(0, 2));
     return filtered;
   };
 
@@ -135,33 +127,15 @@ const Analises = () => {
   const calculateTeamEarningsFromTransactions = (filteredTransactions: Transaction[]) => {
     console.log('Calculating team earnings from transactions:', filteredTransactions.length);
     
-    // Debug: Check if any transactions have team assignments
-    const transactionsWithTeamData = filteredTransactions.filter(t => 
-      t.teamPercentages && t.teamPercentages.length > 0
-    );
-    console.log('Transactions with team assignments:', transactionsWithTeamData.length);
-    
-    if (transactionsWithTeamData.length > 0) {
-      console.log('Sample transaction with team data:', transactionsWithTeamData[0]);
-    }
-
     return teamMembers.map(member => {
       let income = 0;
       let expenses = 0;
 
       filteredTransactions.forEach(transaction => {
-        // Debug logging for each transaction
         if (transaction.teamPercentages && transaction.teamPercentages.length > 0) {
-          console.log(`Processing transaction ${transaction.id} for member ${member.name}:`, {
-            amount: transaction.amount,
-            type: transaction.type,
-            teamPercentages: transaction.teamPercentages
-          });
-          
           const assignment = transaction.teamPercentages.find(tp => tp.teamMemberId === member.id);
           if (assignment) {
             const amount = transaction.amount * (assignment.percentageValue / 100);
-            console.log(`Found assignment for ${member.name}: ${assignment.percentageValue}% of ${transaction.amount} = ${amount}`);
             
             if (transaction.type === 'income') {
               income += amount;
@@ -171,8 +145,6 @@ const Analises = () => {
           }
         }
       });
-
-      console.log(`Team member ${member.name}: income=${income}, expenses=${expenses}`);
 
       return {
         ...member,
@@ -192,9 +164,6 @@ const Analises = () => {
   const selectedTeamMembersData = calculatedTeamEarnings.filter(member => 
     selectedTeamMembers.includes(member.id)
   );
-
-  console.log('Calculated team earnings:', calculatedTeamEarnings);
-  console.log('Selected team members data:', selectedTeamMembersData);
 
   // Calculate summary stats - only paid transactions
   const totalIncome = filteredTransactions

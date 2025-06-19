@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Transaction } from '@/types';
 
@@ -42,7 +41,12 @@ export class TransactionService {
       eventId: transaction.event_id,
       clientId: transaction.client_id,
       teamMemberId: undefined,
-      teamPercentages: transaction.team_assignments || [],
+      // Properly map team assignments with correct property names
+      teamPercentages: transaction.team_assignments?.map((assignment: any) => ({
+        teamMemberId: assignment.team_member_id,
+        percentageValue: assignment.percentage_value,
+        teamMemberName: assignment.team_member_name
+      })) || [],
       notes: transaction.notes,
       percentageValue: undefined,
       status: transaction.status as 'paid' | 'not_paid' | 'canceled',
@@ -268,7 +272,12 @@ export class TransactionService {
       eventId: transaction.event_id,
       clientId: transaction.client_id,
       teamMemberId: undefined,
-      teamPercentages: transaction.team_assignments || [],
+      // Properly map team assignments with correct property names
+      teamPercentages: transaction.team_assignments?.map((assignment: any) => ({
+        teamMemberId: assignment.team_member_id,
+        percentageValue: assignment.percentage_value,
+        teamMemberName: assignment.team_member_name
+      })) || [],
       notes: transaction.notes,
       percentageValue: undefined,
       status: transaction.status as 'paid' | 'not_paid' | 'canceled',
