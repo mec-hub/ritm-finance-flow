@@ -29,7 +29,7 @@ interface Transaction {
 
 interface AnnualTeamChartProps {
   teamMembers: TeamMember[];
-  transactions: Transaction[];
+  transactions: Transaction[]; // All transactions, not filtered by global time range
   availableYears: number[];
   selectedTeamMembers: string[];
 }
@@ -40,7 +40,7 @@ export function AnnualTeamChart({ teamMembers, transactions, availableYears, sel
   const [selectedYear, setSelectedYear] = useState<string>(availableYears[0]?.toString() || '');
   const [selectedMetric, setSelectedMetric] = useState<'revenue' | 'expenses' | 'profit'>('revenue');
 
-  // Filter transactions for selected year and only paid transactions
+  // Filter transactions for selected year and only paid transactions - INDEPENDENT of global time filter
   const getYearlyTransactions = () => {
     if (!selectedYear) return [];
     
@@ -53,66 +53,63 @@ export function AnnualTeamChart({ teamMembers, transactions, availableYears, sel
   // Calculate monthly data for selected team members
   const getMonthlyData = () => {
     const yearlyTransactions = getYearlyTransactions();
-    const monthlyData: Record<string, Record<string, { income: number; expenses: number }>> = {};
+    const selectedMembers = teamMembers.filter(m => selectedTeamMembers.includes(m.id));
     
-    // Initialize months
+    // Initialize 12 months of data
+    const monthlyData = [];
     for (let month = 1; month <= 12; month++) {
-      const monthKey = `${selectedYear}-${String(month).padStart(2, '0')}`;
-      monthlyData[monthKey] = {};
+      const monthData: any = {
+        month: `${selectedYear}-${String(month).padStart(2, '0')}`,
+        monthName: new Date(selectedYear + '-' + String(month).padStart(2, '0') + '-01').toLocaleDateString('pt-BR', { month: 'short' }),
+        monthNumber: month
+      };
+      
+      // Initialize each selected member's data for this month
+      selectedMembers.forEach(member => {
+        monthData[member.name] = 0;
+      });
+      
+      monthlyData.push(monthData);
     }
     
+    // Process transactions and accumulate data by month and member
     yearlyTransactions
       .filter(t => t.teamPercentages && t.teamPercentages.length > 0)
       .forEach(transaction => {
-        const monthKey = `${transaction.date.getFullYear()}-${String(transaction.date.getMonth() + 1).padStart(2, '0')}`;
+        const transactionMonth = new Date(transaction.date).getMonth() + 1; // 1-12
+        const monthDataIndex = transactionMonth - 1; // 0-11 for array index
         
-        if (!monthlyData[monthKey]) {
-          monthlyData[monthKey] = {};
+        if (monthDataIndex >= 0 && monthDataIndex < 12) {
+          transaction.teamPercentages?.forEach(assignment => {
+            const member = selectedMembers.find(m => m.id === assignment.teamMemberId);
+            if (member) {
+              const amount = transaction.amount * (assignment.percentageValue / 100);
+              
+              switch (selectedMetric) {
+                case 'revenue':
+                  if (transaction.type === 'income') {
+                    monthlyData[monthDataIndex][member.name] += amount;
+                  }
+                  break;
+                case 'expenses':
+                  if (transaction.type === 'expense') {
+                    monthlyData[monthDataIndex][member.name] += amount;
+                  }
+                  break;
+                case 'profit':
+                  if (transaction.type === 'income') {
+                    monthlyData[monthDataIndex][member.name] += amount;
+                  } else if (transaction.type === 'expense') {
+                    monthlyData[monthDataIndex][member.name] -= amount;
+                  }
+                  break;
+              }
+            }
+          });
         }
-        
-        transaction.teamPercentages?.forEach(assignment => {
-          const member = teamMembers.find(m => m.id === assignment.teamMemberId);
-          if (!member || !selectedTeamMembers.includes(member.id)) return;
-          
-          const memberName = member.name;
-          if (!monthlyData[monthKey][memberName]) {
-            monthlyData[monthKey][memberName] = { income: 0, expenses: 0 };
-          }
-          
-          const amount = transaction.amount * (assignment.percentageValue / 100);
-          if (transaction.type === 'income') {
-            monthlyData[monthKey][memberName].income += amount;
-          } else if (transaction.type === 'expense') {
-            monthlyData[monthKey][memberName].expenses += amount;
-          }
-        });
       });
 
-    // Convert to chart format
-    return Object.entries(monthlyData)
-      .map(([month, members]) => {
-        const monthData: any = { 
-          month,
-          monthName: new Date(month + '-01').toLocaleDateString('pt-BR', { month: 'short' })
-        };
-        
-        Object.entries(members).forEach(([memberName, data]) => {
-          switch (selectedMetric) {
-            case 'revenue':
-              monthData[memberName] = data.income;
-              break;
-            case 'expenses':
-              monthData[memberName] = data.expenses;
-              break;
-            case 'profit':
-              monthData[memberName] = data.income - data.expenses;
-              break;
-          }
-        });
-        
-        return monthData;
-      })
-      .sort((a, b) => a.month.localeCompare(b.month));
+    return monthlyData;
   };
 
   // Calculate annual totals for selected team members
@@ -206,7 +203,7 @@ export function AnnualTeamChart({ teamMembers, transactions, availableYears, sel
             Análise Anual da Equipe
           </CardTitle>
           <CardDescription>
-            Análise detalhada por ano com breakdown mensal
+            Análise detalhada por ano com breakdown mensal (independente do filtro de período global)
           </CardDescription>
           
           <div className="flex flex-wrap gap-4 pt-4">
@@ -244,6 +241,34 @@ export function AnnualTeamChart({ teamMembers, transactions, availableYears, sel
             </div>
           ) : (
             <div className="space-y-6">
+              {/* Monthly Breakdown with Bars for Each Team Member */}
+              <div>
+                <h4 className="text-lg font-medium mb-4">
+                  {getMetricLabel()} por Mês - {selectedYear}
+                </h4>
+                <div className="h-[400px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={monthlyData} margin={{ bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="monthName" />
+                      <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                      <Tooltip 
+                        formatter={(value: number, name: string) => [formatCurrency(value), name]}
+                        labelStyle={{ color: '#000' }}
+                      />
+                      {selectedMembersList.map((member, index) => (
+                        <Bar 
+                          key={member.id}
+                          dataKey={member.name}
+                          fill={COLORS[index % COLORS.length]}
+                          name={member.name}
+                        />
+                      ))}
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
               {/* Annual Totals */}
               <div>
                 <h4 className="text-lg font-medium mb-4">Totais Anuais - {getMetricLabel()} ({selectedYear})</h4>
@@ -272,37 +297,6 @@ export function AnnualTeamChart({ teamMembers, transactions, availableYears, sel
                   </ResponsiveContainer>
                 </div>
               </div>
-
-              {/* Monthly Evolution */}
-              {monthlyData.length > 0 && (
-                <div>
-                  <h4 className="text-lg font-medium mb-4">Evolução Mensal - {getMetricLabel()} ({selectedYear})</h4>
-                  <div className="h-[400px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={monthlyData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="monthName" />
-                        <YAxis tickFormatter={(value) => formatCurrency(value)} />
-                        <Tooltip 
-                          formatter={(value: number) => formatCurrency(value)}
-                          labelStyle={{ color: '#000' }}
-                        />
-                        {selectedMembersList.map((member, index) => (
-                          <Line 
-                            key={member.id}
-                            type="monotone"
-                            dataKey={member.name}
-                            stroke={COLORS[index % COLORS.length]}
-                            strokeWidth={2}
-                            dot={{ r: 4 }}
-                            connectNulls={false}
-                          />
-                        ))}
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </CardContent>
