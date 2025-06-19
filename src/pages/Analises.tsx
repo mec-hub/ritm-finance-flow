@@ -120,11 +120,14 @@ const Analises = () => {
       );
     }
 
+    console.log('Filtered transactions:', filtered.length);
     return filtered;
   };
 
   // Calculate team member earnings from filtered transactions
   const calculateTeamEarningsFromTransactions = (filteredTransactions: Transaction[]) => {
+    console.log('Calculating team earnings from transactions:', filteredTransactions.length);
+    
     return teamMembers.map(member => {
       let income = 0;
       let expenses = 0;
@@ -142,6 +145,8 @@ const Analises = () => {
           }
         }
       });
+
+      console.log(`Team member ${member.name}: income=${income}, expenses=${expenses}`);
 
       return {
         ...member,
@@ -162,6 +167,9 @@ const Analises = () => {
     selectedTeamMembers.includes(member.id)
   );
 
+  console.log('Calculated team earnings:', calculatedTeamEarnings);
+  console.log('Selected team members data:', selectedTeamMembersData);
+
   // Calculate summary stats - only paid transactions
   const totalIncome = filteredTransactions
     .filter(t => t.type === 'income')
@@ -174,7 +182,6 @@ const Analises = () => {
   const netProfit = totalIncome - totalExpenses;
   const profitMargin = totalIncome > 0 ? ((netProfit / totalIncome) * 100).toFixed(1) : '0';
 
-  // Find most profitable category
   const incomeByCategory: Record<string, number> = {};
   filteredTransactions
     .filter(t => t.type === 'income')
@@ -456,7 +463,7 @@ const Analises = () => {
           
           <TabsContent value="team" className="space-y-4">
             {/* Enhanced Team Analysis */}
-            {calculatedTeamEarnings.length > 0 ? (
+            {teamMembers.length > 0 ? (
               <div className="space-y-6">
                 {/* Team Member Earnings Summary */}
                 <Card>
@@ -533,7 +540,7 @@ const Analises = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-center py-8 text-muted-foreground">
-                    Não há membros da equipe com transações pagas no período selecionado para análise.
+                    Não há membros da equipe cadastrados para análise.
                   </div>
                 </CardContent>
               </Card>
