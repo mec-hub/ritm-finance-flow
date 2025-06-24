@@ -1,11 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { ClientsDataTable } from '@/components/clients/ClientsDataTable';
 import { ClientStats } from '@/components/clients/ClientStats';
-import { ClientEventChart } from '@/components/clients/ClientEventChart';
 import { Link } from 'react-router-dom';
 import { ClientService } from '@/services/clientService';
 import { EventService } from '@/services/eventService';
@@ -90,10 +88,6 @@ const Clientes = () => {
         
         <div className="grid gap-6 md:grid-cols-3">
           <ClientStats clients={clients} events={events} />
-        </div>
-        
-        <div className="grid gap-6 md:grid-cols-2">
-          <ClientEventChart clients={clients} events={events} />
         </div>
         
         <div className="dashboard-card">

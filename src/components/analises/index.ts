@@ -1,4 +1,3 @@
-
 export { FinancialAreaChart } from './FinancialAreaChart';
 export { FinancialBarChart } from './FinancialBarChart';
 export { CategoryPieChart } from './CategoryPieChart';
@@ -9,3 +8,4 @@ export { TeamMemberSelector } from './TeamMemberSelector';
 export { FilteredTeamCharts } from './FilteredTeamCharts';
 export { CompactTeamFilter } from './CompactTeamFilter';
 export { AnnualTeamChart } from './AnnualTeamChart';
+export { EventsCustomersCharts } from './EventsCustomersCharts';

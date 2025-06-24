@@ -32,6 +32,7 @@ import { ClientService } from '@/services/clientService';
 import { TeamService } from '@/services/teamService';
 import { Transaction, Event, Client, TeamMember } from '@/types';
 import { toast } from '@/hooks/use-toast';
+import { EventsCustomersCharts } from '@/components/analises/EventsCustomersCharts';
 
 const Analises = () => {
   const [selectedTimeRange, setSelectedTimeRange] = useState('6months');
@@ -333,7 +334,7 @@ const Analises = () => {
         </div>
         
         <Tabs defaultValue="revenue" value={selectedAnalysisType} onValueChange={setSelectedAnalysisType}>
-          <TabsList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+          <TabsList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 mb-6">
             <TabsTrigger value="revenue" className="flex items-center">
               <ChartBar className="mr-2 h-4 w-4" /> 
               Receitas & Despesas
@@ -345,6 +346,10 @@ const Analises = () => {
             <TabsTrigger value="performance" className="flex items-center">
               <TrendingUp className="mr-2 h-4 w-4" />
               Performance
+            </TabsTrigger>
+            <TabsTrigger value="events-customers" className="flex items-center">
+              <Users className="mr-2 h-4 w-4" />
+              Eventos e Clientes
             </TabsTrigger>
             <TabsTrigger value="team" className="flex items-center">
               <Users className="mr-2 h-4 w-4" />
@@ -456,26 +461,18 @@ const Analises = () => {
             />
           </TabsContent>
           
+          <TabsContent value="events-customers" className="space-y-4">
+            <EventsCustomersCharts
+              clients={clients}
+              events={events}
+              transactions={transactions}
+            />
+          </TabsContent>
+          
           <TabsContent value="team" className="space-y-4">
             {/* Enhanced Team Analysis */}
             {teamMembers.length > 0 ? (
               <div className="space-y-6">
-                {/* Debug Info Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Debug Information</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-sm">
-                      <div>Total Transactions: {transactions.length}</div>
-                      <div>Filtered Transactions: {filteredTransactions.length}</div>
-                      <div>Transactions with Team Data: {filteredTransactions.filter(t => t.teamPercentages && t.teamPercentages.length > 0).length}</div>
-                      <div>Team Members: {teamMembers.length}</div>
-                      <div>Selected Team Members: {selectedTeamMembers.length}</div>
-                    </div>
-                  </CardContent>
-                </Card>
-
                 {/* Team Member Earnings Summary */}
                 <Card>
                   <CardHeader>

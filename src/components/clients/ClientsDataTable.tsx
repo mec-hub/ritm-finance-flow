@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -30,6 +29,8 @@ import { Client } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { ClientService } from '@/services/clientService';
 import { MoreHorizontal, Edit, Trash2, Eye } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 
 interface ClientsDataTableProps {
   clients: Client[];
@@ -39,12 +40,21 @@ interface ClientsDataTableProps {
 export function ClientsDataTable({ clients: initialClients, onClientUpdated }: ClientsDataTableProps) {
   const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>(initialClients);
+  const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Client;
     direction: 'ascending' | 'descending';
   }>({ key: 'name', direction: 'ascending' });
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Filter clients based on search term
+  const filteredClients = clients.filter(client =>
+    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.contact?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   // Get client events count (this would ideally come from props or a service)
   const getClientEventsCount = (clientName: string): number => {
@@ -66,7 +76,7 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
     setSortConfig({ key, direction });
   };
 
-  const sortedClients = [...clients].sort((a, b) => {
+  const sortedClients = [...filteredClients].sort((a, b) => {
     if (a[sortConfig.key] < b[sortConfig.key]) {
       return sortConfig.direction === 'ascending' ? -1 : 1;
     }
@@ -119,7 +129,18 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
   return (
     <>
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="p-4">
+          {/* Search Bar */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Buscar clientes por nome, email, telefone ou contato..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -151,51 +172,59 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedClients.map((client) => {
-                  const eventCount = getClientEventsCount(client.name);
-                  const lastEventDate = getLastEventDate(client.name);
-                  
-                  return (
-                    <TableRow key={client.id}>
-                      <TableCell className="font-medium">{client.name}</TableCell>
-                      <TableCell>{client.contact}</TableCell>
-                      <TableCell>{client.email}</TableCell>
-                      <TableCell>{client.phone || '-'}</TableCell>
-                      <TableCell>{eventCount}</TableCell>
-                      <TableCell>
-                        {lastEventDate ? formatDate(lastEventDate) : '-'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(client.totalRevenue)}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEdit(client)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => {
-                                setSelectedClient(client);
-                                setDeleteDialogOpen(true);
-                              }}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {sortedClients.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      {searchTerm ? 'Nenhum cliente encontrado com os critérios de busca.' : 'Nenhum cliente cadastrado.'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sortedClients.map((client) => {
+                    const eventCount = getClientEventsCount(client.name);
+                    const lastEventDate = getLastEventDate(client.name);
+                    
+                    return (
+                      <TableRow key={client.id}>
+                        <TableCell className="font-medium">{client.name}</TableCell>
+                        <TableCell>{client.contact}</TableCell>
+                        <TableCell>{client.email}</TableCell>
+                        <TableCell>{client.phone || '-'}</TableCell>
+                        <TableCell>{eventCount}</TableCell>
+                        <TableCell>
+                          {lastEventDate ? formatDate(lastEventDate) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(client.totalRevenue)}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEdit(client)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  setSelectedClient(client);
+                                  setDeleteDialogOpen(true);
+                                }}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
               </TableBody>
             </Table>
           </div>
