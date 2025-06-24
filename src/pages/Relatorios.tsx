@@ -1,16 +1,14 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { ReportFilters } from '@/components/reports/ReportFilters';
 import { ReportExporter } from '@/components/reports/ReportExporter';
 import { TransactionsOverview } from '@/components/reports/TransactionsOverview';
 import { TransactionService } from '@/services/transactionService';
 import { ClientService } from '@/services/clientService';
 import { Transaction } from '@/types';
-import { FileText, BarChart3, Download, Users, TrendingUp } from 'lucide-react';
+import { FileText, BarChart3, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const Relatorios = () => {
@@ -146,10 +144,6 @@ const Relatorios = () => {
               Gere relatórios detalhados de transações e clientes em PDF ou Excel.
             </p>
           </div>
-          <Badge variant="default" className="flex items-center gap-1">
-            <TrendingUp className="h-3 w-3" />
-            Funcional
-          </Badge>
         </div>
 
         {/* Filters */}
@@ -163,7 +157,7 @@ const Relatorios = () => {
 
         {/* Main Content */}
         <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Visão Geral
@@ -171,10 +165,6 @@ const Relatorios = () => {
             <TabsTrigger value="export" className="flex items-center gap-2">
               <Download className="h-4 w-4" />
               Exportar Relatórios
-            </TabsTrigger>
-            <TabsTrigger value="clients" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Análise de Clientes
             </TabsTrigger>
           </TabsList>
 
@@ -187,29 +177,6 @@ const Relatorios = () => {
               transactions={filteredTransactions} 
               filters={filters}
             />
-          </TabsContent>
-
-          <TabsContent value="clients" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Análise de Clientes
-                </CardTitle>
-                <CardDescription>
-                  Análise detalhada dos seus clientes será implementada em breve.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <Users className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Em Desenvolvimento</h3>
-                  <p className="text-muted-foreground">
-                    Esta funcionalidade estará disponível em breve com análises avançadas de clientes.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </div>
