@@ -1,10 +1,10 @@
 
-import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Transaction } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
-import { Button } from '@/components/ui/button';
+import { Transaction } from '@/types';
+import { format, startOfMonth, eachMonthOfInterval, min, max } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface FinancialAreaChartProps {
   transactions: Transaction[];
@@ -12,177 +12,148 @@ interface FinancialAreaChartProps {
 }
 
 export function FinancialAreaChart({ transactions, timeRange }: FinancialAreaChartProps) {
-  const [showNet, setShowNet] = useState(true);
+  // Process transactions to create monthly data
+  const processMonthlyData = () => {
+    if (transactions.length === 0) return [];
 
-  // Process data for chart - ONLY USING ACTUAL TRANSACTIONS
-  const processChartData = () => {
-    // Only use actually existing transactions from the transactions array
-    // Do not project or calculate additional months based on recurrence settings
-    const monthlyData: Record<string, { month: string; income: number; expenses: number; net: number }> = {};
-    
-    // Determine date range based on timeRange
-    let months;
-    const now = new Date();
-    
-    switch (timeRange) {
-      case '30days':
-        // For 30 days, use last 30 days by week
-        months = Array.from({ length: 4 }, (_, i) => {
-          const date = new Date();
-          date.setDate(now.getDate() - (3 - i) * 7);
-          return `Sem ${i + 1}`;
-        });
-        break;
-      case '3months':
-        months = Array.from({ length: 3 }, (_, i) => {
-          const date = new Date();
-          date.setMonth(now.getMonth() - 2 + i);
-          return date.toLocaleString('pt-BR', { month: 'short' });
-        });
-        break;
-      case '6months':
-        months = Array.from({ length: 6 }, (_, i) => {
-          const date = new Date();
-          date.setMonth(now.getMonth() - 5 + i);
-          return date.toLocaleString('pt-BR', { month: 'short' });
-        });
-        break;
-      case '1year':
-        months = Array.from({ length: 12 }, (_, i) => {
-          const date = new Date();
-          date.setMonth(now.getMonth() - 11 + i);
-          return date.toLocaleString('pt-BR', { month: 'short' });
-        });
-        break;
-      default: // 'all'
-        // For all time, use the distinct months from transactions
-        const uniqueMonths = new Set<string>();
-        transactions.forEach(t => {
-          const date = new Date(t.date);
-          uniqueMonths.add(date.toLocaleString('pt-BR', { month: 'short', year: '2-digit' }));
-        });
-        months = Array.from(uniqueMonths).sort((a, b) => {
-          // Sort months chronologically
-          const dateA = new Date(a.replace(' ', '/') + '/2000');
-          const dateB = new Date(b.replace(' ', '/') + '/2000');
-          return dateA.getTime() - dateB.getTime();
-        });
-        break;
-    }
-    
-    // Initialize monthly data
-    months.forEach(month => {
-      monthlyData[month] = {
-        month,
+    // Get date range
+    const dates = transactions.map(t => new Date(t.date));
+    const minDate = min(dates);
+    const maxDate = max(dates);
+
+    // Generate all months in the range
+    const months = eachMonthOfInterval({
+      start: startOfMonth(minDate),
+      end: startOfMonth(maxDate)
+    });
+
+    // Initialize monthly data - FIX: Sort chronologically (oldest to newest)
+    const monthlyData = months
+      .sort((a, b) => a.getTime() - b.getTime()) // Ensure chronological order
+      .map(month => ({
+        month: format(month, 'yyyy-MM'),
+        monthName: format(month, 'MMM yyyy', { locale: ptBR }),
         income: 0,
         expenses: 0,
-        net: 0
-      };
-    });
-    
-    // Aggregate transaction data - ONLY using actual transactions in the array
+        profit: 0,
+        date: month
+      }));
+
+    // Group transactions by month
     transactions.forEach(transaction => {
-      const date = new Date(transaction.date);
-      let periodKey;
+      const transactionMonth = format(startOfMonth(new Date(transaction.date)), 'yyyy-MM');
+      const monthData = monthlyData.find(m => m.month === transactionMonth);
       
-      if (timeRange === '30days') {
-        // For 30 days, group by week
-        const daysAgo = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-        const weekNumber = Math.floor(daysAgo / 7);
-        if (weekNumber < 4) {
-          periodKey = `Sem ${4 - weekNumber}`;
-        } else {
-          return; // Skip transactions older than 4 weeks
+      if (monthData) {
+        if (transaction.type === 'income') {
+          monthData.income += transaction.amount;
+        } else if (transaction.type === 'expense') {
+          monthData.expenses += transaction.amount;
         }
-      } else if (timeRange === 'all') {
-        // For all time, use month and year
-        periodKey = date.toLocaleString('pt-BR', { month: 'short', year: '2-digit' });
-        if (!monthlyData[periodKey]) return; // Skip if not in our months list
-      } else {
-        // For other ranges, use just month
-        periodKey = date.toLocaleString('pt-BR', { month: 'short' });
-        if (!monthlyData[periodKey]) return; // Skip if not in our months list
+        monthData.profit = monthData.income - monthData.expenses;
       }
-      
-      if (transaction.type === 'income') {
-        monthlyData[periodKey].income += transaction.amount;
-      } else {
-        monthlyData[periodKey].expenses += transaction.amount;
-      }
-      
-      // Calculate net
-      monthlyData[periodKey].net = monthlyData[periodKey].income - monthlyData[periodKey].expenses;
     });
-    
-    return Object.values(monthlyData);
+
+    return monthlyData;
   };
 
-  const chartData = processChartData();
+  const monthlyData = processMonthlyData();
+
+  if (monthlyData.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Receitas & Despesas ao Longo do Tempo</CardTitle>
+          <CardDescription>Análise temporal das suas finanças</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            Nenhuma transação encontrada para o período selecionado.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <div>
-          <CardTitle>Receita vs Despesas</CardTitle>
-          <CardDescription>Visão financeira ao longo do tempo</CardDescription>
-        </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setShowNet(!showNet)}
-        >
-          {showNet ? 'Ocultar Líquido' : 'Mostrar Líquido'}
-        </Button>
+      <CardHeader>
+        <CardTitle>Receitas & Despesas ao Longo do Tempo</CardTitle>
+        <CardDescription>
+          Evolução mensal das suas finanças
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-[350px]">
+        <div className="h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={chartData}
-              margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-              <XAxis dataKey="month" />
-              <YAxis
-                tickFormatter={(value) => `R$${value/1000}k`}
+            <AreaChart data={monthlyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
+                </linearGradient>
+                <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#EF4444" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#EF4444" stopOpacity={0.1}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="monthName" 
+                tick={{ fontSize: 12 }}
+                angle={-45}
+                textAnchor="end"
+                height={80}
               />
-              <Tooltip
-                formatter={(value: number) => [formatCurrency(value), '']}
+              <YAxis tickFormatter={(value) => formatCurrency(value)} />
+              <Tooltip 
+                formatter={(value: number, name: string) => [
+                  formatCurrency(value), 
+                  name === 'income' ? 'Receitas' : 'Despesas'
+                ]}
+                labelStyle={{ color: '#000' }}
               />
               <Area 
                 type="monotone" 
                 dataKey="income" 
-                stackId="1"
-                stroke="#22c55e" 
-                fill="#22c55e"
-                fillOpacity={0.2}
-                strokeWidth={2}
+                stackId="1" 
+                stroke="#10B981" 
+                fill="url(#colorIncome)"
                 name="Receitas"
               />
               <Area 
                 type="monotone" 
                 dataKey="expenses" 
-                stackId="2"
-                stroke="#ef4444" 
-                fill="#ef4444"
-                fillOpacity={0.2}
-                strokeWidth={2}
+                stackId="2" 
+                stroke="#EF4444" 
+                fill="url(#colorExpenses)"
                 name="Despesas"
               />
-              {showNet && (
-                <Area 
-                  type="monotone" 
-                  dataKey="net" 
-                  stackId="3"
-                  stroke="#3b82f6" 
-                  fill="#3b82f6"
-                  fillOpacity={0.1}
-                  strokeWidth={2}
-                  name="Líquido"
-                />
-              )}
             </AreaChart>
           </ResponsiveContainer>
+        </div>
+        
+        <div className="grid grid-cols-3 gap-4 mt-4">
+          <div className="text-center">
+            <div className="text-sm text-muted-foreground">Total Receitas</div>
+            <div className="text-lg font-semibold text-green-500">
+              {formatCurrency(monthlyData.reduce((sum, m) => sum + m.income, 0))}
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-sm text-muted-foreground">Total Despesas</div>
+            <div className="text-lg font-semibold text-red-500">
+              {formatCurrency(monthlyData.reduce((sum, m) => sum + m.expenses, 0))}
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-sm text-muted-foreground">Lucro Líquido</div>
+            <div className={`text-lg font-semibold ${
+              monthlyData.reduce((sum, m) => sum + m.profit, 0) >= 0 ? 'text-green-500' : 'text-red-500'
+            }`}>
+              {formatCurrency(monthlyData.reduce((sum, m) => sum + m.profit, 0))}
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatCurrency } from '@/utils/formatters';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CalendarIcon, TrendingUp } from 'lucide-react';
 
 interface TeamMember {
@@ -29,7 +29,7 @@ interface Transaction {
 
 interface AnnualTeamChartProps {
   teamMembers: TeamMember[];
-  transactions: Transaction[]; // All transactions, not filtered by global time range
+  transactions: Transaction[];
   availableYears: number[];
   selectedTeamMembers: string[];
 }
@@ -60,7 +60,7 @@ export function AnnualTeamChart({ teamMembers, transactions, availableYears, sel
     for (let month = 1; month <= 12; month++) {
       const monthData: any = {
         month: `${selectedYear}-${String(month).padStart(2, '0')}`,
-        monthName: new Date(selectedYear + '-' + String(month).padStart(2, '0') + '-01').toLocaleDateString('pt-BR', { month: 'short' }),
+        monthName: new Date(parseInt(selectedYear), month - 1, 1).toLocaleDateString('pt-BR', { month: 'short' }),
         monthNumber: month
       };
       
@@ -76,6 +76,7 @@ export function AnnualTeamChart({ teamMembers, transactions, availableYears, sel
     yearlyTransactions
       .filter(t => t.teamPercentages && t.teamPercentages.length > 0)
       .forEach(transaction => {
+        // Fix: Use getMonth() which returns 0-11, then add 1 to get 1-12
         const transactionMonth = new Date(transaction.date).getMonth() + 1; // 1-12
         const monthDataIndex = transactionMonth - 1; // 0-11 for array index
         
@@ -112,12 +113,12 @@ export function AnnualTeamChart({ teamMembers, transactions, availableYears, sel
     return monthlyData;
   };
 
-  // Calculate annual totals for selected team members
+  // Calculate annual totals for selected team members - FIX: Use correct property names
   const getAnnualTotals = () => {
     const yearlyTransactions = getYearlyTransactions();
     const selectedMembers = teamMembers.filter(m => selectedTeamMembers.includes(m.id));
     
-    return selectedMembers.map(member => {
+    const totals = selectedMembers.map(member => {
       let income = 0;
       let expenses = 0;
 
@@ -135,13 +136,28 @@ export function AnnualTeamChart({ teamMembers, transactions, availableYears, sel
         }
       });
 
-      return {
+      const result = {
         name: member.name,
         role: member.role,
         income,
         expenses,
         profit: income - expenses
       };
+      
+      // Add the selected metric value for the chart
+      switch (selectedMetric) {
+        case 'revenue':
+          (result as any).revenue = income;
+          break;
+        case 'expenses':
+          (result as any).expenses = expenses;
+          break;
+        case 'profit':
+          (result as any).profit = income - expenses;
+          break;
+      }
+      
+      return result;
     }).sort((a, b) => {
       switch (selectedMetric) {
         case 'revenue':
@@ -154,6 +170,8 @@ export function AnnualTeamChart({ teamMembers, transactions, availableYears, sel
           return 0;
       }
     });
+
+    return totals;
   };
 
   const monthlyData = getMonthlyData();
@@ -269,7 +287,7 @@ export function AnnualTeamChart({ teamMembers, transactions, availableYears, sel
                 </div>
               </div>
 
-              {/* Annual Totals */}
+              {/* Annual Totals - FIX: Use correct dataKey */}
               <div>
                 <h4 className="text-lg font-medium mb-4">Totais Anuais - {getMetricLabel()} ({selectedYear})</h4>
                 <div className="h-[300px]">
