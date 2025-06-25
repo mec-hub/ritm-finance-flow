@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Users, Mail, Briefcase, Calendar, CheckCircle, XCircle } from 'lucide-react';
+import { Users, Mail, CheckCircle, XCircle } from 'lucide-react';
 import { TeamManagementService } from '@/services/teamManagementService';
 import { TeamMember } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,7 +12,6 @@ import { toast } from '@/hooks/use-toast';
 interface TeamMemberWithProfile extends TeamMember {
   email?: string;
   isActive: boolean;
-  lastLogin?: Date;
 }
 
 export function TeamManagementSettings() {
@@ -31,7 +30,7 @@ export function TeamManagementSettings() {
       // Get profiles to check which team members are actually registered users
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name, last_login');
+        .select('id, email, full_name');
 
       if (error) throw error;
 
@@ -50,8 +49,7 @@ export function TeamManagementSettings() {
         return {
           ...member,
           email: profile?.email,
-          isActive: !!profile,
-          lastLogin: profile?.last_login ? new Date(profile.last_login) : undefined
+          isActive: !!profile
         };
       });
 
@@ -140,17 +138,9 @@ export function TeamManagementSettings() {
                       )}
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
-                      <div className="flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
-                        <span>{member.email || 'Email não cadastrado'}</span>
-                      </div>
-                      {member.lastLogin && (
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>Último acesso: {member.lastLogin.toLocaleDateString('pt-BR')}</span>
-                        </div>
-                      )}
+                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                      <Mail className="h-3 w-3" />
+                      <span>{member.email || 'Email não cadastrado'}</span>
                     </div>
                   </div>
                   

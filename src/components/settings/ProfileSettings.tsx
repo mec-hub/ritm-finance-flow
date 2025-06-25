@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { User, Mail, Phone, Briefcase, Shield, Calendar } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { User, Mail, Phone, Shield, Calendar, Camera } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -19,13 +19,14 @@ interface Profile {
   position: string | null;
   role: string | null;
   created_at: string;
-  last_login: string | null;
+  avatar_url: string | null;
 }
 
 export function ProfileSettings() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -104,6 +105,57 @@ export function ProfileSettings() {
     }
   };
 
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+
+      // Create a unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userData.user.id}-${Math.random()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      // Upload the file
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get the public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      // Update the profile with the new avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', userData.user.id);
+
+      if (updateError) throw updateError;
+
+      await fetchProfile();
+      toast({
+        title: "Foto atualizada",
+        description: "Sua foto de perfil foi atualizada com sucesso."
+      });
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível fazer upload da foto.",
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -169,14 +221,31 @@ export function ProfileSettings() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarFallback className="text-lg">
-                {profile.full_name ? getInitials(profile.full_name) : 'U'}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="h-16 w-16">
+                {profile.avatar_url ? (
+                  <AvatarImage src={profile.avatar_url} alt="Profile" />
+                ) : (
+                  <AvatarFallback className="text-lg">
+                    {profile.full_name ? getInitials(profile.full_name) : 'U'}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+              <label className="absolute -bottom-1 -right-1 bg-blue-500 text-white p-1 rounded-full cursor-pointer hover:bg-blue-600 transition-colors">
+                <Camera className="h-3 w-3" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                  disabled={uploading}
+                />
+              </label>
+            </div>
             <div>
               <h3 className="text-lg font-semibold">{profile.full_name || 'Nome não definido'}</h3>
               <p className="text-sm text-gray-500">{profile.email}</p>
+              {uploading && <p className="text-sm text-blue-600">Enviando foto...</p>}
             </div>
           </div>
 
@@ -261,18 +330,6 @@ export function ProfileSettings() {
                 </p>
               </div>
             </div>
-
-            {profile.last_login && (
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-gray-500" />
-                <div>
-                  <p className="text-sm font-medium">Último acesso</p>
-                  <p className="text-sm text-gray-600">
-                    {new Date(profile.last_login).toLocaleDateString('pt-BR')}
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>

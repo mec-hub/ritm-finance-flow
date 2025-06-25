@@ -77,16 +77,4 @@ export class CategoryService {
 
     if (error) throw error;
   }
-
-  static async createTransaction(category: string): Promise<void> {
-    // This is just to create a category by creating a sample transaction
-    // In real usage, categories are created when transactions are added
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) throw new Error('User not authenticated');
-
-    // We don't actually create a transaction here, just validate the category name
-    if (!category.trim()) {
-      throw new Error('Category name cannot be empty');
-    }
-  }
 }

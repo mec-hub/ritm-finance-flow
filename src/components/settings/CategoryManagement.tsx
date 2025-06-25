@@ -65,11 +65,19 @@ export function CategoryManagement() {
     }
 
     try {
-      await CategoryService.createTransaction(newCategoryName.trim());
+      // Add the new category name to the existing categories
+      const newCategory = {
+        name: newCategoryName.trim(),
+        usageCount: 0,
+        lastUsed: undefined
+      };
+      
+      setCategories(prev => [...prev, newCategory]);
       setNewCategoryName('');
+      
       toast({
         title: "Categoria criada",
-        description: `A categoria "${newCategoryName.trim()}" foi criada. Ela aparecerá na lista quando for usada em uma transação.`
+        description: `A categoria "${newCategoryName.trim()}" foi criada com sucesso.`
       });
     } catch (error) {
       console.error('Error creating category:', error);
@@ -175,7 +183,7 @@ export function CategoryManagement() {
             />
           </div>
           <div className="flex items-end">
-            <Button onClick={handleCreateCategory}>
+            <Button onClick={handleCreateCategory} className="bg-blue-600 hover:bg-blue-700">
               <Plus className="h-4 w-4 mr-2" />
               Adicionar
             </Button>
@@ -200,21 +208,15 @@ export function CategoryManagement() {
               >
                 <div className="flex items-center gap-3">
                   <div>
-                    <h3 className="font-medium">{category.name}</h3>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <h3 className="font-medium text-gray-900">{category.name}</h3>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
                       <span>{category.usageCount} transações</span>
-                      {category.lastUsed && (
-                        <>
-                          <span>•</span>
-                          <span>Última vez: {category.lastUsed.toLocaleDateString('pt-BR')}</span>
-                        </>
-                      )}
                     </div>
                   </div>
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                     {category.usageCount}
                   </Badge>
                   
@@ -253,7 +255,7 @@ export function CategoryManagement() {
                         <Button variant="outline" onClick={() => setEditingCategory(null)}>
                           Cancelar
                         </Button>
-                        <Button onClick={handleEditCategory}>
+                        <Button onClick={handleEditCategory} className="bg-blue-600 hover:bg-blue-700">
                           Salvar Alterações
                         </Button>
                       </DialogFooter>
