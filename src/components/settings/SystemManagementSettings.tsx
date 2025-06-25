@@ -1,43 +1,13 @@
 
-import { useState, useEffect } from 'react';
+import { CategoryManagement } from './CategoryManagement';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Plus, 
-  Trash2, 
-  Settings, 
-  Bell, 
-  Mail, 
-  Smartphone,
-  GripVertical,
-  Tag
-} from 'lucide-react';
+import { Bell, Mail, Smartphone } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 
-interface Category {
-  id: string;
-  name: string;
-  type: 'income' | 'expense';
-  isDefault?: boolean;
-}
-
 export function SystemManagementSettings() {
-  const [categories, setCategories] = useState<Category[]>([
-    { id: '1', name: 'Receita de Eventos', type: 'income', isDefault: true },
-    { id: '2', name: 'Serviços Fotográficos', type: 'income', isDefault: true },
-    { id: '3', name: 'Equipamentos', type: 'expense', isDefault: true },
-    { id: '4', name: 'Transporte', type: 'expense', isDefault: true },
-    { id: '5', name: 'Marketing', type: 'expense', isDefault: true },
-  ]);
-  
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [newCategoryType, setNewCategoryType] = useState<'income' | 'expense'>('income');
-  
   const [notifications, setNotifications] = useState({
     email: {
       enabled: true,
@@ -57,52 +27,6 @@ export function SystemManagementSettings() {
     }
   });
 
-  const addCategory = () => {
-    if (!newCategoryName.trim()) {
-      toast({
-        title: "Erro",
-        description: "Por favor, insira um nome para a categoria.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const newCategory: Category = {
-      id: Date.now().toString(),
-      name: newCategoryName.trim(),
-      type: newCategoryType,
-      isDefault: false
-    };
-
-    setCategories([...categories, newCategory]);
-    setNewCategoryName('');
-    
-    toast({
-      title: "Categoria adicionada",
-      description: `A categoria "${newCategory.name}" foi adicionada com sucesso.`
-    });
-  };
-
-  const removeCategory = (categoryId: string) => {
-    const category = categories.find(c => c.id === categoryId);
-    
-    if (category?.isDefault) {
-      toast({
-        title: "Erro",
-        description: "Não é possível remover categorias padrão do sistema.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setCategories(categories.filter(c => c.id !== categoryId));
-    
-    toast({
-      title: "Categoria removida",
-      description: `A categoria "${category?.name}" foi removida.`
-    });
-  };
-
   const updateNotificationSetting = (section: string, setting: string, value: boolean) => {
     setNotifications(prev => ({
       ...prev,
@@ -118,121 +42,9 @@ export function SystemManagementSettings() {
     });
   };
 
-  const incomeCategories = categories.filter(c => c.type === 'income');
-  const expenseCategories = categories.filter(c => c.type === 'expense');
-
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Tag className="h-5 w-5" />
-            Gerenciamento de Categorias
-          </CardTitle>
-          <CardDescription>
-            Adicione, remova e organize as categorias de transações do sistema.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Label htmlFor="categoryName">Nome da Categoria</Label>
-              <Input
-                id="categoryName"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder="Digite o nome da nova categoria"
-              />
-            </div>
-            <div className="w-32">
-              <Label htmlFor="categoryType">Tipo</Label>
-              <select
-                id="categoryType"
-                value={newCategoryType}
-                onChange={(e) => setNewCategoryType(e.target.value as 'income' | 'expense')}
-                className="w-full h-10 px-3 border border-input rounded-md"
-              >
-                <option value="income">Receita</option>
-                <option value="expense">Despesa</option>
-              </select>
-            </div>
-            <div className="flex items-end">
-              <Button onClick={addCategory}>
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar
-              </Button>
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="font-semibold mb-3 text-green-700">Categorias de Receita</h3>
-              <div className="space-y-2">
-                {incomeCategories.map((category) => (
-                  <div
-                    key={category.id}
-                    className="flex items-center justify-between p-3 border rounded-lg bg-green-50"
-                  >
-                    <div className="flex items-center gap-2">
-                      <GripVertical className="h-4 w-4 text-gray-400 cursor-grab" />
-                      <span className="font-medium">{category.name}</span>
-                      {category.isDefault && (
-                        <Badge variant="secondary" className="text-xs">
-                          Padrão
-                        </Badge>
-                      )}
-                    </div>
-                    {!category.isDefault && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeCategory(category.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-3 text-red-700">Categorias de Despesa</h3>
-              <div className="space-y-2">
-                {expenseCategories.map((category) => (
-                  <div
-                    key={category.id}
-                    className="flex items-center justify-between p-3 border rounded-lg bg-red-50"
-                  >
-                    <div className="flex items-center gap-2">
-                      <GripVertical className="h-4 w-4 text-gray-400 cursor-grab" />
-                      <span className="font-medium">{category.name}</span>
-                      {category.isDefault && (
-                        <Badge variant="secondary" className="text-xs">
-                          Padrão
-                        </Badge>
-                      )}
-                    </div>
-                    {!category.isDefault && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeCategory(category.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <CategoryManagement />
 
       <Card>
         <CardHeader>

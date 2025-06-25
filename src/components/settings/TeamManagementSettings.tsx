@@ -1,27 +1,63 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Users, Mail, Phone, MapPin, Briefcase } from 'lucide-react';
+import { Users, Mail, Briefcase, Calendar, CheckCircle, XCircle } from 'lucide-react';
 import { TeamManagementService } from '@/services/teamManagementService';
 import { TeamMember } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
+interface TeamMemberWithProfile extends TeamMember {
+  email?: string;
+  isActive: boolean;
+  lastLogin?: Date;
+}
+
 export function TeamManagementSettings() {
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMemberWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchTeamMembers();
+    fetchTeamMembersWithProfiles();
   }, []);
 
-  const fetchTeamMembers = async () => {
+  const fetchTeamMembersWithProfiles = async () => {
     try {
+      // Get team members
       const members = await TeamManagementService.getAllMembers();
-      setTeamMembers(members);
+      
+      // Get profiles to check which team members are actually registered users
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, last_login');
+
+      if (error) throw error;
+
+      // Create a map of profiles by name for matching
+      const profileMap = new Map();
+      profiles?.forEach(profile => {
+        if (profile.full_name) {
+          profileMap.set(profile.full_name.toLowerCase(), profile);
+        }
+      });
+
+      // Enhance team members with profile information
+      const enhancedMembers: TeamMemberWithProfile[] = members.map(member => {
+        const profile = profileMap.get(member.name.toLowerCase());
+        
+        return {
+          ...member,
+          email: profile?.email,
+          isActive: !!profile,
+          lastLogin: profile?.last_login ? new Date(profile.last_login) : undefined
+        };
+      });
+
+      setTeamMembers(enhancedMembers);
     } catch (error) {
-      console.error('Error fetching team members:', error);
+      console.error('Error fetching team members with profiles:', error);
       toast({
         title: "Erro",
         description: "Não foi possível carregar os membros da equipe.",
@@ -106,55 +142,44 @@ export function TeamManagementSettings() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
                       <div className="flex items-center gap-1">
-                        <Briefcase className="h-3 w-3" />
-                        <span>{member.role || 'Função não definida'}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
                         <Mail className="h-3 w-3" />
-                        <span>Email não cadastrado</span>
+                        <span>{member.email || 'Email não cadastrado'}</span>
                       </div>
+                      {member.lastLogin && (
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>Último acesso: {member.lastLogin.toLocaleDateString('pt-BR')}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   
                   <div className="text-right">
-                    <p className="text-sm text-gray-500">Membro ativo</p>
-                    <Badge variant="secondary" className="mt-1">
-                      Ativo
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      {member.isActive ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            Ativo
+                          </Badge>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4 text-gray-400" />
+                          <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200">
+                            Não Registrado
+                          </Badge>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {member.isActive ? 'Usuário da plataforma' : 'Apenas cadastro na equipe'}
+                    </p>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Estatísticas da Equipe</CardTitle>
-          <CardDescription>
-            Resumo geral da sua equipe.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 border rounded-lg">
-              <p className="text-2xl font-bold text-blue-600">{teamMembers.length}</p>
-              <p className="text-sm text-gray-600">Total de Membros</p>
-            </div>
-            <div className="text-center p-4 border rounded-lg">
-              <p className="text-2xl font-bold text-green-600">
-                {teamMembers.filter(m => m.role).length}
-              </p>
-              <p className="text-sm text-gray-600">Com Função Definida</p>
-            </div>
-            <div className="text-center p-4 border rounded-lg">
-              <p className="text-2xl font-bold text-purple-600">
-                {new Set(teamMembers.map(m => m.role).filter(Boolean)).size}
-              </p>
-              <p className="text-sm text-gray-600">Funções Diferentes</p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
