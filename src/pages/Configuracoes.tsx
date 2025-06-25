@@ -1,15 +1,11 @@
 
 import { useState } from 'react';
 import { Layout } from '@/components/Layout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
-import { NotificationSettings } from '@/components/settings/NotificationSettings';
-import { SystemSettings } from '@/components/settings/SystemSettings';
-import { TeamSettings } from '@/components/settings/TeamSettings';
-import EnhancedTeamSettings from '@/components/settings/EnhancedTeamSettings';
-import { PreferencesSettings } from '@/components/settings/PreferencesSettings';
-import { Settings, User, Bell, Cog, Users, Palette } from 'lucide-react';
+import { TeamManagementSettings } from '@/components/settings/TeamManagementSettings';
+import { SystemManagementSettings } from '@/components/settings/SystemManagementSettings';
+import { Settings, User, Users, Cog } from 'lucide-react';
 
 const Configuracoes = () => {
   const [activeTab, setActiveTab] = useState('profile');
@@ -23,30 +19,18 @@ const Configuracoes = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
-              Perfil
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center gap-2">
-              <Bell className="h-4 w-4" />
-              Notificações
-            </TabsTrigger>
-            <TabsTrigger value="system" className="flex items-center gap-2">
-              <Cog className="h-4 w-4" />
-              Sistema
+              Conta & Perfil
             </TabsTrigger>
             <TabsTrigger value="team" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Equipe
+              Gerenciamento de Equipe
             </TabsTrigger>
-            <TabsTrigger value="enhanced-team" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Equipe+
-            </TabsTrigger>
-            <TabsTrigger value="preferences" className="flex items-center gap-2">
-              <Palette className="h-4 w-4" />
-              Preferências
+            <TabsTrigger value="system" className="flex items-center gap-2">
+              <Cog className="h-4 w-4" />
+              Gerenciamento do Sistema
             </TabsTrigger>
           </TabsList>
 
@@ -55,24 +39,12 @@ const Configuracoes = () => {
               <ProfileSettings />
             </TabsContent>
 
-            <TabsContent value="notifications">
-              <NotificationSettings />
+            <TabsContent value="team">
+              <TeamManagementSettings />
             </TabsContent>
 
             <TabsContent value="system">
-              <SystemSettings />
-            </TabsContent>
-
-            <TabsContent value="team">
-              <TeamSettings />
-            </TabsContent>
-
-            <TabsContent value="enhanced-team">
-              <EnhancedTeamSettings />
-            </TabsContent>
-
-            <TabsContent value="preferences">
-              <PreferencesSettings />
+              <SystemManagementSettings />
             </TabsContent>
           </div>
         </Tabs>
