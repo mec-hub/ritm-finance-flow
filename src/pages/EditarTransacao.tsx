@@ -22,6 +22,7 @@ import { TransactionService } from '@/services/transactionService';
 import { ClientService } from '@/services/clientService';
 import { EventService } from '@/services/eventService';
 import { TeamManagementService } from '@/services/teamManagementService';
+import { CategoryService } from '@/services/categoryService';
 import { Transaction, Client, Event, TeamMember } from '@/types';
 import { TeamAssignmentForm } from '@/components/transactions/TeamAssignmentForm';
 import { AttachmentUpload } from '@/components/transactions/AttachmentUpload';
@@ -54,6 +55,7 @@ const EditarTransacao = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [teamAssignments, setTeamAssignments] = useState<any[]>([]);
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [existingAttachments, setExistingAttachments] = useState<string[]>([]);
@@ -81,11 +83,12 @@ const EditarTransacao = () => {
       if (!id) return;
 
       try {
-        const [transactionData, clientsData, eventsData, teamMembersData] = await Promise.all([
+        const [transactionData, clientsData, eventsData, teamMembersData, categoriesData] = await Promise.all([
           TransactionService.getById(id),
           ClientService.getAll(),
           EventService.getAll(),
-          TeamManagementService.getAllMembers()
+          TeamManagementService.getAllMembers(),
+          CategoryService.getCategoriesForDropdown()
         ]);
         
         if (transactionData) {
@@ -93,6 +96,7 @@ const EditarTransacao = () => {
           setClients(clientsData);
           setEvents(eventsData);
           setTeamMembers(teamMembersData);
+          setCategories(categoriesData);
           setTeamAssignments(transactionData.teamPercentages || []);
           setExistingAttachments(transactionData.attachments || []);
           
@@ -194,11 +198,6 @@ const EditarTransacao = () => {
     const newAttachments = existingAttachments.filter((_, i) => i !== index);
     setExistingAttachments(newAttachments);
   };
-
-  const categories = [
-    'Shows', 'Eventos', 'Publicidade', 'Equipamento', 'Transporte', 
-    'Alimentação', 'Hospedagem', 'Pessoal', 'Marketing', 'Outros'
-  ];
 
   if (loading) {
     return (

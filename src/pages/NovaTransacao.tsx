@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
@@ -23,6 +22,7 @@ import { TransactionService } from '@/services/transactionService';
 import { ClientService } from '@/services/clientService';
 import { EventService } from '@/services/eventService';
 import { TeamManagementService } from '@/services/teamManagementService';
+import { CategoryService } from '@/services/categoryService';
 import { Transaction, Client, Event, TeamMember } from '@/types';
 import { TeamAssignmentForm } from '@/components/transactions/TeamAssignmentForm';
 import { AttachmentUpload } from '@/components/transactions/AttachmentUpload';
@@ -52,6 +52,7 @@ const NovaTransacao = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [teamAssignments, setTeamAssignments] = useState<Array<{ teamMemberId: string; percentageValue: number; teamMemberName?: string }>>([]);
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
 
@@ -76,19 +77,21 @@ const NovaTransacao = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [clientsData, eventsData, teamMembersData] = await Promise.all([
+        const [clientsData, eventsData, teamMembersData, categoriesData] = await Promise.all([
           ClientService.getAll(),
           EventService.getAll(),
-          TeamManagementService.getAllMembers()
+          TeamManagementService.getAllMembers(),
+          CategoryService.getCategoriesForDropdown()
         ]);
         setClients(clientsData);
         setEvents(eventsData);
         setTeamMembers(teamMembersData);
+        setCategories(categoriesData);
       } catch (error) {
         console.error('Error fetching data:', error);
         toast({
           title: "Erro",
-          description: "Não foi possível carregar clientes, eventos e membros da equipe.",
+          description: "Não foi possível carregar clientes, eventos, membros da equipe e categorias.",
           variant: "destructive"
         });
       }
@@ -169,11 +172,6 @@ const NovaTransacao = () => {
       setLoading(false);
     }
   };
-
-  const categories = [
-    'Shows', 'Eventos', 'Publicidade', 'Equipamento', 'Transporte', 
-    'Alimentação', 'Hospedagem', 'Pessoal', 'Marketing', 'Outros'
-  ];
 
   return (
     <Layout>

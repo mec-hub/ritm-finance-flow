@@ -43,12 +43,55 @@ export class CategoryService {
       }
     });
 
-    // Convert to array format
+    // Convert to array format and sort by usage count
     return Array.from(categoryMap.entries()).map(([name, stats]) => ({
       name,
       usageCount: stats.count,
       lastUsed: stats.lastUsed
     })).sort((a, b) => b.usageCount - a.usageCount);
+  }
+
+  static async getCategoriesForDropdown(): Promise<string[]> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) throw new Error('User not authenticated');
+
+    // Get unique categories from transactions
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('category')
+      .eq('user_id', userData.user.id)
+      .not('category', 'is', null);
+
+    if (error) throw error;
+
+    // Extract unique category names and add default categories
+    const transactionCategories = [...new Set(data?.map(t => t.category).filter(Boolean) || [])];
+    
+    // Merge with default categories, removing duplicates
+    const defaultCategories = [
+      'Shows', 'Eventos', 'Publicidade', 'Equipamento', 'Transporte', 
+      'Alimentação', 'Hospedagem', 'Pessoal', 'Marketing', 'Outros'
+    ];
+    
+    const allCategories = [...new Set([...defaultCategories, ...transactionCategories])];
+    
+    return allCategories.sort();
+  }
+
+  static async addCategory(categoryName: string): Promise<void> {
+    // Categories are added implicitly when used in transactions
+    // This method validates the category name and ensures it doesn't conflict
+    if (!categoryName.trim()) {
+      throw new Error('Category name cannot be empty');
+    }
+
+    const existingCategories = await this.getCategoriesForDropdown();
+    if (existingCategories.some(cat => cat.toLowerCase() === categoryName.trim().toLowerCase())) {
+      throw new Error('Category already exists');
+    }
+
+    // No need to insert anything - categories exist when first used in a transaction
+    return Promise.resolve();
   }
 
   static async updateCategoryName(oldName: string, newName: string): Promise<void> {

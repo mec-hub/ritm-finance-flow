@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,35 +14,24 @@ import {
   Tag,
   AlertTriangle
 } from 'lucide-react';
-import { CategoryService, Category } from '@/services/categoryService';
+import { useCategories } from '@/hooks/useCategories';
 import { toast } from '@/hooks/use-toast';
+import { Category } from '@/services/categoryService';
 
 export function CategoryManagement() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { 
+    categories, 
+    loading, 
+    error, 
+    addCategory, 
+    updateCategory, 
+    deleteCategory 
+  } = useCategories();
+  
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editCategoryName, setEditCategoryName] = useState('');
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
-    try {
-      const data = await CategoryService.getAllCategories();
-      setCategories(data);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar as categorias.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) {
@@ -54,36 +43,19 @@ export function CategoryManagement() {
       return;
     }
 
-    // Check if category already exists
-    if (categories.some(cat => cat.name.toLowerCase() === newCategoryName.trim().toLowerCase())) {
-      toast({
-        title: "Erro",
-        description: "Esta categoria já existe.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     try {
-      // Add the new category name to the existing categories
-      const newCategory = {
-        name: newCategoryName.trim(),
-        usageCount: 0,
-        lastUsed: undefined
-      };
-      
-      setCategories(prev => [...prev, newCategory]);
+      await addCategory(newCategoryName.trim());
       setNewCategoryName('');
       
       toast({
         title: "Categoria criada",
-        description: `A categoria "${newCategoryName.trim()}" foi criada com sucesso.`
+        description: `A categoria "${newCategoryName.trim()}" foi criada e estará disponível para uso em transações.`
       });
     } catch (error) {
       console.error('Error creating category:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível criar a categoria.",
+        description: error instanceof Error ? error.message : "Não foi possível criar a categoria.",
         variant: "destructive"
       });
     }
@@ -93,23 +65,14 @@ export function CategoryManagement() {
     if (!editingCategory || !editCategoryName.trim()) return;
 
     if (editCategoryName.trim() === editingCategory.name) {
+      setIsEditDialogOpen(false);
       setEditingCategory(null);
       return;
     }
 
-    // Check if new name already exists
-    if (categories.some(cat => cat.name.toLowerCase() === editCategoryName.trim().toLowerCase() && cat.name !== editingCategory.name)) {
-      toast({
-        title: "Erro",
-        description: "Já existe uma categoria com este nome.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     try {
-      await CategoryService.updateCategoryName(editingCategory.name, editCategoryName.trim());
-      await fetchCategories();
+      await updateCategory(editingCategory.name, editCategoryName.trim());
+      setIsEditDialogOpen(false);
       setEditingCategory(null);
       setEditCategoryName('');
       
@@ -129,8 +92,7 @@ export function CategoryManagement() {
 
   const handleDeleteCategory = async (category: Category) => {
     try {
-      await CategoryService.deleteCategory(category.name);
-      await fetchCategories();
+      await deleteCategory(category.name);
       
       toast({
         title: "Categoria removida",
@@ -146,12 +108,30 @@ export function CategoryManagement() {
     }
   };
 
+  const openEditDialog = (category: Category) => {
+    setEditingCategory(category);
+    setEditCategoryName(category.name);
+    setIsEditDialogOpen(true);
+  };
+
   if (loading) {
     return (
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-center">
             <p>Carregando categorias...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center text-red-600">
+            <p>Erro ao carregar categorias: {error}</p>
           </div>
         </CardContent>
       </Card>
@@ -166,7 +146,7 @@ export function CategoryManagement() {
           Gerenciamento de Categorias
         </CardTitle>
         <CardDescription>
-          Gerencie as categorias das suas transações. Estas categorias são usadas nas análises.
+          Gerencie as categorias das suas transações. Estas categorias são extraídas automaticamente dos seus dados e são usadas nas análises.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -211,6 +191,9 @@ export function CategoryManagement() {
                     <h3 className="font-medium text-gray-900">{category.name}</h3>
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <span>{category.usageCount} transações</span>
+                      {category.lastUsed && (
+                        <span>• Último uso: {category.lastUsed.toLocaleDateString('pt-BR')}</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -220,47 +203,13 @@ export function CategoryManagement() {
                     {category.usageCount}
                   </Badge>
                   
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setEditingCategory(category);
-                          setEditCategoryName(category.name);
-                        }}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Editar Categoria</DialogTitle>
-                        <DialogDescription>
-                          Altere o nome da categoria. Isso atualizará todas as transações que usam esta categoria.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="editName">Nome da Categoria</Label>
-                          <Input
-                            id="editName"
-                            value={editCategoryName}
-                            onChange={(e) => setEditCategoryName(e.target.value)}
-                            placeholder="Digite o novo nome"
-                          />
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setEditingCategory(null)}>
-                          Cancelar
-                        </Button>
-                        <Button onClick={handleEditCategory} className="bg-blue-600 hover:bg-blue-700">
-                          Salvar Alterações
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openEditDialog(category)}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
 
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -296,6 +245,37 @@ export function CategoryManagement() {
             ))
           )}
         </div>
+
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Categoria</DialogTitle>
+              <DialogDescription>
+                Altere o nome da categoria. Isso atualizará todas as transações que usam esta categoria.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="editName">Nome da Categoria</Label>
+                <Input
+                  id="editName"
+                  value={editCategoryName}
+                  onChange={(e) => setEditCategoryName(e.target.value)}
+                  placeholder="Digite o novo nome"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleEditCategory} className="bg-blue-600 hover:bg-blue-700">
+                Salvar Alterações
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
