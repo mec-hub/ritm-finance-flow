@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Users, Mail, CheckCircle, XCircle } from 'lucide-react';
+import { Users, Mail, Phone, CheckCircle, XCircle } from 'lucide-react';
 import { TeamManagementService } from '@/services/teamManagementService';
 import { TeamMember } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +11,7 @@ import { toast } from '@/hooks/use-toast';
 
 interface TeamMemberWithProfile extends TeamMember {
   email?: string;
+  phone?: string;
   isActive: boolean;
 }
 
@@ -30,7 +31,7 @@ export function TeamManagementSettings() {
       // Get profiles to check which team members are actually registered users
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name');
+        .select('id, email, full_name, phone');
 
       if (error) throw error;
 
@@ -49,6 +50,7 @@ export function TeamManagementSettings() {
         return {
           ...member,
           email: profile?.email,
+          phone: profile?.phone,
           isActive: !!profile
         };
       });
@@ -138,9 +140,27 @@ export function TeamManagementSettings() {
                       )}
                     </div>
                     
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                      <Mail className="h-3 w-3" />
-                      <span>{member.email || 'Email não cadastrado'}</span>
+                    <div className="space-y-1">
+                      {member.email && (
+                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                          <Mail className="h-3 w-3" />
+                          <span>{member.email}</span>
+                        </div>
+                      )}
+                      
+                      {member.phone && (
+                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                          <Phone className="h-3 w-3" />
+                          <span>{member.phone}</span>
+                        </div>
+                      )}
+                      
+                      {!member.email && !member.phone && (
+                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                          <Mail className="h-3 w-3" />
+                          <span>Informações de contato não cadastradas</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   

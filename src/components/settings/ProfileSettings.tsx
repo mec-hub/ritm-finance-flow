@@ -29,7 +29,6 @@ export function ProfileSettings() {
   const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
-    email: '',
     phone: '',
     position: ''
   });
@@ -54,7 +53,6 @@ export function ProfileSettings() {
       setProfile(data);
       setFormData({
         full_name: data.full_name || '',
-        email: data.email || '',
         phone: data.phone || '',
         position: data.position || ''
       });
@@ -109,6 +107,26 @@ export function ProfileSettings() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Erro",
+        description: "A imagem deve ter no máximo 5MB.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Erro",
+        description: "Por favor, selecione apenas arquivos de imagem.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setUploading(true);
     try {
       const { data: userData } = await supabase.auth.getUser();
@@ -116,20 +134,32 @@ export function ProfileSettings() {
 
       // Create a unique filename
       const fileExt = file.name.split('.').pop();
-      const fileName = `${userData.user.id}-${Math.random()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const fileName = `${userData.user.id}/${Date.now()}.${fileExt}`;
 
-      // Upload the file
+      // Delete old avatar if exists
+      if (profile?.avatar_url) {
+        const oldPath = profile.avatar_url.split('/').pop();
+        if (oldPath) {
+          await supabase.storage
+            .from('avatars')
+            .remove([`${userData.user.id}/${oldPath}`]);
+        }
+      }
+
+      // Upload the new file
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file);
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
       if (uploadError) throw uploadError;
 
       // Get the public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
-        .getPublicUrl(filePath);
+        .getPublicUrl(fileName);
 
       // Update the profile with the new avatar URL
       const { error: updateError } = await supabase
@@ -148,7 +178,7 @@ export function ProfileSettings() {
       console.error('Error uploading photo:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível fazer upload da foto.",
+        description: "Não foi possível fazer upload da foto. Tente novamente.",
         variant: "destructive"
       });
     } finally {
