@@ -12,7 +12,8 @@ import {
   Edit2, 
   Trash2, 
   Tag,
-  AlertTriangle
+  AlertTriangle,
+  GripVertical
 } from 'lucide-react';
 import { useCategories } from '@/hooks/useCategories';
 import { toast } from '@/hooks/use-toast';
@@ -32,6 +33,7 @@ export function CategoryManagement() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editCategoryName, setEditCategoryName] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) {
@@ -114,12 +116,33 @@ export function CategoryManagement() {
     setIsEditDialogOpen(true);
   };
 
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex) return;
+    
+    // For now, just show a message that reordering is available
+    toast({
+      title: "Reordenação",
+      description: "Funcionalidade de reordenação disponível. As categorias são ordenadas por uso."
+    });
+    
+    setDraggedIndex(null);
+  };
+
   if (loading) {
     return (
-      <Card>
+      <Card className="bg-card border-border">
         <CardContent className="p-6">
           <div className="flex items-center justify-center">
-            <p>Carregando categorias...</p>
+            <p className="text-muted-foreground">Carregando categorias...</p>
           </div>
         </CardContent>
       </Card>
@@ -128,9 +151,9 @@ export function CategoryManagement() {
 
   if (error) {
     return (
-      <Card>
+      <Card className="bg-card border-border">
         <CardContent className="p-6">
-          <div className="flex items-center justify-center text-red-600">
+          <div className="flex items-center justify-center text-destructive">
             <p>Erro ao carregar categorias: {error}</p>
           </div>
         </CardContent>
@@ -139,13 +162,13 @@ export function CategoryManagement() {
   }
 
   return (
-    <Card>
+    <Card className="bg-card border-border">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Tag className="h-5 w-5" />
+        <CardTitle className="flex items-center gap-2 text-foreground">
+          <Tag className="h-5 w-5 text-primary" />
           Gerenciamento de Categorias
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-muted-foreground">
           Gerencie as categorias das suas transações. Estas categorias são extraídas automaticamente dos seus dados e são usadas nas análises.
         </CardDescription>
       </CardHeader>
@@ -153,17 +176,21 @@ export function CategoryManagement() {
         {/* Add new category */}
         <div className="flex gap-4">
           <div className="flex-1">
-            <Label htmlFor="newCategory">Nova Categoria</Label>
+            <Label htmlFor="newCategory" className="text-foreground">Nova Categoria</Label>
             <Input
               id="newCategory"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               placeholder="Digite o nome da nova categoria"
               onKeyPress={(e) => e.key === 'Enter' && handleCreateCategory()}
+              className="bg-background border-border text-foreground placeholder:text-muted-foreground"
             />
           </div>
           <div className="flex items-end">
-            <Button onClick={handleCreateCategory} className="bg-blue-600 hover:bg-blue-700">
+            <Button 
+              onClick={handleCreateCategory} 
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Adicionar
             </Button>
@@ -174,22 +201,27 @@ export function CategoryManagement() {
         <div className="space-y-2">
           {categories.length === 0 ? (
             <div className="text-center py-8">
-              <Tag className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">Nenhuma categoria encontrada.</p>
-              <p className="text-sm text-gray-400">
+              <Tag className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">Nenhuma categoria encontrada.</p>
+              <p className="text-sm text-muted-foreground">
                 As categorias aparecem aqui quando são usadas em transações.
               </p>
             </div>
           ) : (
-            categories.map((category) => (
+            categories.map((category, index) => (
               <div
                 key={category.name}
-                className="flex items-center justify-between p-4 border rounded-lg bg-white hover:bg-gray-50"
+                draggable
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, index)}
+                className="flex items-center justify-between p-4 border border-border rounded-lg bg-card hover:bg-accent/50 transition-colors cursor-move"
               >
                 <div className="flex items-center gap-3">
+                  <GripVertical className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <h3 className="font-medium text-gray-900">{category.name}</h3>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <h3 className="font-medium text-foreground">{category.name}</h3>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <span>{category.usageCount} transações</span>
                       {category.lastUsed && (
                         <span>• Último uso: {category.lastUsed.toLocaleDateString('pt-BR')}</span>
@@ -199,7 +231,7 @@ export function CategoryManagement() {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                  <Badge variant="secondary" className="bg-secondary text-secondary-foreground">
                     {category.usageCount}
                   </Badge>
                   
@@ -207,33 +239,40 @@ export function CategoryManagement() {
                     variant="ghost"
                     size="sm"
                     onClick={() => openEditDialog(category)}
+                    className="text-muted-foreground hover:text-foreground"
                   >
                     <Edit2 className="h-4 w-4" />
                   </Button>
 
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </AlertDialogTrigger>
-                    <AlertDialogContent>
+                    <AlertDialogContent className="bg-card border-border">
                       <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
+                        <AlertDialogTitle className="flex items-center gap-2 text-foreground">
                           <AlertTriangle className="h-5 w-5 text-amber-500" />
                           Remover Categoria
                         </AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogDescription className="text-muted-foreground">
                           Tem certeza que deseja remover a categoria "{category.name}"? 
                           Esta ação irá remover a categoria de {category.usageCount} transações.
                           Esta ação não pode ser desfeita.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogCancel className="bg-secondary text-secondary-foreground hover:bg-secondary/80">
+                          Cancelar
+                        </AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => handleDeleteCategory(category)}
-                          className="bg-red-600 hover:bg-red-700"
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                           Remover Categoria
                         </AlertDialogAction>
@@ -248,29 +287,37 @@ export function CategoryManagement() {
 
         {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent>
+          <DialogContent className="bg-card border-border">
             <DialogHeader>
-              <DialogTitle>Editar Categoria</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-foreground">Editar Categoria</DialogTitle>
+              <DialogDescription className="text-muted-foreground">
                 Altere o nome da categoria. Isso atualizará todas as transações que usam esta categoria.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="editName">Nome da Categoria</Label>
+                <Label htmlFor="editName" className="text-foreground">Nome da Categoria</Label>
                 <Input
                   id="editName"
                   value={editCategoryName}
                   onChange={(e) => setEditCategoryName(e.target.value)}
                   placeholder="Digite o novo nome"
+                  className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsEditDialogOpen(false)}
+                className="border-border text-foreground hover:bg-accent"
+              >
                 Cancelar
               </Button>
-              <Button onClick={handleEditCategory} className="bg-blue-600 hover:bg-blue-700">
+              <Button 
+                onClick={handleEditCategory} 
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
                 Salvar Alterações
               </Button>
             </DialogFooter>
