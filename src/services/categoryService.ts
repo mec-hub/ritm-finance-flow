@@ -17,64 +17,55 @@ export class CategoryService {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('User not authenticated');
 
-    // Get categories with usage statistics using rpc or direct query
-    const { data: categoriesData, error: categoriesError } = await supabase
-      .rpc('get_user_categories', { user_id_param: userData.user.id });
+    // Get categories directly from the categories table
+    const { data: directData, error: directError } = await (supabase as any)
+      .from('categories')
+      .select('*')
+      .eq('user_id', userData.user.id)
+      .order('display_order', { ascending: true });
 
-    if (categoriesError) {
-      // Fallback to direct query if RPC doesn't exist
-      console.log('RPC not found, using direct query');
-      const { data: directData, error: directError } = await (supabase as any)
-        .from('categories')
-        .select('*')
-        .eq('user_id', userData.user.id)
-        .order('display_order', { ascending: true });
+    if (directError) throw directError;
+    
+    // Get usage statistics for each category
+    const { data: usageData, error: usageError } = await supabase
+      .from('transactions')
+      .select('category, date')
+      .eq('user_id', userData.user.id)
+      .not('category', 'is', null);
 
-      if (directError) throw directError;
-      
-      // Get usage statistics for each category
-      const { data: usageData, error: usageError } = await supabase
-        .from('transactions')
-        .select('category, date')
-        .eq('user_id', userData.user.id)
-        .not('category', 'is', null);
+    if (usageError) throw usageError;
 
-      if (usageError) throw usageError;
-
-      // Calculate usage statistics
-      const usageMap = new Map<string, { count: number; lastUsed: Date }>();
-      usageData?.forEach(transaction => {
-        if (transaction.category) {
-          const existing = usageMap.get(transaction.category);
-          const currentDate = new Date(transaction.date);
-          
-          if (existing) {
-            existing.count += 1;
-            if (currentDate > existing.lastUsed) {
-              existing.lastUsed = currentDate;
-            }
-          } else {
-            usageMap.set(transaction.category, {
-              count: 1,
-              lastUsed: currentDate
-            });
+    // Calculate usage statistics
+    const usageMap = new Map<string, { count: number; lastUsed: Date }>();
+    usageData?.forEach(transaction => {
+      if (transaction.category) {
+        const existing = usageMap.get(transaction.category);
+        const currentDate = new Date(transaction.date);
+        
+        if (existing) {
+          existing.count += 1;
+          if (currentDate > existing.lastUsed) {
+            existing.lastUsed = currentDate;
           }
+        } else {
+          usageMap.set(transaction.category, {
+            count: 1,
+            lastUsed: currentDate
+          });
         }
-      });
+      }
+    });
 
-      return directData?.map((category: any) => ({
-        id: category.id,
-        name: category.name,
-        displayOrder: category.display_order,
-        color: category.color,
-        usageCount: usageMap.get(category.name)?.count || 0,
-        lastUsed: usageMap.get(category.name)?.lastUsed,
-        createdAt: new Date(category.created_at),
-        updatedAt: new Date(category.updated_at)
-      })) || [];
-    }
-
-    return categoriesData || [];
+    return directData?.map((category: any) => ({
+      id: category.id,
+      name: category.name,
+      displayOrder: category.display_order,
+      color: category.color,
+      usageCount: usageMap.get(category.name)?.count || 0,
+      lastUsed: usageMap.get(category.name)?.lastUsed,
+      createdAt: new Date(category.created_at),
+      updatedAt: new Date(category.updated_at)
+    })) || [];
   }
 
   static async getCategoriesForDropdown(): Promise<string[]> {
