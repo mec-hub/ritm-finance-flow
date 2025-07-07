@@ -20,7 +20,7 @@ export class CategoryService {
 
       // Get categories directly from the categories table
       const { data: directData, error: directError } = await supabase
-        .from('categories')
+        .from('categories' as any)
         .select('*')
         .eq('user_id', userData.user.id)
         .order('display_order', { ascending: true });
@@ -85,7 +85,7 @@ export class CategoryService {
       if (!userData.user) throw new Error('User not authenticated');
 
       const { data, error } = await supabase
-        .from('categories')
+        .from('categories' as any)
         .select('name')
         .eq('user_id', userData.user.id)
         .order('display_order', { ascending: true });
@@ -113,7 +113,7 @@ export class CategoryService {
 
       // Get the highest display order to add the new category at the end
       const { data: maxOrderData } = await supabase
-        .from('categories')
+        .from('categories' as any)
         .select('display_order')
         .eq('user_id', userData.user.id)
         .order('display_order', { ascending: false })
@@ -122,7 +122,7 @@ export class CategoryService {
       const nextOrder = (maxOrderData?.[0]?.display_order || 0) + 1;
 
       const { error } = await supabase
-        .from('categories')
+        .from('categories' as any)
         .insert({
           name: categoryName.trim(),
           user_id: userData.user.id,
@@ -148,7 +148,7 @@ export class CategoryService {
       if (updates.color !== undefined) updateData.color = updates.color;
 
       const { error } = await supabase
-        .from('categories')
+        .from('categories' as any)
         .update(updateData)
         .eq('id', categoryId);
 
@@ -165,7 +165,7 @@ export class CategoryService {
   static async deleteCategory(categoryId: string): Promise<void> {
     try {
       const { error } = await supabase
-        .from('categories')
+        .from('categories' as any)
         .delete()
         .eq('id', categoryId);
 
@@ -188,7 +188,7 @@ export class CategoryService {
 
       for (const update of updates) {
         const { error } = await supabase
-          .from('categories')
+          .from('categories' as any)
           .update({ display_order: update.display_order })
           .eq('id', update.id);
 
