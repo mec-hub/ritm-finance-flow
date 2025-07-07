@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { 
   Plus, 
@@ -26,7 +26,8 @@ export function CategoryManagement() {
     error, 
     addCategory, 
     updateCategory, 
-    deleteCategory 
+    deleteCategory,
+    reorderCategories 
   } = useCategories();
   
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -51,7 +52,7 @@ export function CategoryManagement() {
       
       toast({
         title: "Categoria criada",
-        description: `A categoria "${newCategoryName.trim()}" foi criada e estará disponível para uso em transações.`
+        description: `A categoria "${newCategoryName.trim()}" foi criada com sucesso.`
       });
     } catch (error) {
       console.error('Error creating category:', error);
@@ -73,7 +74,7 @@ export function CategoryManagement() {
     }
 
     try {
-      await updateCategory(editingCategory.name, editCategoryName.trim());
+      await updateCategory(editingCategory.id, { name: editCategoryName.trim() });
       setIsEditDialogOpen(false);
       setEditingCategory(null);
       setEditCategoryName('');
@@ -94,11 +95,11 @@ export function CategoryManagement() {
 
   const handleDeleteCategory = async (category: Category) => {
     try {
-      await deleteCategory(category.name);
+      await deleteCategory(category.id);
       
       toast({
         title: "Categoria removida",
-        description: `A categoria "${category.name}" foi removida de todas as transações.`
+        description: `A categoria "${category.name}" foi removida do sistema.`
       });
     } catch (error) {
       console.error('Error deleting category:', error);
@@ -124,15 +125,30 @@ export function CategoryManagement() {
     e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
     if (draggedIndex === null || draggedIndex === dropIndex) return;
     
-    // For now, just show a message that reordering is available
-    toast({
-      title: "Reordenação",
-      description: "Funcionalidade de reordenação disponível. As categorias são ordenadas por uso."
-    });
+    const newCategories = [...categories];
+    const [removed] = newCategories.splice(draggedIndex, 1);
+    newCategories.splice(dropIndex, 0, removed);
+    
+    try {
+      const categoryIds = newCategories.map(cat => cat.id);
+      await reorderCategories(categoryIds);
+      
+      toast({
+        title: "Categorias reordenadas",
+        description: "A ordem das categorias foi atualizada com sucesso."
+      });
+    } catch (error) {
+      console.error('Error reordering categories:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível reordenar as categorias.",
+        variant: "destructive"
+      });
+    }
     
     setDraggedIndex(null);
   };
@@ -169,7 +185,7 @@ export function CategoryManagement() {
           Gerenciamento de Categorias
         </CardTitle>
         <CardDescription className="text-muted-foreground">
-          Gerencie as categorias das suas transações. Estas categorias são extraídas automaticamente dos seus dados e são usadas nas análises.
+          Gerencie as categorias das suas transações. Você pode adicionar, editar, remover e reordenar categorias.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -204,25 +220,31 @@ export function CategoryManagement() {
               <Tag className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">Nenhuma categoria encontrada.</p>
               <p className="text-sm text-muted-foreground">
-                As categorias aparecem aqui quando são usadas em transações.
+                Adicione uma categoria usando o formulário acima.
               </p>
             </div>
           ) : (
             categories.map((category, index) => (
               <div
-                key={category.name}
+                key={category.id}
                 draggable
                 onDragStart={() => handleDragStart(index)}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, index)}
-                className="flex items-center justify-between p-4 border border-border rounded-lg bg-card hover:bg-accent/50 transition-colors cursor-move"
+                className={`flex items-center justify-between p-4 border border-border rounded-lg bg-card hover:bg-accent/50 transition-colors cursor-move ${
+                  draggedIndex === index ? 'opacity-50' : ''
+                }`}
               >
                 <div className="flex items-center gap-3">
-                  <GripVertical className="h-4 w-4 text-muted-foreground" />
+                  <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div 
+                    className="w-4 h-4 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: category.color }}
+                  />
                   <div>
                     <h3 className="font-medium text-foreground">{category.name}</h3>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>{category.usageCount} transações</span>
+                      <span>{category.usageCount || 0} transações</span>
                       {category.lastUsed && (
                         <span>• Último uso: {category.lastUsed.toLocaleDateString('pt-BR')}</span>
                       )}
@@ -232,7 +254,7 @@ export function CategoryManagement() {
                 
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary" className="bg-secondary text-secondary-foreground">
-                    {category.usageCount}
+                    {category.usageCount || 0}
                   </Badge>
                   
                   <Button
@@ -262,8 +284,8 @@ export function CategoryManagement() {
                         </AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground">
                           Tem certeza que deseja remover a categoria "{category.name}"? 
-                          Esta ação irá remover a categoria de {category.usageCount} transações.
-                          Esta ação não pode ser desfeita.
+                          {category.usageCount ? ` Esta categoria está sendo usada em ${category.usageCount} transações.` : ''}
+                          {' '}Esta ação não pode ser desfeita.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

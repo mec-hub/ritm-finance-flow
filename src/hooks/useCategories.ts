@@ -26,27 +26,36 @@ export function useCategories() {
     }
   };
 
-  const addCategory = async (name: string) => {
+  const addCategory = async (name: string, color?: string) => {
     try {
-      await CategoryService.addCategory(name);
+      await CategoryService.addCategory(name, color);
       await fetchCategories();
     } catch (err) {
       throw err;
     }
   };
 
-  const updateCategory = async (oldName: string, newName: string) => {
+  const updateCategory = async (categoryId: string, updates: { name?: string; color?: string }) => {
     try {
-      await CategoryService.updateCategoryName(oldName, newName);
+      await CategoryService.updateCategory(categoryId, updates);
       await fetchCategories();
     } catch (err) {
       throw err;
     }
   };
 
-  const deleteCategory = async (name: string) => {
+  const deleteCategory = async (categoryId: string) => {
     try {
-      await CategoryService.deleteCategory(name);
+      await CategoryService.deleteCategory(categoryId);
+      await fetchCategories();
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const reorderCategories = async (categoryIds: string[]) => {
+    try {
+      await CategoryService.reorderCategories(categoryIds);
       await fetchCategories();
     } catch (err) {
       throw err;
@@ -65,6 +74,7 @@ export function useCategories() {
     fetchCategories,
     addCategory,
     updateCategory,
-    deleteCategory
+    deleteCategory,
+    reorderCategories
   };
 }
