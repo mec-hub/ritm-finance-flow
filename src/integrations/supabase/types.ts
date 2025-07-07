@@ -57,6 +57,7 @@ export type Database = {
           total_revenue: number | null
           updated_at: string | null
           user_id: string
+          website_url: string | null
         }
         Insert: {
           contact?: string | null
@@ -70,6 +71,7 @@ export type Database = {
           total_revenue?: number | null
           updated_at?: string | null
           user_id: string
+          website_url?: string | null
         }
         Update: {
           contact?: string | null
@@ -83,6 +85,7 @@ export type Database = {
           total_revenue?: number | null
           updated_at?: string | null
           user_id?: string
+          website_url?: string | null
         }
         Relationships: []
       }

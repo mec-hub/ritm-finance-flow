@@ -28,7 +28,8 @@ export class ClientService {
       phone: client.phone || '',
       totalRevenue: client.total_revenue || 0,
       lastEvent: client.last_event ? new Date(client.last_event) : undefined,
-      notes: client.notes || ''
+      notes: client.notes || '',
+      websiteUrl: client.website_url || ''
     }));
   }
 
@@ -46,6 +47,7 @@ export class ClientService {
       total_revenue: client.totalRevenue || 0,
       last_event: client.lastEvent?.toISOString().split('T')[0] || null,
       notes: client.notes || null,
+      website_url: client.websiteUrl || null,
       user_id: userData.user.id
     };
 
@@ -82,6 +84,7 @@ export class ClientService {
     if (updates.totalRevenue !== undefined) updateData.total_revenue = updates.totalRevenue;
     if (updates.lastEvent !== undefined) updateData.last_event = updates.lastEvent?.toISOString().split('T')[0] || null;
     if (updates.notes !== undefined) updateData.notes = updates.notes || null;
+    if (updates.websiteUrl !== undefined) updateData.website_url = updates.websiteUrl || null;
 
     console.log('ClientService.update - Final update data:', updateData);
 
@@ -154,7 +157,8 @@ export class ClientService {
       phone: data.phone || '',
       totalRevenue: data.total_revenue || 0,
       lastEvent: data.last_event ? new Date(data.last_event) : undefined,
-      notes: data.notes || ''
+      notes: data.notes || '',
+      websiteUrl: data.website_url || ''
     };
 
     console.log('ClientService.getById - Returning client:', result);

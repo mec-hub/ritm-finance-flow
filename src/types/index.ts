@@ -1,3 +1,4 @@
+
 export interface Transaction {
   id: string;
   amount: number;
@@ -50,6 +51,7 @@ export interface Client {
   totalRevenue: number;
   lastEvent?: Date;
   notes?: string;
+  websiteUrl?: string;
 }
 
 export interface TeamMember {

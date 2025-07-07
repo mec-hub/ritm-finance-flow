@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -28,7 +29,7 @@ import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Client } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { ClientService } from '@/services/clientService';
-import { MoreHorizontal, Edit, Trash2, Eye } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, ExternalLink } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 
@@ -92,6 +93,17 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
     navigate(`/clientes/editar/${client.id}`);
   };
 
+  const handleClientNameClick = (client: Client) => {
+    if (client.websiteUrl && client.websiteUrl.trim()) {
+      // Ensure URL has proper protocol
+      let url = client.websiteUrl.trim();
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const handleDelete = async () => {
     if (!selectedClient) return;
 
@@ -124,6 +136,27 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
         variant: "destructive"
       });
     }
+  };
+
+  const renderClientName = (client: Client) => {
+    const hasWebsite = client.websiteUrl && client.websiteUrl.trim();
+    
+    if (hasWebsite) {
+      return (
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => handleClientNameClick(client)}
+            className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center space-x-1"
+            title={`Visitar: ${client.websiteUrl}`}
+          >
+            <span>{client.name}</span>
+            <ExternalLink className="h-3 w-3" />
+          </button>
+        </div>
+      );
+    }
+    
+    return <span className="font-medium">{client.name}</span>;
   };
 
   return (
@@ -185,7 +218,9 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
                     
                     return (
                       <TableRow key={client.id}>
-                        <TableCell className="font-medium">{client.name}</TableCell>
+                        <TableCell>
+                          {renderClientName(client)}
+                        </TableCell>
                         <TableCell>{client.contact}</TableCell>
                         <TableCell>{client.email}</TableCell>
                         <TableCell>{client.phone || '-'}</TableCell>

@@ -24,6 +24,7 @@ interface ClientFormData {
   contact: string;
   email: string;
   phone: string;
+  websiteUrl: string;
   notes?: string;
 }
 
@@ -37,6 +38,7 @@ const NovoCliente = () => {
       contact: '',
       email: '',
       phone: '',
+      websiteUrl: '',
       notes: '',
     },
   });
@@ -50,6 +52,7 @@ const NovoCliente = () => {
         contact: data.contact,
         email: data.email,
         phone: data.phone,
+        websiteUrl: data.websiteUrl,
         totalRevenue: 0,
         notes: data.notes,
       };
@@ -156,6 +159,27 @@ const NovoCliente = () => {
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="websiteUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Website URL</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="url" 
+                        placeholder="https://www.exemplo.com" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      URL do site do cliente (opcional). Este link será acessível clicando no nome do cliente na lista.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
               <FormField
                 control={form.control}
