@@ -17,62 +17,71 @@ export class CategoryService {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('User not authenticated');
 
-    // Get categories with usage statistics
+    // Get categories with usage statistics using rpc or direct query
     const { data: categoriesData, error: categoriesError } = await supabase
-      .from('categories')
-      .select('*')
-      .eq('user_id', userData.user.id)
-      .order('display_order', { ascending: true });
+      .rpc('get_user_categories', { user_id_param: userData.user.id });
 
-    if (categoriesError) throw categoriesError;
+    if (categoriesError) {
+      // Fallback to direct query if RPC doesn't exist
+      console.log('RPC not found, using direct query');
+      const { data: directData, error: directError } = await (supabase as any)
+        .from('categories')
+        .select('*')
+        .eq('user_id', userData.user.id)
+        .order('display_order', { ascending: true });
 
-    // Get usage statistics for each category
-    const { data: usageData, error: usageError } = await supabase
-      .from('transactions')
-      .select('category, date')
-      .eq('user_id', userData.user.id)
-      .not('category', 'is', null);
+      if (directError) throw directError;
+      
+      // Get usage statistics for each category
+      const { data: usageData, error: usageError } = await supabase
+        .from('transactions')
+        .select('category, date')
+        .eq('user_id', userData.user.id)
+        .not('category', 'is', null);
 
-    if (usageError) throw usageError;
+      if (usageError) throw usageError;
 
-    // Calculate usage statistics
-    const usageMap = new Map<string, { count: number; lastUsed: Date }>();
-    usageData?.forEach(transaction => {
-      if (transaction.category) {
-        const existing = usageMap.get(transaction.category);
-        const currentDate = new Date(transaction.date);
-        
-        if (existing) {
-          existing.count += 1;
-          if (currentDate > existing.lastUsed) {
-            existing.lastUsed = currentDate;
+      // Calculate usage statistics
+      const usageMap = new Map<string, { count: number; lastUsed: Date }>();
+      usageData?.forEach(transaction => {
+        if (transaction.category) {
+          const existing = usageMap.get(transaction.category);
+          const currentDate = new Date(transaction.date);
+          
+          if (existing) {
+            existing.count += 1;
+            if (currentDate > existing.lastUsed) {
+              existing.lastUsed = currentDate;
+            }
+          } else {
+            usageMap.set(transaction.category, {
+              count: 1,
+              lastUsed: currentDate
+            });
           }
-        } else {
-          usageMap.set(transaction.category, {
-            count: 1,
-            lastUsed: currentDate
-          });
         }
-      }
-    });
+      });
 
-    return categoriesData?.map(category => ({
-      id: category.id,
-      name: category.name,
-      displayOrder: category.display_order,
-      color: category.color,
-      usageCount: usageMap.get(category.name)?.count || 0,
-      lastUsed: usageMap.get(category.name)?.lastUsed,
-      createdAt: new Date(category.created_at),
-      updatedAt: new Date(category.updated_at)
-    })) || [];
+      return directData?.map((category: any) => ({
+        id: category.id,
+        name: category.name,
+        displayOrder: category.display_order,
+        color: category.color,
+        usageCount: usageMap.get(category.name)?.count || 0,
+        lastUsed: usageMap.get(category.name)?.lastUsed,
+        createdAt: new Date(category.created_at),
+        updatedAt: new Date(category.updated_at)
+      })) || [];
+    }
+
+    return categoriesData || [];
   }
 
   static async getCategoriesForDropdown(): Promise<string[]> {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('User not authenticated');
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('categories')
       .select('name')
       .eq('user_id', userData.user.id)
@@ -80,7 +89,7 @@ export class CategoryService {
 
     if (error) throw error;
 
-    return data?.map(category => category.name) || [];
+    return data?.map((category: any) => category.name) || [];
   }
 
   static async addCategory(categoryName: string, color?: string): Promise<void> {
@@ -92,7 +101,7 @@ export class CategoryService {
     }
 
     // Get the highest display order to add the new category at the end
-    const { data: maxOrderData } = await supabase
+    const { data: maxOrderData } = await (supabase as any)
       .from('categories')
       .select('display_order')
       .eq('user_id', userData.user.id)
@@ -101,7 +110,7 @@ export class CategoryService {
 
     const nextOrder = (maxOrderData?.[0]?.display_order || 0) + 1;
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('categories')
       .insert({
         name: categoryName.trim(),
@@ -119,7 +128,7 @@ export class CategoryService {
     if (updates.name !== undefined) updateData.name = updates.name.trim();
     if (updates.color !== undefined) updateData.color = updates.color;
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('categories')
       .update(updateData)
       .eq('id', categoryId);
@@ -128,7 +137,7 @@ export class CategoryService {
   }
 
   static async deleteCategory(categoryId: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('categories')
       .delete()
       .eq('id', categoryId);
@@ -143,7 +152,7 @@ export class CategoryService {
     }));
 
     for (const update of updates) {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('categories')
         .update({ display_order: update.display_order })
         .eq('id', update.id);
