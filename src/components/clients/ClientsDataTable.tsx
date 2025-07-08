@@ -49,7 +49,43 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  // ... keep existing code (filter clients, get client events, request sort, sorted clients functions)
+  // Filter clients based on search term
+  const filteredClients = clients.filter(client =>
+    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.contact?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Get client events count (this would ideally come from props or a service)
+  const getClientEventsCount = (clientName: string): number => {
+    // This is a placeholder - you may want to pass this data as props
+    return 0;
+  };
+
+  // Get last event date (this would ideally come from props or a service)
+  const getLastEventDate = (clientName: string): Date | null => {
+    // This is a placeholder - you may want to pass this data as props
+    return null;
+  };
+
+  const requestSort = (key: keyof Client) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedClients = [...filteredClients].sort((a, b) => {
+    if (a[sortConfig.key] < b[sortConfig.key]) {
+      return sortConfig.direction === 'ascending' ? -1 : 1;
+    }
+    if (a[sortConfig.key] > b[sortConfig.key]) {
+      return sortConfig.direction === 'ascending' ? 1 : -1;
+    }
+    return 0;
+  });
 
   const handleEdit = (client: Client) => {
     console.log('ClientsDataTable - Edit client:', client);
@@ -57,7 +93,7 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
     navigate(`/clientes/editar/${client.id}`);
   };
 
-  const handleContactClick = (client: Client) => {
+  const handleClientNameClick = (client: Client) => {
     if (client.websiteUrl && client.websiteUrl.trim()) {
       // Ensure URL has proper protocol
       let url = client.websiteUrl.trim();
@@ -69,28 +105,58 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
   };
 
   const handleDelete = async () => {
-    // ... keep existing code (delete functionality)
+    if (!selectedClient) return;
+
+    try {
+      await ClientService.delete(selectedClient.id);
+      
+      // Update local state
+      const updatedClients = clients.filter(client => client.id !== selectedClient.id);
+      setClients(updatedClients);
+      
+      // Close dialog
+      setDeleteDialogOpen(false);
+      
+      // Notify parent component
+      if (onClientUpdated) {
+        onClientUpdated();
+      }
+      
+      toast({
+        title: "Cliente excluído",
+        description: `O cliente "${selectedClient.name}" foi excluído com sucesso.`,
+      });
+      
+      setSelectedClient(null);
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir o cliente. Tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const renderContact = (client: Client) => {
+  const renderClientName = (client: Client) => {
     const hasWebsite = client.websiteUrl && client.websiteUrl.trim();
     
-    if (hasWebsite && client.contact) {
+    if (hasWebsite) {
       return (
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => handleContactClick(client)}
+            onClick={() => handleClientNameClick(client)}
             className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center space-x-1"
             title={`Visitar: ${client.websiteUrl}`}
           >
-            <span>{client.contact}</span>
+            <span>{client.name}</span>
             <ExternalLink className="h-3 w-3" />
           </button>
         </div>
       );
     }
     
-    return <span>{client.contact}</span>;
+    return <span className="font-medium">{client.name}</span>;
   };
 
   return (
@@ -153,11 +219,9 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
                     return (
                       <TableRow key={client.id}>
                         <TableCell>
-                          <span className="font-medium">{client.name}</span>
+                          {renderClientName(client)}
                         </TableCell>
-                        <TableCell>
-                          {renderContact(client)}
-                        </TableCell>
+                        <TableCell>{client.contact}</TableCell>
                         <TableCell>{client.email}</TableCell>
                         <TableCell>{client.phone || '-'}</TableCell>
                         <TableCell>{eventCount}</TableCell>
