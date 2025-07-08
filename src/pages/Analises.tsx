@@ -10,7 +10,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { Transaction, Event, Client } from '@/types';
-import { useTransactions } from '@/contexts/TransactionContext';
+import { useTransactionContext } from '@/contexts/TransactionContext';
 import { EventService } from '@/services/eventService';
 import { ClientService } from '@/services/clientService';
 
@@ -24,7 +24,7 @@ import { EventsCustomersCharts } from '@/components/analises/EventsCustomersChar
 import { ProjectionChart } from '@/components/analises/ProjectionChart';
 
 const Analises = () => {
-  const { transactions } = useTransactions();
+  const { transactions } = useTransactionContext();
   const [events, setEvents] = useState<Event[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,18 +89,30 @@ const Analises = () => {
           <div className="mt-6">
             <TabsContent value="financial" className="space-y-6">
               <div className="grid gap-4 md:grid-cols-2">
-                <FinancialAreaChart />
-                <FinancialBarChart />
+                <FinancialAreaChart 
+                  transactions={transactions}
+                  title="Tendências Financeiras"
+                />
+                <FinancialBarChart 
+                  transactions={transactions}
+                  title="Receitas vs Despesas"
+                />
               </div>
               
               <div className="grid gap-4 md:grid-cols-2">
-                <CategoryPieChart type="expense" />
-                <ComparisonBarChart />
+                <CategoryPieChart 
+                  transactions={transactions}
+                  title="Distribuição por Categoria"
+                />
+                <ComparisonBarChart 
+                  transactions={transactions}
+                  title="Comparação Mensal"
+                />
               </div>
             </TabsContent>
 
             <TabsContent value="team" className="space-y-6">
-              <TeamAnalysisCharts />
+              <TeamAnalysisCharts transactions={transactions} />
             </TabsContent>
 
             <TabsContent value="events" className="space-y-6">
@@ -112,7 +124,10 @@ const Analises = () => {
             </TabsContent>
 
             <TabsContent value="projections" className="space-y-6">
-              <ProjectionChart transactions={transactions} />
+              <ProjectionChart 
+                transactions={transactions}
+                events={events}
+              />
             </TabsContent>
           </div>
         </Tabs>
