@@ -19,7 +19,6 @@ import {
   FinancialAreaChart,
   FinancialBarChart,
   CategoryPieChart,
-  PerformanceTracker 
 } from '@/components/analises';
 import { CompactTeamFilter } from '@/components/analises/CompactTeamFilter';
 import { FilteredTeamCharts } from '@/components/analises/FilteredTeamCharts';
@@ -334,7 +333,7 @@ const Analises = () => {
         </div>
         
         <Tabs defaultValue="revenue" value={selectedAnalysisType} onValueChange={setSelectedAnalysisType}>
-          <TabsList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 mb-6">
+          <TabsList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6">
             <TabsTrigger value="revenue" className="flex items-center">
               <ChartBar className="mr-2 h-4 w-4" /> 
               Receitas & Despesas
