@@ -102,7 +102,7 @@ const Dashboard = () => {
           <StatCard
             title="Receita Total"
             value={formatCurrency(stats.totalRevenue)}
-            icon={<DollarSign className="h-4 w-4" />}
+            icon={DollarSign}
             trend={stats.totalRevenue > 0 ? "up" : "neutral"}
             className="bg-green-50 border-green-200"
           />
@@ -110,7 +110,7 @@ const Dashboard = () => {
           <StatCard
             title="Despesas Totais"
             value={formatCurrency(stats.totalExpenses)}
-            icon={<TrendingDown className="h-4 w-4" />}
+            icon={TrendingDown}
             trend="down"
             className="bg-red-50 border-red-200"
           />
@@ -118,7 +118,7 @@ const Dashboard = () => {
           <StatCard
             title="Lucro Líquido"
             value={formatCurrency(stats.netProfit)}
-            icon={<TrendingUp className="h-4 w-4" />}
+            icon={TrendingUp}
             trend={stats.netProfit > 0 ? "up" : "down"}
             className={stats.netProfit > 0 ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}
           />
@@ -126,7 +126,7 @@ const Dashboard = () => {
           <StatCard
             title="Eventos Próximos"
             value={stats.upcomingEvents.toString()}
-            icon={<Calendar className="h-4 w-4" />}
+            icon={Calendar}
             trend="neutral"
             className="bg-blue-50 border-blue-200"
           />
@@ -137,28 +137,28 @@ const Dashboard = () => {
           <StatCard
             title="Total de Eventos"
             value={stats.eventCount.toString()}
-            icon={<Calendar className="h-4 w-4" />}
+            icon={Calendar}
             trend="neutral"
           />
           
           <StatCard
             title="Total de Clientes"
             value={stats.clientCount.toString()}
-            icon={<Users className="h-4 w-4" />}
+            icon={Users}
             trend="neutral"
           />
           
           <StatCard
             title="Receita Média/Evento"
             value={formatCurrency(stats.averageRevenuePerShow)}
-            icon={<DollarSign className="h-4 w-4" />}
+            icon={DollarSign}
             trend="neutral"
           />
           
           <StatCard
             title="Custo Médio/Evento"
             value={formatCurrency(stats.averageCostPerEvent)}
-            icon={<TrendingDown className="h-4 w-4" />}
+            icon={TrendingDown}
             trend="neutral"
           />
         </div>
