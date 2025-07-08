@@ -5,7 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { TeamManagementSettings } from '@/components/settings/TeamManagementSettings';
 import { SystemManagementSettings } from '@/components/settings/SystemManagementSettings';
-import { Settings, User, Users, Cog } from 'lucide-react';
+import { CategoryManagement } from '@/components/settings/CategoryManagement';
+import { Settings, User, Users, Cog, Tag } from 'lucide-react';
 
 const Configuracoes = () => {
   const [activeTab, setActiveTab] = useState('profile');
@@ -19,7 +20,7 @@ const Configuracoes = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Conta & Perfil
@@ -27,6 +28,10 @@ const Configuracoes = () => {
             <TabsTrigger value="team" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Gerenciamento de Equipe
+            </TabsTrigger>
+            <TabsTrigger value="categories" className="flex items-center gap-2">
+              <Tag className="h-4 w-4" />
+              Categorias
             </TabsTrigger>
             <TabsTrigger value="system" className="flex items-center gap-2">
               <Cog className="h-4 w-4" />
@@ -41,6 +46,10 @@ const Configuracoes = () => {
 
             <TabsContent value="team">
               <TeamManagementSettings />
+            </TabsContent>
+
+            <TabsContent value="categories">
+              <CategoryManagement />
             </TabsContent>
 
             <TabsContent value="system">

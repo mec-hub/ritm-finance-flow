@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -92,7 +93,7 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
     navigate(`/clientes/editar/${client.id}`);
   };
 
-  const handleContactClick = (client: Client) => {
+  const handleClientNameClick = (client: Client) => {
     if (client.websiteUrl && client.websiteUrl.trim()) {
       // Ensure URL has proper protocol
       let url = client.websiteUrl.trim();
@@ -137,25 +138,25 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
     }
   };
 
-  const renderContact = (client: Client) => {
+  const renderClientName = (client: Client) => {
     const hasWebsite = client.websiteUrl && client.websiteUrl.trim();
     
-    if (hasWebsite && client.contact) {
+    if (hasWebsite) {
       return (
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => handleContactClick(client)}
+            onClick={() => handleClientNameClick(client)}
             className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center space-x-1"
             title={`Visitar: ${client.websiteUrl}`}
           >
-            <span>{client.contact}</span>
+            <span>{client.name}</span>
             <ExternalLink className="h-3 w-3" />
           </button>
         </div>
       );
     }
     
-    return <span>{client.contact}</span>;
+    return <span className="font-medium">{client.name}</span>;
   };
 
   return (
@@ -218,11 +219,9 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
                     return (
                       <TableRow key={client.id}>
                         <TableCell>
-                          <span className="font-medium">{client.name}</span>
+                          {renderClientName(client)}
                         </TableCell>
-                        <TableCell>
-                          {renderContact(client)}
-                        </TableCell>
+                        <TableCell>{client.contact}</TableCell>
                         <TableCell>{client.email}</TableCell>
                         <TableCell>{client.phone || '-'}</TableCell>
                         <TableCell>{eventCount}</TableCell>

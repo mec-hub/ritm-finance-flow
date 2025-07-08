@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Users, Mail, Phone, CheckCircle, XCircle } from 'lucide-react';
 import { TeamManagementService } from '@/services/teamManagementService';
@@ -13,7 +13,6 @@ interface TeamMemberWithProfile extends TeamMember {
   email?: string;
   phone?: string;
   isActive: boolean;
-  avatarUrl?: string;
 }
 
 export function TeamManagementSettings() {
@@ -32,7 +31,7 @@ export function TeamManagementSettings() {
       // Get profiles to check which team members are actually registered users
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name, phone, avatar_url');
+        .select('id, email, full_name, phone');
 
       if (error) throw error;
 
@@ -52,7 +51,6 @@ export function TeamManagementSettings() {
           ...member,
           email: profile?.email,
           phone: profile?.phone,
-          avatarUrl: profile?.avatar_url,
           isActive: !!profile
         };
       });
@@ -127,9 +125,6 @@ export function TeamManagementSettings() {
                   className="flex items-center space-x-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   <Avatar className="h-12 w-12">
-                    {member.avatarUrl ? (
-                      <AvatarImage src={member.avatarUrl} alt={member.name} />
-                    ) : null}
                     <AvatarFallback className="text-lg">
                       {getInitials(member.name)}
                     </AvatarFallback>
