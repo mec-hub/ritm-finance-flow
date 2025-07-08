@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,14 +13,14 @@ import {
   Users,
   AlertCircle
 } from 'lucide-react';
-import { useTransactionContext } from '@/contexts/TransactionContext';
+import { useTransactions } from '@/contexts/TransactionContext';
 import { formatCurrency } from '@/utils/formatters';
 import { DashboardStats, MonthlyData } from '@/types';
 import { EventService } from '@/services/eventService';
 import { ClientService } from '@/services/clientService';
 
 const Dashboard = () => {
-  const { transactions } = useTransactionContext();
+  const { transactions } = useTransactions();
   const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0,
     totalExpenses: 0,
