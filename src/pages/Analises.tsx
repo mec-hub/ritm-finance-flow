@@ -343,10 +343,6 @@ const Analises = () => {
               <PieChart className="mr-2 h-4 w-4" />
               Categorias
             </TabsTrigger>
-            <TabsTrigger value="performance" className="flex items-center">
-              <TrendingUp className="mr-2 h-4 w-4" />
-              Performance
-            </TabsTrigger>
             <TabsTrigger value="events-customers" className="flex items-center">
               <Users className="mr-2 h-4 w-4" />
               Eventos e Clientes
@@ -452,14 +448,6 @@ const Analises = () => {
             </div>
           </TabsContent>
           
-          <TabsContent value="performance" className="space-y-4">
-            <PerformanceTracker 
-              transactions={filteredTransactions}
-              events={filteredEvents}
-              clients={clients}
-              timeRange={selectedTimeRange}
-            />
-          </TabsContent>
           
           <TabsContent value="events-customers" className="space-y-4">
             <EventsCustomersCharts
