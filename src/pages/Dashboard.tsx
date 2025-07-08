@@ -254,43 +254,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
-        
-        {/* Charts Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Receitas vs Despesas</CardTitle>
-              <CardDescription>Visão financeira de {currentYear}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <FinancialBarChart
-                  data={monthlyData}
-                  title=""
-                  dataKeys={['income', 'expenses']}
-                  colors={['#10B981', '#EF4444']}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Eventos por Mês</CardTitle>
-              <CardDescription>Número de eventos em {currentYear}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <FinancialBarChart
-                  data={eventsByMonth}
-                  title="Número de Eventos"
-                  dataKeys={['events']}
-                  colors={['#ffbf00']}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Calendar Row */}
         <div className="grid grid-cols-1 gap-6">
