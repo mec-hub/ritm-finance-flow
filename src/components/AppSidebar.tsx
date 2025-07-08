@@ -66,7 +66,7 @@ export function AppSidebar() {
           <img 
             src="/lovable-uploads/e24274e3-3433-4041-a46d-0af3af1a1a65.png" 
             alt="DJ Davizão Logo" 
-            className="h-8 w-8 rounded-lg object-cover"
+            className="h-10 w-10 rounded-lg object-cover"
           />
           <span className="text-lg font-semibold">DJ Davizão</span>
         </div>
