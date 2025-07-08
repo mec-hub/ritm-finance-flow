@@ -14,14 +14,10 @@ import { useTransactions } from '@/contexts/TransactionContext';
 import { EventService } from '@/services/eventService';
 import { ClientService } from '@/services/clientService';
 
-// Import existing components (removing PerformanceTracker)
-import { FinancialAreaChart } from '@/components/analises/FinancialAreaChart';
-import { FinancialBarChart } from '@/components/analises/FinancialBarChart';
+// Import existing components
 import { CategoryPieChart } from '@/components/analises/CategoryPieChart';
-import { ComparisonBarChart } from '@/components/analises/ComparisonBarChart';
 import { TeamAnalysisCharts } from '@/components/analises/TeamAnalysisCharts';
 import { EventsCustomersCharts } from '@/components/analises/EventsCustomersCharts';
-import { ProjectionChart } from '@/components/analises/ProjectionChart';
 
 const Analises = () => {
   const { transactions } = useTransactions();
@@ -85,21 +81,15 @@ const Analises = () => {
           <div className="mt-6">
             <TabsContent value="financial" className="space-y-6">
               <div className="grid gap-4 md:grid-cols-2">
-                <FinancialAreaChart 
-                  transactions={transactions}
-                />
-                <FinancialBarChart 
-                  transactions={transactions}
-                />
-              </div>
-              
-              <div className="grid gap-4 md:grid-cols-2">
                 <CategoryPieChart 
                   transactions={transactions}
                   type="expense"
+                  title="Despesas por Categoria"
                 />
-                <ComparisonBarChart 
+                <CategoryPieChart 
                   transactions={transactions}
+                  type="income"
+                  title="Receitas por Categoria"
                 />
               </div>
             </TabsContent>
