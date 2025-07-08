@@ -64,7 +64,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <div className="flex items-center space-x-2">
           <img 
-            src="/lovable-uploads/cb83ab34-5f79-493e-81a0-c2157fb05bfe.png" 
+            src="/lovable-uploads/e24274e3-3433-4041-a46d-0af3af1a1a65.png" 
             alt="DJ Davizão Logo" 
             className="h-8 w-8 rounded-lg object-cover"
           />
