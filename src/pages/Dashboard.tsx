@@ -13,14 +13,14 @@ import {
   Users,
   AlertCircle
 } from 'lucide-react';
-import { useTransactions } from '@/contexts/TransactionContext';
+import { useTransactionContext } from '@/contexts/TransactionContext';
 import { formatCurrency } from '@/utils/formatters';
 import { DashboardStats, MonthlyData } from '@/types';
 import { EventService } from '@/services/eventService';
 import { ClientService } from '@/services/clientService';
 
 const Dashboard = () => {
-  const { transactions } = useTransactions();
+  const { transactions } = useTransactionContext();
   const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0,
     totalExpenses: 0,
@@ -102,7 +102,7 @@ const Dashboard = () => {
           <StatCard
             title="Receita Total"
             value={formatCurrency(stats.totalRevenue)}
-            icon={DollarSign}
+            icon={<DollarSign className="h-4 w-4" />}
             trend={stats.totalRevenue > 0 ? "up" : "neutral"}
             className="bg-green-50 border-green-200"
           />
@@ -110,7 +110,7 @@ const Dashboard = () => {
           <StatCard
             title="Despesas Totais"
             value={formatCurrency(stats.totalExpenses)}
-            icon={TrendingDown}
+            icon={<TrendingDown className="h-4 w-4" />}
             trend="down"
             className="bg-red-50 border-red-200"
           />
@@ -118,7 +118,7 @@ const Dashboard = () => {
           <StatCard
             title="Lucro Líquido"
             value={formatCurrency(stats.netProfit)}
-            icon={TrendingUp}
+            icon={<TrendingUp className="h-4 w-4" />}
             trend={stats.netProfit > 0 ? "up" : "down"}
             className={stats.netProfit > 0 ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}
           />
@@ -126,7 +126,7 @@ const Dashboard = () => {
           <StatCard
             title="Eventos Próximos"
             value={stats.upcomingEvents.toString()}
-            icon={Calendar}
+            icon={<Calendar className="h-4 w-4" />}
             trend="neutral"
             className="bg-blue-50 border-blue-200"
           />
@@ -137,28 +137,28 @@ const Dashboard = () => {
           <StatCard
             title="Total de Eventos"
             value={stats.eventCount.toString()}
-            icon={Calendar}
+            icon={<Calendar className="h-4 w-4" />}
             trend="neutral"
           />
           
           <StatCard
             title="Total de Clientes"
             value={stats.clientCount.toString()}
-            icon={Users}
+            icon={<Users className="h-4 w-4" />}
             trend="neutral"
           />
           
           <StatCard
             title="Receita Média/Evento"
             value={formatCurrency(stats.averageRevenuePerShow)}
-            icon={DollarSign}
+            icon={<DollarSign className="h-4 w-4" />}
             trend="neutral"
           />
           
           <StatCard
             title="Custo Médio/Evento"
             value={formatCurrency(stats.averageCostPerEvent)}
-            icon={TrendingDown}
+            icon={<TrendingDown className="h-4 w-4" />}
             trend="neutral"
           />
         </div>

@@ -10,17 +10,21 @@ import {
   Calendar
 } from 'lucide-react';
 import { Transaction, Event, Client } from '@/types';
-import { useTransactions } from '@/contexts/TransactionContext';
+import { useTransactionContext } from '@/contexts/TransactionContext';
 import { EventService } from '@/services/eventService';
 import { ClientService } from '@/services/clientService';
 
-// Import existing components
+// Import existing components (removing PerformanceTracker)
+import { FinancialAreaChart } from '@/components/analises/FinancialAreaChart';
+import { FinancialBarChart } from '@/components/analises/FinancialBarChart';
 import { CategoryPieChart } from '@/components/analises/CategoryPieChart';
+import { ComparisonBarChart } from '@/components/analises/ComparisonBarChart';
 import { TeamAnalysisCharts } from '@/components/analises/TeamAnalysisCharts';
 import { EventsCustomersCharts } from '@/components/analises/EventsCustomersCharts';
+import { ProjectionChart } from '@/components/analises/ProjectionChart';
 
 const Analises = () => {
-  const { transactions } = useTransactions();
+  const { transactions } = useTransactionContext();
   const [events, setEvents] = useState<Event[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +67,7 @@ const Analises = () => {
         </div>
 
         <Tabs defaultValue="financial" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="financial" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               Financeiro
@@ -76,30 +80,39 @@ const Analises = () => {
               <Calendar className="h-4 w-4" />
               Eventos & Clientes
             </TabsTrigger>
+            <TabsTrigger value="projections" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Projeções
+            </TabsTrigger>
           </TabsList>
 
           <div className="mt-6">
             <TabsContent value="financial" className="space-y-6">
               <div className="grid gap-4 md:grid-cols-2">
-                <CategoryPieChart 
+                <FinancialAreaChart 
                   transactions={transactions}
-                  type="expense"
-                  title="Despesas por Categoria"
+                  title="Tendências Financeiras"
                 />
+                <FinancialBarChart 
+                  transactions={transactions}
+                  title="Receitas vs Despesas"
+                />
+              </div>
+              
+              <div className="grid gap-4 md:grid-cols-2">
                 <CategoryPieChart 
                   transactions={transactions}
-                  type="income"
-                  title="Receitas por Categoria"
+                  title="Distribuição por Categoria"
+                />
+                <ComparisonBarChart 
+                  transactions={transactions}
+                  title="Comparação Mensal"
                 />
               </div>
             </TabsContent>
 
             <TabsContent value="team" className="space-y-6">
-              <TeamAnalysisCharts 
-                transactions={transactions}
-                teamMembers={[]}
-                timeRange={{ start: new Date(), end: new Date() }}
-              />
+              <TeamAnalysisCharts transactions={transactions} />
             </TabsContent>
 
             <TabsContent value="events" className="space-y-6">
@@ -107,6 +120,13 @@ const Analises = () => {
                 events={events}
                 clients={clients}
                 transactions={transactions}
+              />
+            </TabsContent>
+
+            <TabsContent value="projections" className="space-y-6">
+              <ProjectionChart 
+                transactions={transactions}
+                events={events}
               />
             </TabsContent>
           </div>
