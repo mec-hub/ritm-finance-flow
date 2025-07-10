@@ -28,7 +28,8 @@ interface UseGooglePlacesReturn {
 export const useGooglePlaces = (): UseGooglePlacesReturn => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [geocoder, setGeocoder] = useState<google.maps.Geocoder | null>(null);
+  const [autocompleteService, setAutocompleteService] = useState<google.maps.places.AutocompleteService | null>(null);
+  const [placesService, setPlacesService] = useState<google.maps.places.PlacesService | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
@@ -44,9 +45,18 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
         await loader.load();
         console.log('Google Maps loaded successfully');
         
-        // Create geocoder service
-        const geocoderService = new google.maps.Geocoder();
-        setGeocoder(geocoderService);
+        // Create services
+        const autocomplete = new google.maps.places.AutocompleteService();
+        setAutocompleteService(autocomplete);
+        
+        // Create a dummy map element for PlacesService (required by Google Maps API)
+        const mapDiv = document.createElement('div');
+        const map = new google.maps.Map(mapDiv, {
+          center: { lat: -12.9714, lng: -38.5014 }, // Salvador coordinates
+          zoom: 13
+        });
+        const places = new google.maps.places.PlacesService(map);
+        setPlacesService(places);
         
         // Try to get user's location for proximity bias
         if (navigator.geolocation) {
@@ -61,13 +71,18 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
             },
             (error) => {
               console.log('Could not get user location for proximity bias:', error);
+              // Default to Salvador coordinates
+              setUserLocation({ lat: -12.9714, lng: -38.5014 });
             },
             { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
           );
+        } else {
+          // Default to Salvador coordinates if geolocation is not available
+          setUserLocation({ lat: -12.9714, lng: -38.5014 });
         }
         
         setIsLoaded(true);
-        console.log('Google Geocoder service initialized');
+        console.log('Google Places services initialized');
       } catch (err) {
         console.error('Error loading Google Maps:', err);
         setError(`Failed to load Google Maps: ${err}`);
@@ -77,72 +92,117 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
     loadGoogleMaps();
   }, []);
 
-  const extractPlaceName = (result: google.maps.GeocoderResult): string => {
-    // Priority order for place names
-    const addressComponents = result.address_components;
+  const isEstablishment = (prediction: google.maps.places.AutocompletePrediction): boolean => {
+    const types = prediction.types || [];
     
-    // First, try to find establishment name
-    const establishment = addressComponents.find(component => 
-      component.types.includes('establishment')
-    );
-    if (establishment) {
-      console.log('Found establishment name:', establishment.long_name);
-      return establishment.long_name;
-    }
-
-    // Then try point of interest
-    const pointOfInterest = addressComponents.find(component => 
-      component.types.includes('point_of_interest')
-    );
-    if (pointOfInterest) {
-      console.log('Found point of interest name:', pointOfInterest.long_name);
-      return pointOfInterest.long_name;
-    }
-
-    // Then try premise (building name)
-    const premise = addressComponents.find(component => 
-      component.types.includes('premise')
-    );
-    if (premise) {
-      console.log('Found premise name:', premise.long_name);
-      return premise.long_name;
-    }
-
-    // Then try route (street name) + street number combination
-    const route = addressComponents.find(component => 
-      component.types.includes('route')
-    );
-    const streetNumber = addressComponents.find(component => 
-      component.types.includes('street_number')
-    );
+    // Check if it's an establishment type
+    const establishmentTypes = [
+      'establishment',
+      'point_of_interest',
+      'lodging',
+      'restaurant',
+      'food',
+      'store',
+      'shopping_mall',
+      'tourist_attraction',
+      'amusement_park',
+      'aquarium',
+      'art_gallery',
+      'bakery',
+      'bank',
+      'bar',
+      'beauty_salon',
+      'bicycle_store',
+      'book_store',
+      'bowling_alley',
+      'bus_station',
+      'cafe',
+      'campground',
+      'car_dealer',
+      'car_rental',
+      'car_repair',
+      'car_wash',
+      'casino',
+      'cemetery',
+      'church',
+      'city_hall',
+      'clothing_store',
+      'convenience_store',
+      'courthouse',
+      'dentist',
+      'department_store',
+      'doctor',
+      'drugstore',
+      'electrician',
+      'electronics_store',
+      'embassy',
+      'fire_station',
+      'florist',
+      'funeral_home',
+      'furniture_store',
+      'gas_station',
+      'gym',
+      'hair_care',
+      'hardware_store',
+      'hindu_temple',
+      'home_goods_store',
+      'hospital',
+      'insurance_agency',
+      'jewelry_store',
+      'laundry',
+      'lawyer',
+      'library',
+      'light_rail_station',
+      'liquor_store',
+      'local_government_office',
+      'locksmith',
+      'meal_delivery',
+      'meal_takeaway',
+      'mosque',
+      'movie_rental',
+      'movie_theater',
+      'moving_company',
+      'museum',
+      'night_club',
+      'painter',
+      'park',
+      'parking',
+      'pet_store',
+      'pharmacy',
+      'physiotherapist',
+      'plumber',
+      'police',
+      'post_office',
+      'primary_school',
+      'real_estate_agency',
+      'roofing_contractor',
+      'rv_park',
+      'school',
+      'secondary_school',
+      'shoe_store',
+      'shopping_mall',
+      'spa',
+      'stadium',
+      'storage',
+      'subway_station',
+      'supermarket',
+      'synagogue',
+      'taxi_stand',
+      'tourist_attraction',
+      'train_station',
+      'transit_station',
+      'travel_agency',
+      'university',
+      'veterinary_care',
+      'zoo'
+    ];
     
-    if (route && streetNumber) {
-      const streetAddress = `${route.long_name}, ${streetNumber.long_name}`;
-      console.log('Using street address:', streetAddress);
-      return streetAddress;
-    }
-
-    // Fallback to the first significant component (not country, postal_code, etc.)
-    const significantComponent = addressComponents.find(component => 
-      !component.types.includes('country') &&
-      !component.types.includes('postal_code') &&
-      !component.types.includes('administrative_area_level_1') &&
-      !component.types.includes('administrative_area_level_2')
-    );
-    
-    if (significantComponent) {
-      console.log('Using significant component:', significantComponent.long_name);
-      return significantComponent.long_name;
-    }
-
-    // Final fallback to formatted address
-    console.log('Using formatted address as fallback');
-    return result.formatted_address.split(',')[0];
+    return types.some(type => establishmentTypes.includes(type));
   };
 
   const searchPlaces = useCallback(async (query: string): Promise<PlaceResult[]> => {
-    if (!geocoder || !query.trim()) {
-      console.log('Search skipped - missing geocoder or empty query');
+    if (!autocompleteService || !placesService || !query.trim()) {
+      console.log('Search skipped - missing services or empty query');
       return [];
     }
 
@@ -150,80 +210,110 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
     console.log('User location for bias:', userLocation);
 
     return new Promise((resolve) => {
-      const request: google.maps.GeocoderRequest = {
-        address: query,
-        componentRestrictions: { country: 'BR' }, // Restrict to Brazil
-        region: 'BR'
+      const request: google.maps.places.AutocompleteRequest = {
+        input: query,
+        componentRestrictions: { country: 'br' },
+        types: ['establishment']
       };
 
       // Add location bias if user location is available
       if (userLocation) {
-        request.location = new google.maps.LatLng(userLocation.lat, userLocation.lng);
-        request.radius = 50000; // 50km radius for proximity bias
+        request.locationBias = {
+          center: new google.maps.LatLng(userLocation.lat, userLocation.lng),
+          radius: 50000 // 50km radius
+        };
       }
 
-      geocoder.geocode(request, (results, status) => {
-        console.log('Geocoding status:', status);
-        console.log('Geocoding results:', results);
+      autocompleteService.getPlacePredictions(request, (predictions, status) => {
+        console.log('Autocomplete status:', status);
+        console.log('Autocomplete predictions:', predictions);
 
-        if (status === google.maps.GeocoderStatus.OK && results) {
-          let placeResults: PlaceResult[] = results.slice(0, 5).map((result, index) => ({
-            place_id: result.place_id || `geocoded_${index}`,
-            formatted_address: result.formatted_address,
-            name: extractPlaceName(result),
-            geometry: {
-              location: {
-                lat: result.geometry.location.lat(),
-                lng: result.geometry.location.lng()
-              }
-            }
-          }));
+        if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+          // Filter for establishments and get place details
+          const establishmentPredictions = predictions.filter(isEstablishment).slice(0, 5);
           
-          // Sort by distance if user location is available
-          if (userLocation) {
-            placeResults.sort((a, b) => {
-              const distanceA = google.maps.geometry.spherical.computeDistanceBetween(
-                new google.maps.LatLng(userLocation.lat, userLocation.lng),
-                new google.maps.LatLng(a.geometry.location.lat, a.geometry.location.lng)
-              );
-              const distanceB = google.maps.geometry.spherical.computeDistanceBetween(
-                new google.maps.LatLng(userLocation.lat, userLocation.lng),
-                new google.maps.LatLng(b.geometry.location.lat, b.geometry.location.lng)
-              );
-              return distanceA - distanceB;
-            });
-            console.log('Results sorted by distance from user location');
+          if (establishmentPredictions.length === 0) {
+            console.log('No establishment predictions found');
+            resolve([]);
+            return;
           }
-          
-          console.log('Formatted results:', placeResults);
-          resolve(placeResults);
+
+          let processedCount = 0;
+          const results: PlaceResult[] = [];
+
+          establishmentPredictions.forEach((prediction) => {
+            const detailsRequest: google.maps.places.PlaceDetailsRequest = {
+              placeId: prediction.place_id,
+              fields: ['place_id', 'name', 'formatted_address', 'geometry']
+            };
+
+            placesService.getDetails(detailsRequest, (place, detailsStatus) => {
+              processedCount++;
+              
+              if (detailsStatus === google.maps.places.PlacesServiceStatus.OK && place) {
+                results.push({
+                  place_id: place.place_id || prediction.place_id,
+                  formatted_address: place.formatted_address || prediction.description,
+                  name: place.name || prediction.structured_formatting?.main_text || prediction.description,
+                  geometry: {
+                    location: {
+                      lat: place.geometry?.location?.lat() || 0,
+                      lng: place.geometry?.location?.lng() || 0
+                    }
+                  }
+                });
+              }
+
+              // When all requests are processed, resolve with results
+              if (processedCount === establishmentPredictions.length) {
+                // Sort by distance if user location is available
+                if (userLocation && results.length > 0) {
+                  results.sort((a, b) => {
+                    const distanceA = google.maps.geometry.spherical.computeDistanceBetween(
+                      new google.maps.LatLng(userLocation.lat, userLocation.lng),
+                      new google.maps.LatLng(a.geometry.location.lat, a.geometry.location.lng)
+                    );
+                    const distanceB = google.maps.geometry.spherical.computeDistanceBetween(
+                      new google.maps.LatLng(userLocation.lat, userLocation.lng),
+                      new google.maps.LatLng(b.geometry.location.lat, b.geometry.location.lng)
+                    );
+                    return distanceA - distanceB;
+                  });
+                  console.log('Results sorted by distance from user location');
+                }
+                
+                console.log('Final processed results:', results);
+                resolve(results);
+              }
+            });
+          });
         } else {
-          console.error('Geocoding error:', status);
+          console.error('Autocomplete error:', status);
           resolve([]);
         }
       });
     });
-  }, [geocoder, userLocation]);
+  }, [autocompleteService, placesService, userLocation]);
 
   const getPlaceDetails = useCallback(async (placeId: string): Promise<PlaceResult | null> => {
-    if (!geocoder) return null;
+    if (!placesService) return null;
 
     return new Promise((resolve) => {
-      const request: google.maps.GeocoderRequest = {
-        placeId: placeId
+      const request: google.maps.places.PlaceDetailsRequest = {
+        placeId: placeId,
+        fields: ['place_id', 'name', 'formatted_address', 'geometry']
       };
 
-      geocoder.geocode(request, (results, status) => {
-        if (status === google.maps.GeocoderStatus.OK && results && results[0]) {
-          const result = results[0];
+      placesService.getDetails(request, (place, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && place) {
           resolve({
-            place_id: result.place_id || placeId,
-            formatted_address: result.formatted_address,
-            name: extractPlaceName(result),
+            place_id: place.place_id || placeId,
+            formatted_address: place.formatted_address || '',
+            name: place.name || 'Unknown Place',
             geometry: {
               location: {
-                lat: result.geometry.location.lat(),
-                lng: result.geometry.location.lng()
+                lat: place.geometry?.location?.lat() || 0,
+                lng: place.geometry?.location?.lng() || 0
               }
             }
           });
@@ -233,11 +323,11 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
         }
       });
     });
-  }, [geocoder]);
+  }, [placesService]);
 
   const getCurrentLocation = useCallback(async (): Promise<PlaceResult | null> => {
-    if (!geocoder) {
-      console.log('Geocoder not available');
+    if (!placesService) {
+      console.log('PlacesService not available');
       return null;
     }
 
@@ -260,6 +350,8 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
             lng: position.coords.longitude
           });
 
+          // Use Geocoder to get address details
+          const geocoder = new google.maps.Geocoder();
           geocoder.geocode({ location: latLng }, (results, status) => {
             if (status === google.maps.GeocoderStatus.OK && results && results[0]) {
               const result = results[0];
@@ -300,7 +392,7 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
         }
       );
     });
-  }, [geocoder]);
+  }, [placesService]);
 
   return {
     isLoaded,
