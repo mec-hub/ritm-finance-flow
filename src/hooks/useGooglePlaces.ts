@@ -116,13 +116,10 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
       // Add location bias if user location is available
       if (userLocation) {
         const center = new google.maps.LatLng(userLocation.lat, userLocation.lng);
-        const circle = new google.maps.Circle({
+        request.locationBias = {
           center: center,
           radius: 5000 // 5km radius
-        });
-        request.bounds = circle.getBounds();
-        request.location = center;
-        request.radius = 5000;
+        };
       }
 
       autocompleteService.getPlacePredictions(request, (predictions, status) => {
