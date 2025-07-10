@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { MapPin, Search, X, Loader2, MapPinIcon, Navigation } from 'lucide-react';
+import { MapPin, Search, X, Loader2, MapPinIcon } from 'lucide-react';
 import { useGooglePlaces } from '@/hooks/useGooglePlaces';
 import { cn } from '@/lib/utils';
 
@@ -32,7 +32,6 @@ export const LocationSearch = ({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [proximityMode, setProximityMode] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
@@ -45,15 +44,6 @@ export const LocationSearch = ({
       setQuery(value.place_name || value.formatted_address);
     }
   }, [value]);
-
-  useEffect(() => {
-    // Check if user has granted location permission for proximity search
-    if (navigator.geolocation) {
-      navigator.permissions?.query({ name: 'geolocation' }).then((result) => {
-        setProximityMode(result.state === 'granted');
-      });
-    }
-  }, []);
 
   useEffect(() => {
     const searchTimeout = setTimeout(async () => {
@@ -119,7 +109,6 @@ export const LocationSearch = ({
       const currentLocation = await getCurrentLocation();
       if (currentLocation) {
         handleSelectPlace(currentLocation);
-        setProximityMode(true); // Enable proximity mode after getting location
       } else {
         console.error('Could not get current location');
       }
@@ -171,12 +160,9 @@ export const LocationSearch = ({
               console.log('LocationSearch - Input changed:', e.target.value);
               setQuery(e.target.value);
             }}
-            placeholder={proximityMode ? `${placeholder} (busca próxima)` : placeholder}
+            placeholder={placeholder}
             className="pl-10 pr-10"
           />
-          {proximityMode && (
-            <Navigation className="absolute right-8 top-1/2 transform -translate-y-1/2 h-3 w-3 text-primary" />
-          )}
           {isLoading && (
             <Loader2 className="absolute right-8 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
           )}
@@ -209,13 +195,6 @@ export const LocationSearch = ({
           <span className="hidden sm:inline">Atual</span>
         </Button>
       </div>
-
-      {proximityMode && (
-        <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-          <Navigation className="h-3 w-3" />
-          Resultados priorizados por proximidade
-        </div>
-      )}
 
       {isOpen && suggestions.length > 0 && (
         <div
