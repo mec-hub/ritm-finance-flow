@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { MapPin, Search, X, Loader2 } from 'lucide-react';
+import { MapPin, Search, X, Loader2, MapPinIcon } from 'lucide-react';
 import { useGooglePlaces } from '@/hooks/useGooglePlaces';
 import { cn } from '@/lib/utils';
 
@@ -31,10 +31,11 @@ export const LocationSearch = ({
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
-  const { isLoaded, searchPlaces, error } = useGooglePlaces();
+  const { isLoaded, searchPlaces, getCurrentLocation, error } = useGooglePlaces();
 
   console.log('LocationSearch - isLoaded:', isLoaded, 'error:', error);
 
@@ -66,7 +67,7 @@ export const LocationSearch = ({
         setSuggestions([]);
         setIsOpen(false);
       }
-    }, 500); // Increased debounce time
+    }, 500);
 
     return () => clearTimeout(searchTimeout);
   }, [query, isLoaded, searchPlaces]);
@@ -102,6 +103,22 @@ export const LocationSearch = ({
     setSuggestions([]);
   };
 
+  const handleGetCurrentLocation = async () => {
+    setIsGettingLocation(true);
+    try {
+      const currentLocation = await getCurrentLocation();
+      if (currentLocation) {
+        handleSelectPlace(currentLocation);
+      } else {
+        console.error('Could not get current location');
+      }
+    } catch (error) {
+      console.error('Error getting current location:', error);
+    } finally {
+      setIsGettingLocation(false);
+    }
+  };
+
   const handleClear = () => {
     setQuery('');
     onChange(null);
@@ -132,33 +149,51 @@ export const LocationSearch = ({
 
   return (
     <div className={cn("relative", className)}>
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          ref={inputRef}
-          type="text"
-          value={query}
-          onChange={(e) => {
-            console.log('LocationSearch - Input changed:', e.target.value);
-            setQuery(e.target.value);
-          }}
-          placeholder={placeholder}
-          className="pl-10 pr-10"
-        />
-        {isLoading && (
-          <Loader2 className="absolute right-8 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-        )}
-        {query && !isLoading && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-            onClick={handleClear}
-          >
-            <X className="h-3 w-3" />
-          </Button>
-        )}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => {
+              console.log('LocationSearch - Input changed:', e.target.value);
+              setQuery(e.target.value);
+            }}
+            placeholder={placeholder}
+            className="pl-10 pr-10"
+          />
+          {isLoading && (
+            <Loader2 className="absolute right-8 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+          )}
+          {query && !isLoading && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+              onClick={handleClear}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleGetCurrentLocation}
+          disabled={isGettingLocation || !isLoaded}
+          className="flex items-center gap-1 px-3"
+        >
+          {isGettingLocation ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <MapPinIcon className="h-4 w-4" />
+          )}
+          <span className="hidden sm:inline">Atual</span>
+        </Button>
       </div>
 
       {isOpen && suggestions.length > 0 && (
