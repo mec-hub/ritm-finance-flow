@@ -15,6 +15,7 @@ interface PlaceResult {
       lng: number;
     };
   };
+  types?: string[];
 }
 
 interface UseGooglePlacesReturn {
@@ -85,6 +86,20 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
     loadGoogleMaps();
   }, []);
 
+  // Helper function to check if a place is an establishment
+  const isEstablishment = (types: string[]): boolean => {
+    const establishmentTypes = ['establishment', 'point_of_interest', 'premise'];
+    const genericTypes = ['route', 'neighborhood', 'locality', 'political'];
+    
+    // Check if it has establishment types
+    const hasEstablishmentType = types.some(type => establishmentTypes.includes(type));
+    
+    // Check if it's only generic types
+    const isOnlyGeneric = types.every(type => genericTypes.includes(type) || type === 'geocode');
+    
+    return hasEstablishmentType && !isOnlyGeneric;
+  };
+
   const searchPlaces = useCallback(async (query: string): Promise<PlaceResult[]> => {
     if (!autocompleteService || !placesService || !query.trim()) {
       console.log('Search skipped - missing services or empty query');
@@ -97,14 +112,15 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
     return new Promise((resolve) => {
       const request: google.maps.places.AutocompleteRequest = {
         input: query,
-        componentRestrictions: { country: 'BR' }, // Restrict to Brazil
-        types: ['establishment', 'geocode'], // Include businesses and addresses
+        types: ['establishment'],
       };
 
       // Add location bias if user location is available
       if (userLocation) {
-        request.location = new google.maps.LatLng(userLocation.lat, userLocation.lng);
-        request.radius = 5000; // 5km radius for proximity bias
+        request.bounds = new google.maps.LatLngBounds(
+          new google.maps.LatLng(userLocation.lat - 0.01, userLocation.lng - 0.01),
+          new google.maps.LatLng(userLocation.lat + 0.01, userLocation.lng + 0.01)
+        );
       }
 
       autocompleteService.getPlacePredictions(request, (predictions, status) => {
@@ -117,11 +133,20 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
             return new Promise<PlaceResult | null>((detailResolve) => {
               const detailRequest: google.maps.places.PlaceDetailsRequest = {
                 placeId: prediction.place_id,
-                fields: ['place_id', 'name', 'formatted_address', 'geometry']
+                fields: ['place_id', 'name', 'formatted_address', 'geometry', 'types']
               };
 
               placesService.getDetails(detailRequest, (place, detailStatus) => {
                 if (detailStatus === google.maps.places.PlacesServiceStatus.OK && place) {
+                  const types = place.types || [];
+                  
+                  // Filter out non-establishment places
+                  if (!isEstablishment(types)) {
+                    console.log('Filtered out non-establishment:', place.name, types);
+                    detailResolve(null);
+                    return;
+                  }
+
                   detailResolve({
                     place_id: place.place_id || prediction.place_id,
                     formatted_address: place.formatted_address || prediction.description,
@@ -131,7 +156,8 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
                         lat: place.geometry?.location?.lat() || 0,
                         lng: place.geometry?.location?.lng() || 0
                       }
-                    }
+                    },
+                    types: types
                   });
                 } else {
                   console.error('Place details error:', detailStatus);
@@ -160,7 +186,7 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
               console.log('Results sorted by distance from user location');
             }
             
-            console.log('Final place results:', validResults);
+            console.log('Final filtered place results:', validResults);
             resolve(validResults);
           });
         } else {
@@ -177,21 +203,32 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
     return new Promise((resolve) => {
       const request: google.maps.places.PlaceDetailsRequest = {
         placeId: placeId,
-        fields: ['place_id', 'name', 'formatted_address', 'geometry']
+        fields: ['place_id', 'name', 'formatted_address', 'geometry', 'types']
       };
 
       placesService.getDetails(request, (place, status) => {
         if (status === google.maps.places.PlacesServiceStatus.OK && place) {
+          const types = place.types || [];
+          
+          // Get the proper place name based on type
+          let placeName = place.name || 'Local sem nome';
+          
+          // If it's not an establishment, use formatted address instead
+          if (!isEstablishment(types)) {
+            placeName = place.formatted_address?.split(',')[0] || placeName;
+          }
+          
           resolve({
             place_id: place.place_id || placeId,
             formatted_address: place.formatted_address || '',
-            name: place.name || 'Local sem nome',
+            name: placeName,
             geometry: {
               location: {
                 lat: place.geometry?.location?.lat() || 0,
                 lng: place.geometry?.location?.lng() || 0
               }
-            }
+            },
+            types: types
           });
         } else {
           console.error('Place details error:', status);
