@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
 
+// This should be loaded from Supabase Edge Function or environment
 const GOOGLE_PLACES_API_KEY = 'YOUR_GOOGLE_PLACES_API_KEY'; // This will be loaded from environment
 
 interface PlaceResult {
@@ -57,7 +58,7 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
     if (!placesService || !query.trim()) return [];
 
     return new Promise((resolve) => {
-      const request = {
+      const request: google.maps.places.TextSearchRequest = {
         query,
         fields: ['place_id', 'formatted_address', 'name', 'geometry']
       };
@@ -87,7 +88,7 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
     if (!placesService) return null;
 
     return new Promise((resolve) => {
-      const request = {
+      const request: google.maps.places.PlaceDetailsRequest = {
         placeId,
         fields: ['place_id', 'formatted_address', 'name', 'geometry']
       };
