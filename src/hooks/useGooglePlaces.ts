@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
 
@@ -112,15 +111,18 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
     return new Promise((resolve) => {
       const request: google.maps.places.AutocompleteRequest = {
         input: query,
-        types: ['establishment'],
       };
 
       // Add location bias if user location is available
       if (userLocation) {
-        request.bounds = new google.maps.LatLngBounds(
-          new google.maps.LatLng(userLocation.lat - 0.01, userLocation.lng - 0.01),
-          new google.maps.LatLng(userLocation.lat + 0.01, userLocation.lng + 0.01)
-        );
+        const center = new google.maps.LatLng(userLocation.lat, userLocation.lng);
+        const circle = new google.maps.Circle({
+          center: center,
+          radius: 5000 // 5km radius
+        });
+        request.bounds = circle.getBounds();
+        request.location = center;
+        request.radius = 5000;
       }
 
       autocompleteService.getPlacePredictions(request, (predictions, status) => {
