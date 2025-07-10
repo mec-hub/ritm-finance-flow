@@ -98,9 +98,14 @@ export type Database = {
           date: string
           estimated_expenses: number | null
           estimated_revenue: number | null
+          formatted_address: string | null
           id: string
+          latitude: number | null
           location: string | null
+          longitude: number | null
           notes: string | null
+          place_id: string | null
+          place_name: string | null
           status: Database["public"]["Enums"]["event_status"] | null
           title: string
           updated_at: string | null
@@ -114,9 +119,14 @@ export type Database = {
           date: string
           estimated_expenses?: number | null
           estimated_revenue?: number | null
+          formatted_address?: string | null
           id?: string
+          latitude?: number | null
           location?: string | null
+          longitude?: number | null
           notes?: string | null
+          place_id?: string | null
+          place_name?: string | null
           status?: Database["public"]["Enums"]["event_status"] | null
           title: string
           updated_at?: string | null
@@ -130,9 +140,14 @@ export type Database = {
           date?: string
           estimated_expenses?: number | null
           estimated_revenue?: number | null
+          formatted_address?: string | null
           id?: string
+          latitude?: number | null
           location?: string | null
+          longitude?: number | null
           notes?: string | null
+          place_id?: string | null
+          place_name?: string | null
           status?: Database["public"]["Enums"]["event_status"] | null
           title?: string
           updated_at?: string | null

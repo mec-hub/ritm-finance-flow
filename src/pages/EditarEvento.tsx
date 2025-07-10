@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -32,6 +31,16 @@ import { ptBR } from 'date-fns/locale';
 import { EventService } from '@/services/eventService';
 import { ClientService } from '@/services/clientService';
 import { Event, Client } from '@/types';
+import { LocationSearch } from '@/components/LocationSearch';
+import { MapPreview } from '@/components/MapPreview';
+
+interface LocationData {
+  place_id: string;
+  formatted_address: string;
+  place_name: string;
+  latitude: number;
+  longitude: number;
+}
 
 interface EventFormData {
   title: string;
@@ -52,6 +61,7 @@ const EditarEvento = () => {
   const [event, setEvent] = useState<Event | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(null);
   const navigate = useNavigate();
   const { id } = useParams();
   
@@ -113,6 +123,17 @@ const EditarEvento = () => {
         setEvent(eventData);
         setClients(clientsData);
         
+        // Set location data if available
+        if (eventData.placeName && eventData.formattedAddress && eventData.latitude && eventData.longitude && eventData.placeId) {
+          setSelectedLocation({
+            place_id: eventData.placeId,
+            formatted_address: eventData.formattedAddress,
+            place_name: eventData.placeName,
+            latitude: eventData.latitude,
+            longitude: eventData.longitude,
+          });
+        }
+        
         // Populate form with event data
         const clientId = eventData.clientId || 'no_client';
         console.log('EditarEvento - Setting form with client ID:', clientId);
@@ -165,6 +186,7 @@ const EditarEvento = () => {
     
     try {
       console.log('EditarEvento - Starting update with form data:', data);
+      console.log('EditarEvento - Selected location:', selectedLocation);
       
       // Prepare update data
       const clientId = data.clientId === 'no_client' ? undefined : data.clientId;
@@ -179,6 +201,12 @@ const EditarEvento = () => {
         actualExpenses: data.actualExpenses ? parseFloat(data.actualExpenses) : undefined,
         status: data.status as 'upcoming' | 'completed' | 'cancelled',
         notes: data.notes,
+        // Add location data
+        placeName: selectedLocation?.place_name,
+        formattedAddress: selectedLocation?.formatted_address,
+        latitude: selectedLocation?.latitude,
+        longitude: selectedLocation?.longitude,
+        placeId: selectedLocation?.place_id,
       };
 
       console.log('EditarEvento - Update data prepared:', updateData);
@@ -337,13 +365,40 @@ const EditarEvento = () => {
                     <FormItem>
                       <FormLabel>Local</FormLabel>
                       <FormControl>
-                        <Input placeholder="Endereço ou nome do local" {...field} />
+                        <Input placeholder="Endereço ou nome do local (opcional)" {...field} />
                       </FormControl>
+                      <FormDescription>
+                        Campo para referência adicional, se necessário
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+
+              <FormItem>
+                <FormLabel>Localização com Busca</FormLabel>
+                <LocationSearch
+                  value={selectedLocation}
+                  onChange={setSelectedLocation}
+                  placeholder="Pesquisar local do evento..."
+                />
+                <FormDescription>
+                  Use a busca para encontrar e selecionar a localização exata do evento
+                </FormDescription>
+              </FormItem>
+
+              {selectedLocation && (
+                <div className="space-y-4">
+                  <FormLabel>Pré-visualização do Local</FormLabel>
+                  <MapPreview
+                    latitude={selectedLocation.latitude}
+                    longitude={selectedLocation.longitude}
+                    placeName={selectedLocation.place_name}
+                    className="w-full h-64 rounded-md border"
+                  />
+                </div>
+              )}
               
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <FormField

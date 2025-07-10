@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -32,6 +31,16 @@ import { ptBR } from 'date-fns/locale';
 import { EventService } from '@/services/eventService';
 import { ClientService } from '@/services/clientService';
 import { Client } from '@/types';
+import { LocationSearch } from '@/components/LocationSearch';
+import { MapPreview } from '@/components/MapPreview';
+
+interface LocationData {
+  place_id: string;
+  formatted_address: string;
+  place_name: string;
+  latitude: number;
+  longitude: number;
+}
 
 interface EventFormData {
   title: string;
@@ -46,6 +55,7 @@ interface EventFormData {
 const NovoEvento = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(null);
   const navigate = useNavigate();
   
   const form = useForm<EventFormData>({
@@ -84,6 +94,7 @@ const NovoEvento = () => {
     
     try {
       console.log('NovoEvento - Form data:', data);
+      console.log('NovoEvento - Selected location:', selectedLocation);
       
       // Handle the case where "no_client" is selected
       const clientId = data.clientId === 'no_client' ? undefined : data.clientId;
@@ -97,6 +108,12 @@ const NovoEvento = () => {
         estimatedExpenses: parseFloat(data.estimatedExpenses) || 0,
         status: 'upcoming',
         notes: data.notes,
+        // Add location data if available
+        placeName: selectedLocation?.place_name,
+        formattedAddress: selectedLocation?.formatted_address,
+        latitude: selectedLocation?.latitude,
+        longitude: selectedLocation?.longitude,
+        placeId: selectedLocation?.place_id,
       }, clientId);
       
       toast({
@@ -204,13 +221,40 @@ const NovoEvento = () => {
                     <FormItem>
                       <FormLabel>Local</FormLabel>
                       <FormControl>
-                        <Input placeholder="Endereço ou nome do local" {...field} />
+                        <Input placeholder="Endereço ou nome do local (opcional)" {...field} />
                       </FormControl>
+                      <FormDescription>
+                        Campo para referência adicional, se necessário
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+
+              <FormItem>
+                <FormLabel>Localização com Busca</FormLabel>
+                <LocationSearch
+                  value={selectedLocation}
+                  onChange={setSelectedLocation}
+                  placeholder="Pesquisar local do evento..."
+                />
+                <FormDescription>
+                  Use a busca para encontrar e selecionar a localização exata do evento
+                </FormDescription>
+              </FormItem>
+
+              {selectedLocation && (
+                <div className="space-y-4">
+                  <FormLabel>Pré-visualização do Local</FormLabel>
+                  <MapPreview
+                    latitude={selectedLocation.latitude}
+                    longitude={selectedLocation.longitude}
+                    placeName={selectedLocation.place_name}
+                    className="w-full h-64 rounded-md border"
+                  />
+                </div>
+              )}
               
               <FormField
                 control={form.control}

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Event } from '@/types';
 
@@ -38,7 +39,13 @@ export class EventService {
       estimatedExpenses: event.estimated_expenses || 0,
       actualExpenses: event.actual_expenses || undefined,
       status: event.status as 'upcoming' | 'completed' | 'cancelled',
-      notes: event.notes || ''
+      notes: event.notes || '',
+      // Add new location fields
+      placeName: event.place_name || undefined,
+      formattedAddress: event.formatted_address || undefined,
+      latitude: event.latitude || undefined,
+      longitude: event.longitude || undefined,
+      placeId: event.place_id || undefined,
     }));
   }
 
@@ -84,7 +91,13 @@ export class EventService {
       estimatedExpenses: data.estimated_expenses || 0,
       actualExpenses: data.actual_expenses || undefined,
       status: data.status as 'upcoming' | 'completed' | 'cancelled',
-      notes: data.notes || ''
+      notes: data.notes || '',
+      // Add new location fields
+      placeName: data.place_name || undefined,
+      formattedAddress: data.formatted_address || undefined,
+      latitude: data.latitude || undefined,
+      longitude: data.longitude || undefined,
+      placeId: data.place_id || undefined,
     };
   }
 
@@ -113,7 +126,13 @@ export class EventService {
       actual_expenses: event.actualExpenses || null,
       status: event.status,
       notes: event.notes || null,
-      user_id: userData.user.id
+      user_id: userData.user.id,
+      // Add new location fields
+      place_name: event.placeName || null,
+      formatted_address: event.formattedAddress || null,
+      latitude: event.latitude || null,
+      longitude: event.longitude || null,
+      place_id: event.placeId || null,
     };
 
     console.log('EventService.create - Insert data:', insertData);
@@ -163,6 +182,13 @@ export class EventService {
     if (updates.actualExpenses !== undefined) updateData.actual_expenses = updates.actualExpenses || null;
     if (updates.status !== undefined) updateData.status = updates.status;
     if (updates.notes !== undefined) updateData.notes = updates.notes || null;
+    
+    // Add new location fields
+    if (updates.placeName !== undefined) updateData.place_name = updates.placeName || null;
+    if (updates.formattedAddress !== undefined) updateData.formatted_address = updates.formattedAddress || null;
+    if (updates.latitude !== undefined) updateData.latitude = updates.latitude || null;
+    if (updates.longitude !== undefined) updateData.longitude = updates.longitude || null;
+    if (updates.placeId !== undefined) updateData.place_id = updates.placeId || null;
 
     console.log('EventService.update - Final update data:', updateData);
 

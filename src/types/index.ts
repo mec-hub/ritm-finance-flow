@@ -1,4 +1,3 @@
-
 export interface Transaction {
   id: string;
   amount: number;
@@ -40,6 +39,12 @@ export interface Event {
   actualExpenses?: number;
   status: 'upcoming' | 'completed' | 'cancelled';
   notes?: string;
+  // New location fields
+  placeName?: string;
+  formattedAddress?: string;
+  latitude?: number;
+  longitude?: number;
+  placeId?: string;
 }
 
 export interface Client {
