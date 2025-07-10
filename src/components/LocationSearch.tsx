@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { MapPin, Search, X } from 'lucide-react';
+import { MapPin, Search, X, Loader2 } from 'lucide-react';
 import { useGooglePlaces } from '@/hooks/useGooglePlaces';
 import { cn } from '@/lib/utils';
 
@@ -36,6 +36,8 @@ export const LocationSearch = ({
   
   const { isLoaded, searchPlaces, error } = useGooglePlaces();
 
+  console.log('LocationSearch - isLoaded:', isLoaded, 'error:', error);
+
   useEffect(() => {
     if (value) {
       setQuery(value.place_name || value.formatted_address);
@@ -45,22 +47,26 @@ export const LocationSearch = ({
   useEffect(() => {
     const searchTimeout = setTimeout(async () => {
       if (query.length > 2 && isLoaded) {
+        console.log('LocationSearch - Starting search for:', query);
         setIsLoading(true);
         try {
           const results = await searchPlaces(query);
-          setSuggestions(results.slice(0, 5)); // Limit to 5 suggestions
-          setIsOpen(true);
+          console.log('LocationSearch - Search results:', results);
+          setSuggestions(results);
+          setIsOpen(results.length > 0);
         } catch (err) {
-          console.error('Error searching places:', err);
+          console.error('LocationSearch - Error searching places:', err);
           setSuggestions([]);
+          setIsOpen(false);
         } finally {
           setIsLoading(false);
         }
       } else {
+        console.log('LocationSearch - Search skipped - query too short or not loaded');
         setSuggestions([]);
         setIsOpen(false);
       }
-    }, 300);
+    }, 500); // Increased debounce time
 
     return () => clearTimeout(searchTimeout);
   }, [query, isLoaded, searchPlaces]);
@@ -81,6 +87,7 @@ export const LocationSearch = ({
   }, []);
 
   const handleSelectPlace = (place: any) => {
+    console.log('LocationSearch - Selected place:', place);
     const locationData: LocationData = {
       place_id: place.place_id,
       formatted_address: place.formatted_address,
@@ -105,8 +112,20 @@ export const LocationSearch = ({
 
   if (error) {
     return (
-      <div className="text-destructive text-sm">
-        Erro ao carregar o serviço de localização. Tente novamente.
+      <div className="text-destructive text-sm p-3 border border-destructive/20 rounded-md bg-destructive/5">
+        <strong>Erro:</strong> {error}
+        <div className="text-xs mt-1">
+          Verifique se a API key do Google Places está configurada corretamente.
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center space-x-2 p-3 border border-border rounded-md bg-muted/20">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-sm text-muted-foreground">Carregando serviço de localização...</span>
       </div>
     );
   }
@@ -119,12 +138,17 @@ export const LocationSearch = ({
           ref={inputRef}
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            console.log('LocationSearch - Input changed:', e.target.value);
+            setQuery(e.target.value);
+          }}
           placeholder={placeholder}
           className="pl-10 pr-10"
-          disabled={!isLoaded}
         />
-        {query && (
+        {isLoading && (
+          <Loader2 className="absolute right-8 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+        )}
+        {query && !isLoading && (
           <Button
             type="button"
             variant="ghost"
@@ -142,11 +166,6 @@ export const LocationSearch = ({
           ref={dropdownRef}
           className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto"
         >
-          {isLoading && (
-            <div className="p-3 text-center text-muted-foreground">
-              Pesquisando...
-            </div>
-          )}
           {suggestions.map((place) => (
             <button
               key={place.place_id}
@@ -165,6 +184,14 @@ export const LocationSearch = ({
               </div>
             </button>
           ))}
+        </div>
+      )}
+
+      {query.length > 0 && !isLoading && suggestions.length === 0 && isOpen && (
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border border-border rounded-md shadow-lg p-3">
+          <div className="text-center text-muted-foreground text-sm">
+            Nenhum resultado encontrado para "{query}"
+          </div>
         </div>
       )}
 
