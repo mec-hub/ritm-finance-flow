@@ -92,114 +92,6 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
     loadGoogleMaps();
   }, []);
 
-  const isEstablishment = (prediction: google.maps.places.AutocompletePrediction): boolean => {
-    const types = prediction.types || [];
-    
-    // Check if it's an establishment type
-    const establishmentTypes = [
-      'establishment',
-      'point_of_interest',
-      'lodging',
-      'restaurant',
-      'food',
-      'store',
-      'shopping_mall',
-      'tourist_attraction',
-      'amusement_park',
-      'aquarium',
-      'art_gallery',
-      'bakery',
-      'bank',
-      'bar',
-      'beauty_salon',
-      'bicycle_store',
-      'book_store',
-      'bowling_alley',
-      'bus_station',
-      'cafe',
-      'campground',
-      'car_dealer',
-      'car_rental',
-      'car_repair',
-      'car_wash',
-      'casino',
-      'cemetery',
-      'church',
-      'city_hall',
-      'clothing_store',
-      'convenience_store',
-      'courthouse',
-      'dentist',
-      'department_store',
-      'doctor',
-      'drugstore',
-      'electrician',
-      'electronics_store',
-      'embassy',
-      'fire_station',
-      'florist',
-      'funeral_home',
-      'furniture_store',
-      'gas_station',
-      'gym',
-      'hair_care',
-      'hardware_store',
-      'hindu_temple',
-      'home_goods_store',
-      'hospital',
-      'insurance_agency',
-      'jewelry_store',
-      'laundry',
-      'lawyer',
-      'library',
-      'light_rail_station',
-      'liquor_store',
-      'local_government_office',
-      'locksmith',
-      'meal_delivery',
-      'meal_takeaway',
-      'mosque',
-      'movie_rental',
-      'movie_theater',
-      'moving_company',
-      'museum',
-      'night_club',
-      'painter',
-      'park',
-      'parking',
-      'pet_store',
-      'pharmacy',
-      'physiotherapist',
-      'plumber',
-      'police',
-      'post_office',
-      'primary_school',
-      'real_estate_agency',
-      'roofing_contractor',
-      'rv_park',
-      'school',
-      'secondary_school',
-      'shoe_store',
-      'shopping_mall',
-      'spa',
-      'stadium',
-      'storage',
-      'subway_station',
-      'supermarket',
-      'synagogue',
-      'taxi_stand',
-      'tourist_attraction',
-      'train_station',
-      'transit_station',
-      'travel_agency',
-      'university',
-      'veterinary_care',
-      'zoo'
-    ];
-    
-    return types.some(type => establishmentTypes.includes(type));
-  };
-
   const searchPlaces = useCallback(async (query: string): Promise<PlaceResult[]> => {
     if (!autocompleteService || !placesService || !query.trim()) {
       console.log('Search skipped - missing services or empty query');
@@ -207,33 +99,23 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
     }
 
     console.log('Searching for:', query);
-    console.log('User location for bias:', userLocation);
 
     return new Promise((resolve) => {
       const request: google.maps.places.AutocompleteRequest = {
         input: query,
-        componentRestrictions: { country: 'br' },
         types: ['establishment']
       };
-
-      // Add location bias if user location is available
-      if (userLocation) {
-        request.locationBias = {
-          center: new google.maps.LatLng(userLocation.lat, userLocation.lng),
-          radius: 50000 // 50km radius
-        };
-      }
 
       autocompleteService.getPlacePredictions(request, (predictions, status) => {
         console.log('Autocomplete status:', status);
         console.log('Autocomplete predictions:', predictions);
 
         if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
-          // Filter for establishments and get place details
-          const establishmentPredictions = predictions.filter(isEstablishment).slice(0, 5);
+          // Get place details for the first 5 predictions
+          const predictionSlice = predictions.slice(0, 5);
           
-          if (establishmentPredictions.length === 0) {
-            console.log('No establishment predictions found');
+          if (predictionSlice.length === 0) {
+            console.log('No predictions found');
             resolve([]);
             return;
           }
@@ -241,7 +123,7 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
           let processedCount = 0;
           const results: PlaceResult[] = [];
 
-          establishmentPredictions.forEach((prediction) => {
+          predictionSlice.forEach((prediction) => {
             const detailsRequest: google.maps.places.PlaceDetailsRequest = {
               placeId: prediction.place_id,
               fields: ['place_id', 'name', 'formatted_address', 'geometry']
@@ -265,23 +147,7 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
               }
 
               // When all requests are processed, resolve with results
-              if (processedCount === establishmentPredictions.length) {
-                // Sort by distance if user location is available
-                if (userLocation && results.length > 0) {
-                  results.sort((a, b) => {
-                    const distanceA = google.maps.geometry.spherical.computeDistanceBetween(
-                      new google.maps.LatLng(userLocation.lat, userLocation.lng),
-                      new google.maps.LatLng(a.geometry.location.lat, a.geometry.location.lng)
-                    );
-                    const distanceB = google.maps.geometry.spherical.computeDistanceBetween(
-                      new google.maps.LatLng(userLocation.lat, userLocation.lng),
-                      new google.maps.LatLng(b.geometry.location.lat, b.geometry.location.lng)
-                    );
-                    return distanceA - distanceB;
-                  });
-                  console.log('Results sorted by distance from user location');
-                }
-                
+              if (processedCount === predictionSlice.length) {
                 console.log('Final processed results:', results);
                 resolve(results);
               }
@@ -293,7 +159,7 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
         }
       });
     });
-  }, [autocompleteService, placesService, userLocation]);
+  }, [autocompleteService, placesService]);
 
   const getPlaceDetails = useCallback(async (placeId: string): Promise<PlaceResult | null> => {
     if (!placesService) return null;
