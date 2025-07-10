@@ -28,7 +28,8 @@ interface UseGooglePlacesReturn {
 export const useGooglePlaces = (): UseGooglePlacesReturn => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [geocoder, setGeocoder] = useState<google.maps.Geocoder | null>(null);
+  const [placesService, setPlacesService] = useState<google.maps.places.PlacesService | null>(null);
+  const [autocompleteService, setAutocompleteService] = useState<google.maps.places.AutocompleteService | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
@@ -44,9 +45,16 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
         await loader.load();
         console.log('Google Maps loaded successfully');
         
-        // Create geocoder service
-        const geocoderService = new google.maps.Geocoder();
-        setGeocoder(geocoderService);
+        // Create a dummy map element for PlacesService (required by Google API)
+        const mapDiv = document.createElement('div');
+        const map = new google.maps.Map(mapDiv);
+        
+        // Initialize services
+        const placesServiceInstance = new google.maps.places.PlacesService(map);
+        const autocompleteServiceInstance = new google.maps.places.AutocompleteService();
+        
+        setPlacesService(placesServiceInstance);
+        setAutocompleteService(autocompleteServiceInstance);
         
         // Try to get user's location for proximity bias
         if (navigator.geolocation) {
@@ -67,7 +75,7 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
         }
         
         setIsLoaded(true);
-        console.log('Google Geocoder service initialized');
+        console.log('Google Places services initialized');
       } catch (err) {
         console.error('Error loading Google Maps:', err);
         setError(`Failed to load Google Maps: ${err}`);
@@ -77,153 +85,111 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
     loadGoogleMaps();
   }, []);
 
-  const extractPlaceName = (result: google.maps.GeocoderResult): string => {
-    // Priority order for place names
-    const addressComponents = result.address_components;
-    
-    // First, try to find establishment name
-    const establishment = addressComponents.find(component => 
-      component.types.includes('establishment')
-    );
-    if (establishment) {
-      console.log('Found establishment name:', establishment.long_name);
-      return establishment.long_name;
-    }
-
-    // Then try point of interest
-    const pointOfInterest = addressComponents.find(component => 
-      component.types.includes('point_of_interest')
-    );
-    if (pointOfInterest) {
-      console.log('Found point of interest name:', pointOfInterest.long_name);
-      return pointOfInterest.long_name;
-    }
-
-    // Then try premise (building name)
-    const premise = addressComponents.find(component => 
-      component.types.includes('premise')
-    );
-    if (premise) {
-      console.log('Found premise name:', premise.long_name);
-      return premise.long_name;
-    }
-
-    // Then try route (street name) + street number combination
-    const route = addressComponents.find(component => 
-      component.types.includes('route')
-    );
-    const streetNumber = addressComponents.find(component => 
-      component.types.includes('street_number')
-    );
-    
-    if (route && streetNumber) {
-      const streetAddress = `${route.long_name}, ${streetNumber.long_name}`;
-      console.log('Using street address:', streetAddress);
-      return streetAddress;
-    }
-
-    // Fallback to the first significant component (not country, postal_code, etc.)
-    const significantComponent = addressComponents.find(component => 
-      !component.types.includes('country') &&
-      !component.types.includes('postal_code') &&
-      !component.types.includes('administrative_area_level_1') &&
-      !component.types.includes('administrative_area_level_2')
-    );
-    
-    if (significantComponent) {
-      console.log('Using significant component:', significantComponent.long_name);
-      return significantComponent.long_name;
-    }
-
-    // Final fallback to formatted address
-    console.log('Using formatted address as fallback');
-    return result.formatted_address.split(',')[0];
-  };
-
   const searchPlaces = useCallback(async (query: string): Promise<PlaceResult[]> => {
-    if (!geocoder || !query.trim()) {
-      console.log('Search skipped - missing geocoder or empty query');
+    if (!autocompleteService || !placesService || !query.trim()) {
+      console.log('Search skipped - missing services or empty query');
       return [];
     }
 
-    console.log('Searching for:', query);
+    console.log('Searching for places:', query);
     console.log('User location for bias:', userLocation);
 
     return new Promise((resolve) => {
-      const request: google.maps.GeocoderRequest = {
-        address: query,
+      const request: google.maps.places.AutocompleteRequest = {
+        input: query,
         componentRestrictions: { country: 'BR' }, // Restrict to Brazil
-        region: 'BR'
+        types: ['establishment', 'geocode'], // Include businesses and addresses
       };
 
       // Add location bias if user location is available
       if (userLocation) {
         request.location = new google.maps.LatLng(userLocation.lat, userLocation.lng);
-        request.radius = 50000; // 50km radius for proximity bias
+        request.radius = 5000; // 5km radius for proximity bias
       }
 
-      geocoder.geocode(request, (results, status) => {
-        console.log('Geocoding status:', status);
-        console.log('Geocoding results:', results);
+      autocompleteService.getPlacePredictions(request, (predictions, status) => {
+        console.log('Autocomplete status:', status);
+        console.log('Autocomplete predictions:', predictions);
 
-        if (status === google.maps.GeocoderStatus.OK && results) {
-          let placeResults: PlaceResult[] = results.slice(0, 5).map((result, index) => ({
-            place_id: result.place_id || `geocoded_${index}`,
-            formatted_address: result.formatted_address,
-            name: extractPlaceName(result),
-            geometry: {
-              location: {
-                lat: result.geometry.location.lat(),
-                lng: result.geometry.location.lng()
-              }
-            }
-          }));
-          
-          // Sort by distance if user location is available
-          if (userLocation) {
-            placeResults.sort((a, b) => {
-              const distanceA = google.maps.geometry.spherical.computeDistanceBetween(
-                new google.maps.LatLng(userLocation.lat, userLocation.lng),
-                new google.maps.LatLng(a.geometry.location.lat, a.geometry.location.lng)
-              );
-              const distanceB = google.maps.geometry.spherical.computeDistanceBetween(
-                new google.maps.LatLng(userLocation.lat, userLocation.lng),
-                new google.maps.LatLng(b.geometry.location.lat, b.geometry.location.lng)
-              );
-              return distanceA - distanceB;
+        if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+          // Get detailed information for each prediction
+          const detailPromises = predictions.slice(0, 5).map((prediction) => {
+            return new Promise<PlaceResult | null>((detailResolve) => {
+              const detailRequest: google.maps.places.PlaceDetailsRequest = {
+                placeId: prediction.place_id,
+                fields: ['place_id', 'name', 'formatted_address', 'geometry']
+              };
+
+              placesService.getDetails(detailRequest, (place, detailStatus) => {
+                if (detailStatus === google.maps.places.PlacesServiceStatus.OK && place) {
+                  detailResolve({
+                    place_id: place.place_id || prediction.place_id,
+                    formatted_address: place.formatted_address || prediction.description,
+                    name: place.name || prediction.structured_formatting?.main_text || prediction.description.split(',')[0],
+                    geometry: {
+                      location: {
+                        lat: place.geometry?.location?.lat() || 0,
+                        lng: place.geometry?.location?.lng() || 0
+                      }
+                    }
+                  });
+                } else {
+                  console.error('Place details error:', detailStatus);
+                  detailResolve(null);
+                }
+              });
             });
-            console.log('Results sorted by distance from user location');
-          }
-          
-          console.log('Formatted results:', placeResults);
-          resolve(placeResults);
+          });
+
+          Promise.all(detailPromises).then((results) => {
+            const validResults = results.filter((result): result is PlaceResult => result !== null);
+            
+            // Sort by distance if user location is available
+            if (userLocation && validResults.length > 0) {
+              validResults.sort((a, b) => {
+                const distanceA = google.maps.geometry.spherical.computeDistanceBetween(
+                  new google.maps.LatLng(userLocation.lat, userLocation.lng),
+                  new google.maps.LatLng(a.geometry.location.lat, a.geometry.location.lng)
+                );
+                const distanceB = google.maps.geometry.spherical.computeDistanceBetween(
+                  new google.maps.LatLng(userLocation.lat, userLocation.lng),
+                  new google.maps.LatLng(b.geometry.location.lat, b.geometry.location.lng)
+                );
+                return distanceA - distanceB;
+              });
+              console.log('Results sorted by distance from user location');
+            }
+            
+            console.log('Final place results:', validResults);
+            resolve(validResults);
+          });
         } else {
-          console.error('Geocoding error:', status);
+          console.error('Autocomplete error:', status);
           resolve([]);
         }
       });
     });
-  }, [geocoder, userLocation]);
+  }, [autocompleteService, placesService, userLocation]);
 
   const getPlaceDetails = useCallback(async (placeId: string): Promise<PlaceResult | null> => {
-    if (!geocoder) return null;
+    if (!placesService) return null;
 
     return new Promise((resolve) => {
-      const request: google.maps.GeocoderRequest = {
-        placeId: placeId
+      const request: google.maps.places.PlaceDetailsRequest = {
+        placeId: placeId,
+        fields: ['place_id', 'name', 'formatted_address', 'geometry']
       };
 
-      geocoder.geocode(request, (results, status) => {
-        if (status === google.maps.GeocoderStatus.OK && results && results[0]) {
-          const result = results[0];
+      placesService.getDetails(request, (place, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && place) {
           resolve({
-            place_id: result.place_id || placeId,
-            formatted_address: result.formatted_address,
-            name: extractPlaceName(result),
+            place_id: place.place_id || placeId,
+            formatted_address: place.formatted_address || '',
+            name: place.name || 'Local sem nome',
             geometry: {
               location: {
-                lat: result.geometry.location.lat(),
-                lng: result.geometry.location.lng()
+                lat: place.geometry?.location?.lat() || 0,
+                lng: place.geometry?.location?.lng() || 0
               }
             }
           });
@@ -233,11 +199,11 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
         }
       });
     });
-  }, [geocoder]);
+  }, [placesService]);
 
   const getCurrentLocation = useCallback(async (): Promise<PlaceResult | null> => {
-    if (!geocoder) {
-      console.log('Geocoder not available');
+    if (!placesService) {
+      console.log('Places service not available');
       return null;
     }
 
@@ -260,6 +226,8 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
             lng: position.coords.longitude
           });
 
+          // Use Geocoding to get address for current location
+          const geocoder = new google.maps.Geocoder();
           geocoder.geocode({ location: latLng }, (results, status) => {
             if (status === google.maps.GeocoderStatus.OK && results && results[0]) {
               const result = results[0];
@@ -300,7 +268,7 @@ export const useGooglePlaces = (): UseGooglePlacesReturn => {
         }
       );
     });
-  }, [geocoder]);
+  }, [placesService]);
 
   return {
     isLoaded,
