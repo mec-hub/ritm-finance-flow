@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
 
 // This should be loaded from Supabase Edge Function or environment
-const GOOGLE_PLACES_API_KEY = 'YOUR_GOOGLE_PLACES_API_KEY'; // This will be loaded from environment
+const GOOGLE_PLACES_API_KEY = AIzaSyCeUvjBRwuDPmpD1o9KhH6Q20a1v2L-7Pw; // This will be loaded from environment
 
 interface PlaceResult {
   place_id: string;
