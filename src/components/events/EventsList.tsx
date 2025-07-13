@@ -30,7 +30,8 @@ import { toast } from '@/components/ui/use-toast';
 import { formatDate, formatCurrency } from '@/utils/formatters';
 import { Event } from '@/types';
 import { EventService } from '@/services/eventService';
-import { MoreHorizontal, Search, Eye, Trash2, Edit } from 'lucide-react';
+import { MapPreview } from '@/components/MapPreview';
+import { MoreHorizontal, Search, Eye, Trash2, Edit, Calendar, Clock, User, MapPin, DollarSign, Receipt, TrendingUp } from 'lucide-react';
 
 interface EventsListProps {
   events: Event[];
@@ -122,6 +123,12 @@ export function EventsList({ events: initialEvents, onEventUpdated }: EventsList
   const handleEdit = (event: Event) => {
     console.log('EventsList - Edit event:', event);
     navigate(`/eventos/editar/${event.id}`);
+  };
+
+  const formatTimeWithoutSeconds = (time: string) => {
+    if (!time) return '';
+    // Remove seconds from time format (HH:MM:SS -> HH:MM)
+    return time.substring(0, 5);
   };
   
   return (
@@ -249,68 +256,90 @@ export function EventsList({ events: initialEvents, onEventUpdated }: EventsList
               <div className="grid gap-6 py-4">
                 {/* Status and Basic Info */}
                 <div className="flex items-center justify-between">
-                  <div className="text-sm font-medium">Status</div>
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Badge variant="outline" className="w-3 h-3 p-0 rounded-full" />
+                    Status
+                  </div>
                   <div>{getStatusBadge(selectedEvent.status)}</div>
                 </div>
                 
                 {/* Main Information */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="text-sm font-medium text-muted-foreground">Data</div>
-                    <div className="text-sm mt-1">{formatDate(selectedEvent.date)}</div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                      <Calendar className="w-4 h-4" />
+                      Data
+                    </div>
+                    <div className="text-sm">{formatDate(selectedEvent.date)}</div>
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-muted-foreground">Horário</div>
-                    <div className="text-sm mt-1">
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                      <Clock className="w-4 h-4" />
+                      Horário
+                    </div>
+                    <div className="text-sm">
                       {selectedEvent.startTime && selectedEvent.endTime 
-                        ? `${selectedEvent.startTime} às ${selectedEvent.endTime}`
+                        ? `${formatTimeWithoutSeconds(selectedEvent.startTime)} às ${formatTimeWithoutSeconds(selectedEvent.endTime)}`
                         : 'Não definido'
                       }
                     </div>
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-muted-foreground">Cliente</div>
-                    <div className="text-sm mt-1">{selectedEvent.client || 'Sem cliente'}</div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                      <User className="w-4 h-4" />
+                      Cliente
+                    </div>
+                    <div className="text-sm">{selectedEvent.client || 'Sem cliente'}</div>
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-muted-foreground">Local</div>
-                    <div className="text-sm mt-1">{selectedEvent.location}</div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                      <MapPin className="w-4 h-4" />
+                      Local
+                    </div>
+                    <div className="text-sm">{selectedEvent.location}</div>
                   </div>
                 </div>
 
                 {/* Financial Information */}
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <div className="text-sm font-medium text-muted-foreground">Receita Estimada</div>
-                    <div className="text-sm mt-1 text-green-600 font-medium">{formatCurrency(selectedEvent.estimatedRevenue)}</div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                      <DollarSign className="w-4 h-4" />
+                      Receita Estimada
+                    </div>
+                    <div className="text-sm text-green-600 font-medium">{formatCurrency(selectedEvent.estimatedRevenue)}</div>
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-muted-foreground">Despesa Estimada</div>
-                    <div className="text-sm mt-1 text-red-600 font-medium">{formatCurrency(selectedEvent.estimatedExpenses)}</div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                      <Receipt className="w-4 h-4" />
+                      Despesa Estimada
+                    </div>
+                    <div className="text-sm text-red-600 font-medium">{formatCurrency(selectedEvent.estimatedExpenses)}</div>
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-muted-foreground">Lucro Estimado</div>
-                    <div className="text-sm mt-1 text-blue-600 font-medium">{formatCurrency(selectedEvent.estimatedRevenue - selectedEvent.estimatedExpenses)}</div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
+                      <TrendingUp className="w-4 h-4" />
+                      Lucro Estimado
+                    </div>
+                    <div className="text-sm text-blue-600 font-medium">{formatCurrency(selectedEvent.estimatedRevenue - selectedEvent.estimatedExpenses)}</div>
                   </div>
                 </div>
 
                 {/* Google Maps Preview */}
                 {selectedEvent.latitude && selectedEvent.longitude && (
                   <div>
-                    <div className="text-sm font-medium text-muted-foreground mb-2">Localização</div>
-                    <div className="border rounded-lg overflow-hidden">
-                      <iframe
-                        src={`https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3000!2d${selectedEvent.longitude}!3d${selectedEvent.latitude}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zM!5e0!3m2!1sen!2sbr!4v1234567890`}
-                        width="100%"
-                        height="200"
-                        style={{ border: 0 }}
-                        allowFullScreen
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                      />
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+                      <MapPin className="w-4 h-4" />
+                      Localização
                     </div>
+                    <MapPreview
+                      latitude={selectedEvent.latitude}
+                      longitude={selectedEvent.longitude}
+                      placeName={selectedEvent.placeName || selectedEvent.location}
+                      className="w-full h-48 rounded-lg border"
+                    />
                     {selectedEvent.formattedAddress && (
-                      <div className="text-xs text-muted-foreground mt-1">{selectedEvent.formattedAddress}</div>
+                      <div className="text-xs text-muted-foreground mt-2">{selectedEvent.formattedAddress}</div>
                     )}
                   </div>
                 )}
