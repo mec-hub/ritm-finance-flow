@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -24,7 +25,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
 import { formatDate, formatCurrency } from '@/utils/formatters';
@@ -43,9 +43,8 @@ export function EventsList({ events: initialEvents, onEventUpdated }: EventsList
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed' | 'cancelled'>('all');
   const navigate = useNavigate();
   
-  // For details, edit, delete modals
+  // For delete modal
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Update local events when prop changes
@@ -114,14 +113,12 @@ export function EventsList({ events: initialEvents, onEventUpdated }: EventsList
   };
   
   const handleViewDetails = (event: Event) => {
-    console.log('EventsList - View details for event:', event);
-    setSelectedEvent(event);
-    setViewDetailsOpen(true);
+    console.log('EventsList - Navigate to details for event:', event);
+    navigate(`/eventos/detalhes/${event.id}`);
   };
   
   const handleEdit = (event: Event) => {
     console.log('EventsList - Edit event:', event);
-    // Fixed: Use the correct route path that matches App.tsx
     navigate(`/eventos/editar/${event.id}`);
   };
   
@@ -234,73 +231,6 @@ export function EventsList({ events: initialEvents, onEventUpdated }: EventsList
           </TableBody>
         </Table>
       </div>
-
-      {/* View Details Dialog */}
-      <Dialog open={viewDetailsOpen} onOpenChange={setViewDetailsOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          {selectedEvent && (
-            <>
-              <DialogHeader>
-                <DialogTitle>{selectedEvent.title}</DialogTitle>
-                <DialogDescription>
-                  Detalhes completos do evento
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="grid gap-4 py-4">
-                <div className="flex justify-between">
-                  <div className="text-sm font-medium">Status</div>
-                  <div>{getStatusBadge(selectedEvent.status)}</div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-sm font-medium">Data</div>
-                    <div className="text-sm">{formatDate(selectedEvent.date)}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">Cliente</div>
-                    <div className="text-sm">{selectedEvent.client || 'Sem cliente'}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">Local</div>
-                    <div className="text-sm">{selectedEvent.location}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">Receita Estimada</div>
-                    <div className="text-sm">{formatCurrency(selectedEvent.estimatedRevenue)}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">Despesa Estimada</div>
-                    <div className="text-sm">{formatCurrency(selectedEvent.estimatedExpenses)}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">Lucro Estimado</div>
-                    <div className="text-sm">{formatCurrency(selectedEvent.estimatedRevenue - selectedEvent.estimatedExpenses)}</div>
-                  </div>
-                </div>
-                
-                {selectedEvent.notes && (
-                  <div>
-                    <div className="text-sm font-medium">Observações</div>
-                    <div className="text-sm mt-1">{selectedEvent.notes}</div>
-                  </div>
-                )}
-              </div>
-              
-              <DialogFooter>
-                <Button onClick={() => handleEdit(selectedEvent)} className="mr-2">
-                  <Edit className="mr-2 h-4 w-4" />
-                  Editar
-                </Button>
-                <DialogClose asChild>
-                  <Button variant="outline">Fechar</Button>
-                </DialogClose>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
