@@ -25,6 +25,8 @@ interface ClientFormData {
   email: string;
   phone: string;
   websiteUrl: string;
+  whatsappUrl: string;
+  instagramUrl: string;
   notes?: string;
 }
 
@@ -39,6 +41,8 @@ const NovoCliente = () => {
       email: '',
       phone: '',
       websiteUrl: '',
+      whatsappUrl: '',
+      instagramUrl: '',
       notes: '',
     },
   });
@@ -53,6 +57,8 @@ const NovoCliente = () => {
         email: data.email,
         phone: data.phone,
         websiteUrl: data.websiteUrl,
+        whatsappUrl: data.whatsappUrl,
+        instagramUrl: data.instagramUrl,
         totalRevenue: 0,
         notes: data.notes,
       };
@@ -174,12 +180,56 @@ const NovoCliente = () => {
                       />
                     </FormControl>
                     <FormDescription>
-                      URL do site do cliente (opcional). Este link será acessível clicando no nome do cliente na lista.
+                      URL do site do cliente (opcional).
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="whatsappUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>WhatsApp URL</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="url" 
+                          placeholder="https://wa.me/5511999999999" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Link do WhatsApp do cliente (opcional).
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="instagramUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Instagram URL</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="url" 
+                          placeholder="https://instagram.com/usuario" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Link do Instagram do cliente (opcional).
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               
               <FormField
                 control={form.control}
