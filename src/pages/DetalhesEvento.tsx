@@ -223,9 +223,16 @@ const DetalhesEvento = () => {
                       <label className="text-sm font-medium text-muted-foreground">Horário</label>
                       <div className="flex items-center gap-2 text-lg font-semibold">
                         <Clock className="h-4 w-4" />
-                        {event.startTime && <span>{event.startTime}</span>}
-                        {event.startTime && event.endTime && <span>-</span>}
-                        {event.endTime && <span>{event.endTime}</span>}
+                        <span>
+                          {event.startTime && event.endTime 
+                            ? `${event.startTime} às ${event.endTime}`
+                            : event.startTime 
+                              ? `A partir das ${event.startTime}`
+                              : event.endTime 
+                                ? `Até às ${event.endTime}`
+                                : ''
+                          }
+                        </span>
                       </div>
                     </div>
                   )}
