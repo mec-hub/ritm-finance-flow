@@ -73,6 +73,46 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
   
   return (
     <>
+      <style>{`
+        @keyframes eventDayPulse {
+          0%, 100% { 
+            background: linear-gradient(135deg, rgba(255, 191, 0, 0.3), rgba(255, 215, 0, 0.5));
+            transform: scale(1);
+          }
+          50% { 
+            background: linear-gradient(135deg, rgba(255, 191, 0, 0.5), rgba(255, 215, 0, 0.7));
+            transform: scale(1.05);
+          }
+        }
+        
+        .calendar-enhanced .rdp-head_cell {
+          text-align: center !important;
+          justify-content: center !important;
+          display: flex !important;
+          align-items: center !important;
+        }
+        
+        .calendar-enhanced .rdp-cell {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+        }
+        
+        .calendar-enhanced .rdp-day_today {
+          background-color: rgba(255, 191, 0, 0.15) !important;
+          color: #000000 !important;
+          border-radius: 8px !important;
+          border: 1px solid rgba(255, 191, 0, 0.3) !important;
+        }
+        
+        .calendar-enhanced .rdp-day_selected {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8)) !important;
+          color: #000000 !important;
+          border-radius: 8px !important;
+          border: 2px solid rgba(255, 255, 255, 0.6) !important;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+        }
+      `}</style>
       <div className="flex justify-center p-4 w-full">
         <Card className="w-full max-w-full">
           <CardContent className="p-4">
@@ -80,26 +120,48 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
               mode="single"
               selected={selectedDate}
               onSelect={handleDayClick}
-              className="rounded-md border w-full pointer-events-auto"
+              className="rounded-md border w-full pointer-events-auto calendar-enhanced"
               modifiers={{
                 hasEvent: (date) => hasEventOnDay(date),
               }}
               modifiersStyles={{
                 hasEvent: { 
-                  fontWeight: 'bold', 
-                  backgroundColor: 'rgba(255, 191, 0, 0.2)',
+                  fontWeight: 'bold',
                   color: '#000000',
-                  textDecoration: 'underline' 
+                  background: 'linear-gradient(135deg, rgba(255, 191, 0, 0.3), rgba(255, 215, 0, 0.5))',
+                  borderRadius: '8px',
+                  animation: 'eventDayPulse 2s ease-in-out infinite',
+                  border: '2px solid rgba(255, 191, 0, 0.4)'
                 },
               }}
               styles={{
                 month: { width: '100%' },
                 months: { width: '100%' },
                 table: { width: '100%' },
-                cell: { width: '14.28%', height: '60px' },
-                day: { transform: 'scale(1.2)', fontWeight: 'bold' },
+                cell: { 
+                  width: '14.28%', 
+                  height: '60px',
+                  textAlign: 'center',
+                  padding: '4px'
+                },
+                day: { 
+                  transform: 'scale(1.2)', 
+                  fontWeight: 'bold',
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                },
                 caption: { fontSize: '1.3rem', fontWeight: 'bold' },
-                head_cell: { fontSize: '1.1rem', paddingTop: '1rem', paddingBottom: '1rem', fontWeight: 'bold' },
+                head_cell: { 
+                  fontSize: '1.1rem', 
+                  paddingTop: '1rem', 
+                  paddingBottom: '1rem', 
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                  width: '14.28%'
+                },
                 nav_button: { transform: 'scale(1.5)', margin: '0 0.5rem' }
               }}
             />
