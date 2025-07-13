@@ -43,8 +43,9 @@ export function EventsList({ events: initialEvents, onEventUpdated }: EventsList
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed' | 'cancelled'>('all');
   const navigate = useNavigate();
   
-  // For delete modal
+  // For details and delete modals
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Update local events when prop changes
@@ -113,8 +114,9 @@ export function EventsList({ events: initialEvents, onEventUpdated }: EventsList
   };
   
   const handleViewDetails = (event: Event) => {
-    console.log('EventsList - Navigate to details for event:', event);
-    navigate(`/eventos/detalhes/${event.id}`);
+    console.log('EventsList - View details for event:', event);
+    setSelectedEvent(event);
+    setViewDetailsOpen(true);
   };
   
   const handleEdit = (event: Event) => {
@@ -231,6 +233,110 @@ export function EventsList({ events: initialEvents, onEventUpdated }: EventsList
           </TableBody>
         </Table>
       </div>
+
+      {/* View Details Dialog */}
+      <Dialog open={viewDetailsOpen} onOpenChange={setViewDetailsOpen}>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          {selectedEvent && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl font-semibold">{selectedEvent.title}</DialogTitle>
+                <DialogDescription>
+                  Detalhes completos do evento
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="grid gap-6 py-4">
+                {/* Status and Basic Info */}
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium">Status</div>
+                  <div>{getStatusBadge(selectedEvent.status)}</div>
+                </div>
+                
+                {/* Main Information */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground">Data</div>
+                    <div className="text-sm mt-1">{formatDate(selectedEvent.date)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground">Horário</div>
+                    <div className="text-sm mt-1">
+                      {selectedEvent.startTime && selectedEvent.endTime 
+                        ? `${selectedEvent.startTime} às ${selectedEvent.endTime}`
+                        : 'Não definido'
+                      }
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground">Cliente</div>
+                    <div className="text-sm mt-1">{selectedEvent.client || 'Sem cliente'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground">Local</div>
+                    <div className="text-sm mt-1">{selectedEvent.location}</div>
+                  </div>
+                </div>
+
+                {/* Financial Information */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground">Receita Estimada</div>
+                    <div className="text-sm mt-1 text-green-600 font-medium">{formatCurrency(selectedEvent.estimatedRevenue)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground">Despesa Estimada</div>
+                    <div className="text-sm mt-1 text-red-600 font-medium">{formatCurrency(selectedEvent.estimatedExpenses)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground">Lucro Estimado</div>
+                    <div className="text-sm mt-1 text-blue-600 font-medium">{formatCurrency(selectedEvent.estimatedRevenue - selectedEvent.estimatedExpenses)}</div>
+                  </div>
+                </div>
+
+                {/* Google Maps Preview */}
+                {selectedEvent.latitude && selectedEvent.longitude && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-2">Localização</div>
+                    <div className="border rounded-lg overflow-hidden">
+                      <iframe
+                        src={`https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3000!2d${selectedEvent.longitude}!3d${selectedEvent.latitude}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zM!5e0!3m2!1sen!2sbr!4v1234567890`}
+                        width="100%"
+                        height="200"
+                        style={{ border: 0 }}
+                        allowFullScreen
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                      />
+                    </div>
+                    {selectedEvent.formattedAddress && (
+                      <div className="text-xs text-muted-foreground mt-1">{selectedEvent.formattedAddress}</div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Notes */}
+                {selectedEvent.notes && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground">Observações</div>
+                    <div className="text-sm mt-1 p-2 bg-muted rounded-md">{selectedEvent.notes}</div>
+                  </div>
+                )}
+              </div>
+              
+              <DialogFooter className="gap-2">
+                <Button onClick={() => handleEdit(selectedEvent)} className="mr-2">
+                  <Edit className="mr-2 h-4 w-4" />
+                  Editar
+                </Button>
+                <Button variant="outline" onClick={() => setViewDetailsOpen(false)}>
+                  Fechar
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
