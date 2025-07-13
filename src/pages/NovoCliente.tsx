@@ -24,7 +24,6 @@ interface ClientFormData {
   contact: string;
   email: string;
   phone: string;
-  websiteUrl: string;
   whatsappUrl: string;
   instagramUrl: string;
   notes?: string;
@@ -40,7 +39,6 @@ const NovoCliente = () => {
       contact: '',
       email: '',
       phone: '',
-      websiteUrl: '',
       whatsappUrl: '',
       instagramUrl: '',
       notes: '',
@@ -56,7 +54,6 @@ const NovoCliente = () => {
         contact: data.contact,
         email: data.email,
         phone: data.phone,
-        websiteUrl: data.websiteUrl,
         whatsappUrl: data.whatsappUrl,
         instagramUrl: data.instagramUrl,
         totalRevenue: 0,
@@ -115,7 +112,7 @@ const NovoCliente = () => {
                   <FormItem>
                     <FormLabel>Nome do Cliente</FormLabel>
                     <FormControl>
-                      <Input placeholder="Razão social ou nome completo" {...field} />
+                      <Input placeholder="Nome do Cliente" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -166,26 +163,6 @@ const NovoCliente = () => {
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="websiteUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Website URL</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="url" 
-                        placeholder="https://www.exemplo.com" 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      URL do site do cliente (opcional).
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <FormField
@@ -197,7 +174,7 @@ const NovoCliente = () => {
                       <FormControl>
                         <Input 
                           type="url" 
-                          placeholder="https://wa.me/5511999999999" 
+                          placeholder="https://wa.me/" 
                           {...field} 
                         />
                       </FormControl>
