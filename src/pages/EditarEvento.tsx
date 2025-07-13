@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,8 @@ interface EventFormData {
   actualRevenue?: string;
   actualExpenses?: string;
   status: string;
+  startTime?: string;
+  endTime?: string;
   notes?: string;
 }
 
@@ -76,6 +79,8 @@ const EditarEvento = () => {
       actualRevenue: '',
       actualExpenses: '',
       status: 'upcoming',
+      startTime: '',
+      endTime: '',
       notes: '',
     },
   });
@@ -148,6 +153,8 @@ const EditarEvento = () => {
           actualRevenue: eventData.actualRevenue?.toString() || '',
           actualExpenses: eventData.actualExpenses?.toString() || '',
           status: eventData.status,
+          startTime: eventData.startTime || '',
+          endTime: eventData.endTime || '',
           notes: eventData.notes || '',
         });
 
@@ -207,6 +214,9 @@ const EditarEvento = () => {
         latitude: selectedLocation?.latitude,
         longitude: selectedLocation?.longitude,
         placeId: selectedLocation?.place_id,
+        // Add time data
+        startTime: data.startTime || undefined,
+        endTime: data.endTime || undefined,
       };
 
       console.log('EditarEvento - Update data prepared:', updateData);
@@ -295,7 +305,7 @@ const EditarEvento = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Editar Evento</h1>
             <p className="text-muted-foreground">
-              Atualize as informações do evento: {event.title}
+              Atualize as informações do evento: {event?.title}
             </p>
           </div>
         </div>
@@ -369,6 +379,50 @@ const EditarEvento = () => {
                       </FormControl>
                       <FormDescription>
                         Campo para referência adicional, se necessário
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Horário de Início</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="time" 
+                          placeholder="--:--"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Horário de início do evento (opcional)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Horário de Término</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="time" 
+                          placeholder="--:--"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Horário de término do evento (opcional)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

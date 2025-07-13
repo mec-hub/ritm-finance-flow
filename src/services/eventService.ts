@@ -46,6 +46,9 @@ export class EventService {
       latitude: event.latitude || undefined,
       longitude: event.longitude || undefined,
       placeId: event.place_id || undefined,
+      // Add new time fields
+      startTime: event.start_time || undefined,
+      endTime: event.end_time || undefined,
     }));
   }
 
@@ -98,6 +101,9 @@ export class EventService {
       latitude: data.latitude || undefined,
       longitude: data.longitude || undefined,
       placeId: data.place_id || undefined,
+      // Add new time fields
+      startTime: data.start_time || undefined,
+      endTime: data.end_time || undefined,
     };
   }
 
@@ -133,6 +139,9 @@ export class EventService {
       latitude: event.latitude || null,
       longitude: event.longitude || null,
       place_id: event.placeId || null,
+      // Add new time fields
+      start_time: event.startTime || null,
+      end_time: event.endTime || null,
     };
 
     console.log('EventService.create - Insert data:', insertData);
@@ -189,6 +198,10 @@ export class EventService {
     if (updates.latitude !== undefined) updateData.latitude = updates.latitude || null;
     if (updates.longitude !== undefined) updateData.longitude = updates.longitude || null;
     if (updates.placeId !== undefined) updateData.place_id = updates.placeId || null;
+
+    // Add new time fields
+    if (updates.startTime !== undefined) updateData.start_time = updates.startTime || null;
+    if (updates.endTime !== undefined) updateData.end_time = updates.endTime || null;
 
     console.log('EventService.update - Final update data:', updateData);
 

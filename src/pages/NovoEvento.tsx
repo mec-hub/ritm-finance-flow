@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,8 @@ interface EventFormData {
   clientId: string;
   estimatedRevenue: string;
   estimatedExpenses: string;
+  startTime?: string;
+  endTime?: string;
   notes?: string;
 }
 
@@ -66,6 +69,8 @@ const NovoEvento = () => {
       clientId: '',
       estimatedRevenue: '',
       estimatedExpenses: '',
+      startTime: '',
+      endTime: '',
       notes: '',
     },
   });
@@ -114,6 +119,9 @@ const NovoEvento = () => {
         latitude: selectedLocation?.latitude,
         longitude: selectedLocation?.longitude,
         placeId: selectedLocation?.place_id,
+        // Add time data
+        startTime: data.startTime || undefined,
+        endTime: data.endTime || undefined,
       }, clientId);
       
       toast({
@@ -225,6 +233,50 @@ const NovoEvento = () => {
                       </FormControl>
                       <FormDescription>
                         Campo para referência adicional, se necessário
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Horário de Início</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="time" 
+                          placeholder="--:--"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Horário de início do evento (opcional)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Horário de Término</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="time" 
+                          placeholder="--:--"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Horário de término do evento (opcional)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

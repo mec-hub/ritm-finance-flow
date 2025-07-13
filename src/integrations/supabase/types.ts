@@ -102,6 +102,7 @@ export type Database = {
           client_id: string | null
           created_at: string | null
           date: string
+          end_time: string | null
           estimated_expenses: number | null
           estimated_revenue: number | null
           formatted_address: string | null
@@ -112,6 +113,7 @@ export type Database = {
           notes: string | null
           place_id: string | null
           place_name: string | null
+          start_time: string | null
           status: Database["public"]["Enums"]["event_status"] | null
           title: string
           updated_at: string | null
@@ -123,6 +125,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string | null
           date: string
+          end_time?: string | null
           estimated_expenses?: number | null
           estimated_revenue?: number | null
           formatted_address?: string | null
@@ -133,6 +136,7 @@ export type Database = {
           notes?: string | null
           place_id?: string | null
           place_name?: string | null
+          start_time?: string | null
           status?: Database["public"]["Enums"]["event_status"] | null
           title: string
           updated_at?: string | null
@@ -144,6 +148,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string | null
           date?: string
+          end_time?: string | null
           estimated_expenses?: number | null
           estimated_revenue?: number | null
           formatted_address?: string | null
@@ -154,6 +159,7 @@ export type Database = {
           notes?: string | null
           place_id?: string | null
           place_name?: string | null
+          start_time?: string | null
           status?: Database["public"]["Enums"]["event_status"] | null
           title?: string
           updated_at?: string | null

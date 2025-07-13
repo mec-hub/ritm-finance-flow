@@ -45,6 +45,9 @@ export interface Event {
   latitude?: number;
   longitude?: number;
   placeId?: string;
+  // New time fields
+  startTime?: string;
+  endTime?: string;
 }
 
 export interface Client {
