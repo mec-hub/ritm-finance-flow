@@ -57,6 +57,8 @@ export interface Client {
   lastEvent?: Date;
   notes?: string;
   websiteUrl?: string;
+  whatsappUrl?: string;
+  instagramUrl?: string;
 }
 
 export interface TeamMember {

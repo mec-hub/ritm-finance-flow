@@ -25,13 +25,11 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Client } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { ClientService } from '@/services/clientService';
-import { MoreHorizontal, Edit, Trash2, ExternalLink } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Search, MessageCircle, Instagram } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
 
 interface ClientsDataTableProps {
   clients: Client[];
@@ -57,18 +55,6 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
     client.contact?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Get client events count (this would ideally come from props or a service)
-  const getClientEventsCount = (clientName: string): number => {
-    // This is a placeholder - you may want to pass this data as props
-    return 0;
-  };
-
-  // Get last event date (this would ideally come from props or a service)
-  const getLastEventDate = (clientName: string): Date | null => {
-    // This is a placeholder - you may want to pass this data as props
-    return null;
-  };
-
   const requestSort = (key: keyof Client) => {
     let direction: 'ascending' | 'descending' = 'ascending';
     if (sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -89,14 +75,22 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
 
   const handleEdit = (client: Client) => {
     console.log('ClientsDataTable - Edit client:', client);
-    // Fixed: Use the correct route path that matches App.tsx
     navigate(`/clientes/editar/${client.id}`);
   };
 
-  const handleContactClick = (client: Client) => {
-    if (client.websiteUrl && client.websiteUrl.trim()) {
-      // Ensure URL has proper protocol
-      let url = client.websiteUrl.trim();
+  const handleWhatsAppClick = (client: Client) => {
+    if (client.whatsappUrl && client.whatsappUrl.trim()) {
+      let url = client.whatsappUrl.trim();
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleInstagramClick = (client: Client) => {
+    if (client.instagramUrl && client.instagramUrl.trim()) {
+      let url = client.instagramUrl.trim();
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         url = 'https://' + url;
       }
@@ -138,27 +132,25 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
     }
   };
 
-  const renderClientContact = (client: Client) => {
-    if (!client.contact) return '-';
+  const renderSocialIcon = (client: Client, platform: 'whatsapp' | 'instagram') => {
+    const url = platform === 'whatsapp' ? client.whatsappUrl : client.instagramUrl;
+    const handler = platform === 'whatsapp' ? handleWhatsAppClick : handleInstagramClick;
+    const Icon = platform === 'whatsapp' ? MessageCircle : Instagram;
+    const color = platform === 'whatsapp' ? 'text-green-600 hover:text-green-800' : 'text-pink-600 hover:text-pink-800';
     
-    const hasWebsite = client.websiteUrl && client.websiteUrl.trim();
-    
-    if (hasWebsite) {
-      return (
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => handleContactClick(client)}
-            className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center space-x-1"
-            title={`Visitar: ${client.websiteUrl}`}
-          >
-            <span>{client.contact}</span>
-            <ExternalLink className="h-3 w-3" />
-          </button>
-        </div>
-      );
+    if (!url || !url.trim()) {
+      return <span className="text-muted-foreground">-</span>;
     }
     
-    return <span>{client.contact}</span>;
+    return (
+      <button
+        onClick={() => handler(client)}
+        className={`${color} cursor-pointer transition-colors`}
+        title={`Abrir ${platform === 'whatsapp' ? 'WhatsApp' : 'Instagram'}`}
+      >
+        <Icon className="h-5 w-5" />
+      </button>
+    );
   };
 
   return (
@@ -192,77 +184,62 @@ export function ClientsDataTable({ clients: initialClients, onClientUpdated }: C
                   <TableHead>Contato</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Telefone</TableHead>
-                  <TableHead>Número de Eventos</TableHead>
-                  <TableHead>Último Evento</TableHead>
-                  <TableHead 
-                    className="cursor-pointer text-right"
-                    onClick={() => requestSort('totalRevenue')}
-                  >
-                    Faturamento Total
-                    {sortConfig.key === 'totalRevenue' && (
-                      <span>{sortConfig.direction === 'ascending' ? ' ↑' : ' ↓'}</span>
-                    )}
-                  </TableHead>
+                  <TableHead className="text-center">WhatsApp</TableHead>
+                  <TableHead className="text-center">Instagram</TableHead>
                   <TableHead className="w-[80px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sortedClients.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       {searchTerm ? 'Nenhum cliente encontrado com os critérios de busca.' : 'Nenhum cliente cadastrado.'}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  sortedClients.map((client) => {
-                    const eventCount = getClientEventsCount(client.name);
-                    const lastEventDate = getLastEventDate(client.name);
-                    
-                    return (
-                      <TableRow key={client.id}>
-                        <TableCell>
-                          <span className="font-medium">{client.name}</span>
-                        </TableCell>
-                        <TableCell>
-                          {renderClientContact(client)}
-                        </TableCell>
-                        <TableCell>{client.email}</TableCell>
-                        <TableCell>{client.phone || '-'}</TableCell>
-                        <TableCell>{eventCount}</TableCell>
-                        <TableCell>
-                          {lastEventDate ? formatDate(lastEventDate) : '-'}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(client.totalRevenue)}
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEdit(client)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => {
-                                  setSelectedClient(client);
-                                  setDeleteDialogOpen(true);
-                                }}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Excluir
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
+                  sortedClients.map((client) => (
+                    <TableRow key={client.id}>
+                      <TableCell>
+                        <span className="font-medium">{client.name}</span>
+                      </TableCell>
+                      <TableCell>
+                        {client.contact || '-'}
+                      </TableCell>
+                      <TableCell>{client.email}</TableCell>
+                      <TableCell>{client.phone || '-'}</TableCell>
+                      <TableCell className="text-center">
+                        {renderSocialIcon(client, 'whatsapp')}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {renderSocialIcon(client, 'instagram')}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEdit(client)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setSelectedClient(client);
+                                setDeleteDialogOpen(true);
+                              }}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>

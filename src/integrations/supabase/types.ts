@@ -50,6 +50,7 @@ export type Database = {
           created_at: string | null
           email: string | null
           id: string
+          instagram_url: string | null
           last_event: string | null
           name: string
           notes: string | null
@@ -58,12 +59,14 @@ export type Database = {
           updated_at: string | null
           user_id: string
           website_url: string | null
+          whatsapp_url: string | null
         }
         Insert: {
           contact?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
+          instagram_url?: string | null
           last_event?: string | null
           name: string
           notes?: string | null
@@ -72,12 +75,14 @@ export type Database = {
           updated_at?: string | null
           user_id: string
           website_url?: string | null
+          whatsapp_url?: string | null
         }
         Update: {
           contact?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
+          instagram_url?: string | null
           last_event?: string | null
           name?: string
           notes?: string | null
@@ -86,6 +91,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           website_url?: string | null
+          whatsapp_url?: string | null
         }
         Relationships: []
       }

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Client } from '@/types';
 
@@ -29,7 +28,9 @@ export class ClientService {
       totalRevenue: client.total_revenue || 0,
       lastEvent: client.last_event ? new Date(client.last_event) : undefined,
       notes: client.notes || '',
-      websiteUrl: client.website_url || ''
+      websiteUrl: client.website_url || '',
+      whatsappUrl: client.whatsapp_url || '',
+      instagramUrl: client.instagram_url || ''
     }));
   }
 
@@ -48,6 +49,8 @@ export class ClientService {
       last_event: client.lastEvent?.toISOString().split('T')[0] || null,
       notes: client.notes || null,
       website_url: client.websiteUrl || null,
+      whatsapp_url: client.whatsappUrl || null,
+      instagram_url: client.instagramUrl || null,
       user_id: userData.user.id
     };
 
@@ -85,6 +88,8 @@ export class ClientService {
     if (updates.lastEvent !== undefined) updateData.last_event = updates.lastEvent?.toISOString().split('T')[0] || null;
     if (updates.notes !== undefined) updateData.notes = updates.notes || null;
     if (updates.websiteUrl !== undefined) updateData.website_url = updates.websiteUrl || null;
+    if (updates.whatsappUrl !== undefined) updateData.whatsapp_url = updates.whatsappUrl || null;
+    if (updates.instagramUrl !== undefined) updateData.instagram_url = updates.instagramUrl || null;
 
     console.log('ClientService.update - Final update data:', updateData);
 
@@ -158,7 +163,9 @@ export class ClientService {
       totalRevenue: data.total_revenue || 0,
       lastEvent: data.last_event ? new Date(data.last_event) : undefined,
       notes: data.notes || '',
-      websiteUrl: data.website_url || ''
+      websiteUrl: data.website_url || '',
+      whatsappUrl: data.whatsapp_url || '',
+      instagramUrl: data.instagram_url || ''
     };
 
     console.log('ClientService.getById - Returning client:', result);
