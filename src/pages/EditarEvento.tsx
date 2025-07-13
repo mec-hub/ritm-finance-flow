@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -34,6 +33,7 @@ import { ClientService } from '@/services/clientService';
 import { Event, Client } from '@/types';
 import { LocationSearch } from '@/components/LocationSearch';
 import { MapPreview } from '@/components/MapPreview';
+import { TimeInput } from '@/components/ui/time-input';
 
 interface LocationData {
   place_id: string;
@@ -394,10 +394,10 @@ const EditarEvento = () => {
                     <FormItem>
                       <FormLabel>Horário de Início</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="time" 
-                          placeholder="--:--"
-                          {...field} 
+                        <TimeInput
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Selecionar horário de início"
                         />
                       </FormControl>
                       <FormDescription>
@@ -415,10 +415,10 @@ const EditarEvento = () => {
                     <FormItem>
                       <FormLabel>Horário de Término</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="time" 
-                          placeholder="--:--"
-                          {...field} 
+                        <TimeInput
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Selecionar horário de término"
                         />
                       </FormControl>
                       <FormDescription>

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Event } from '@/types';
 import { formatDate, formatCurrency } from '@/utils/formatters';
 import { useNavigate } from 'react-router-dom';
-import { Edit } from 'lucide-react';
+import { Edit, Clock } from 'lucide-react';
 
 interface EventsCalendarProps {
   events: Event[];
@@ -125,6 +124,14 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
                     <div>
                       <h3 className="font-medium text-lg">{event.title}</h3>
                       <p className="text-sm text-muted-foreground">{event.location}</p>
+                      {(event.startTime || event.endTime) && (
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                          <Clock className="h-3 w-3" />
+                          {event.startTime && <span>{event.startTime}</span>}
+                          {event.startTime && event.endTime && <span>-</span>}
+                          {event.endTime && <span>{event.endTime}</span>}
+                        </div>
+                      )}
                     </div>
                     {getStatusBadge(event.status)}
                   </div>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -34,6 +33,7 @@ import { ClientService } from '@/services/clientService';
 import { Client } from '@/types';
 import { LocationSearch } from '@/components/LocationSearch';
 import { MapPreview } from '@/components/MapPreview';
+import { TimeInput } from '@/components/ui/time-input';
 
 interface LocationData {
   place_id: string;
@@ -159,7 +159,7 @@ const NovoEvento = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Novo Evento</h1>
             <p className="text-muted-foreground">
-              Adicione um novo evento ao sistema.
+              Adicione um novo evento ou apresentação
             </p>
           </div>
         </div>
@@ -248,10 +248,10 @@ const NovoEvento = () => {
                     <FormItem>
                       <FormLabel>Horário de Início</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="time" 
-                          placeholder="--:--"
-                          {...field} 
+                        <TimeInput
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Selecionar horário de início"
                         />
                       </FormControl>
                       <FormDescription>
@@ -269,10 +269,10 @@ const NovoEvento = () => {
                     <FormItem>
                       <FormLabel>Horário de Término</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="time" 
-                          placeholder="--:--"
-                          {...field} 
+                        <TimeInput
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Selecionar horário de término"
                         />
                       </FormControl>
                       <FormDescription>
