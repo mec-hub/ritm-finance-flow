@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent } from '@/components/ui/card';
@@ -77,10 +76,19 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
       <style>{`
         @keyframes eventDayGlow {
           0%, 100% { 
-            box-shadow: 0 0 0 2px transparent, 0 0 8px rgba(255, 215, 0, 0.3);
+            box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.8), 0 0 8px rgba(255, 215, 0, 0.3);
           }
           50% { 
-            box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.6), 0 0 16px rgba(255, 215, 0, 0.5);
+            box-shadow: 0 0 0 2px rgba(255, 191, 0, 1), 0 0 16px rgba(255, 215, 0, 0.5);
+          }
+        }
+        
+        @keyframes selectedDayGlow {
+          0%, 100% { 
+            box-shadow: 0 0 0 2px rgba(40, 48, 72, 0.8), 0 0 8px rgba(133, 147, 152, 0.3);
+          }
+          50% { 
+            box-shadow: 0 0 0 2px rgba(133, 147, 152, 1), 0 0 16px rgba(40, 48, 72, 0.5);
           }
         }
         
@@ -105,24 +113,12 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
         }
         
         .calendar-enhanced .rdp-day_selected {
-          background: linear-gradient(135deg, #283048, #859398) !important;
+          background: transparent !important;
           color: #ffffff !important;
           border-radius: 6px !important;
           border: 2px solid transparent !important;
-          background-clip: padding-box !important;
+          animation: selectedDayGlow 2.5s ease-in-out infinite !important;
           position: relative !important;
-        }
-        
-        .calendar-enhanced .rdp-day_selected::before {
-          content: '';
-          position: absolute;
-          top: -2px;
-          left: -2px;
-          right: -2px;
-          bottom: -2px;
-          background: linear-gradient(135deg, #283048, #859398);
-          border-radius: 8px;
-          z-index: -1;
         }
       `}</style>
       <div className="flex justify-center p-4 w-full">
@@ -140,12 +136,9 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
                 hasEvent: { 
                   fontWeight: 'bold',
                   color: '#000000',
-                  background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 191, 0, 0.2))',
+                  background: 'transparent',
                   borderRadius: '6px',
                   border: '2px solid transparent',
-                  backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #FFD700, #FFBF00)',
-                  backgroundOrigin: 'border-box',
-                  backgroundClip: 'content-box, border-box',
                   animation: 'eventDayGlow 2.5s ease-in-out infinite',
                   position: 'relative'
                 },
