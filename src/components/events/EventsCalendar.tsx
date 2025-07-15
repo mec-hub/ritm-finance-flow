@@ -118,7 +118,7 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
               modifiersStyles={{
                 hasEvent: { 
                   fontWeight: 'bold',
-                  color: '#000000',
+                  color: '#ffffff',
                   background: 'transparent',
                   borderRadius: '6px',
                   border: '2px solid transparent',
