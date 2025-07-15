@@ -60,7 +60,11 @@ export function EventDetailsModal({ isOpen, onClose, events, selectedDate }: Eve
     navigate(`/eventos/editar/${currentEvent.id}`);
     onClose();
   };
-
+  const formatTimeWithoutSeconds = (time: string) => {
+    if (!time) return '';
+    // Remove seconds from time format (HH:MM:SS -> HH:MM)
+    return time.substring(0, 5);
+  };
   const goToPrevious = () => {
     setCurrentEventIndex((prev) => prev > 0 ? prev - 1 : sortedEvents.length - 1);
   };
