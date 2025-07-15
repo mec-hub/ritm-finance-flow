@@ -120,6 +120,20 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
           animation: selectedDayGlow 2.5s ease-in-out infinite !important;
           position: relative !important;
         }
+        
+        .calendar-enhanced .rdp-day_selected:not(.rdp-day_outside) {
+          background-color: transparent !important;
+        }
+        
+        .calendar-enhanced .rdp-day_selected:focus {
+          background-color: transparent !important;
+          outline: none !important;
+        }
+        
+        .calendar-enhanced button[aria-selected="true"] {
+          background-color: transparent !important;
+          background: transparent !important;
+        }
       `}</style>
       <div className="flex justify-center p-4 w-full">
         <Card className="w-full max-w-full">
