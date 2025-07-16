@@ -59,7 +59,7 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
           text-align: center !important;
         }
 
-        /* Estilo do dia atual */
+        /* Estilo do dia atual - RESTORED */
         .calendar-enhanced .rdp-day_today {
           background-color: rgba(255, 191, 0, 0.15) !important;
           color: #000000 !important;
@@ -161,13 +161,6 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
                   alignItems: 'center',
                   justifyContent: 'center',
                   background: 'transparent',
-                },
-                day_selected: {
-                  backgroundColor: 'transparent',
-                  background: 'transparent',
-                  color: '#ffffff',
-                  border: 'none',
-                  boxShadow: '0 0 0 2px rgba(40, 48, 72, 0.8)',
                 },
                 caption: {
                   fontSize: '1.3rem',
