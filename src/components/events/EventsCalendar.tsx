@@ -66,15 +66,6 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
           border-radius: 6px !important;
           border: 1px solid rgba(255, 191, 0, 0.4) !important;
         }
-        .calendar-enhanced .rdp-day_selected,
-        .calendar-enhanced button[aria-selected="true"] {
-          background-color: #ffffff !important;
-          color: #000000 !important;
-          border-radius: 6px !important;
-          border: 1px solid #ffffff !important;
-          outline: none !important;
-          box-shadow: none !important;
-        }
 
         /* Remove TODAS as estilizações padrão do dia selecionado */
         .calendar-enhanced .rdp-day_selected,
