@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,14 +7,8 @@ import { Event } from '@/types';
 import { formatDate, formatCurrency } from '@/utils/formatters';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Edit, 
-  Clock, 
-  User, 
-  MapPin, 
-  DollarSign, 
-  Calculator,
-  ChevronLeft,
-  ChevronRight
+  Edit, Clock, User, MapPin, DollarSign, Calculator,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -29,8 +22,7 @@ interface EventDetailsModalProps {
 export function EventDetailsModal({ isOpen, onClose, events, selectedDate }: EventDetailsModalProps) {
   const [currentEventIndex, setCurrentEventIndex] = useState(0);
   const navigate = useNavigate();
-  
-  // Sort events by start time, then by title
+
   const sortedEvents = [...events].sort((a, b) => {
     if (a.startTime && b.startTime) {
       return a.startTime.localeCompare(b.startTime);
@@ -60,11 +52,7 @@ export function EventDetailsModal({ isOpen, onClose, events, selectedDate }: Eve
     navigate(`/eventos/editar/${currentEvent.id}`);
     onClose();
   };
-  const formatTimeWithoutSeconds = (time: string) => {
-    if (!time) return '';
-    // Remove seconds from time format (HH:MM:SS -> HH:MM)
-    return time.substring(0, 5);
-  };
+
   const goToPrevious = () => {
     setCurrentEventIndex((prev) => prev > 0 ? prev - 1 : sortedEvents.length - 1);
   };
@@ -77,7 +65,7 @@ export function EventDetailsModal({ isOpen, onClose, events, selectedDate }: Eve
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-gray-800 text-white border-gray-700">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-black text-white border-gray-700">
         <DialogHeader className="space-y-4">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-2xl font-bold text-white">
@@ -111,7 +99,8 @@ export function EventDetailsModal({ isOpen, onClose, events, selectedDate }: Eve
         </DialogHeader>
 
         <div className="space-y-6 mt-6">
-          {/* Status and Date Section */}
+
+          {/* Status */}
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="text-gray-400">Status</span>
@@ -119,7 +108,7 @@ export function EventDetailsModal({ isOpen, onClose, events, selectedDate }: Eve
             </div>
           </div>
 
-          {/* Date and Time Row */}
+          {/* Data e horário */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center">
@@ -138,12 +127,12 @@ export function EventDetailsModal({ isOpen, onClose, events, selectedDate }: Eve
               <div>
                 <p className="text-sm text-gray-400">Horário</p>
                 <p className="font-medium">
-                  {currentEvent.startTime && currentEvent.endTime 
-                    ? `${currentEvent.startTime} - ${currentEvent.endTime}`
-                    : currentEvent.startTime 
-                      ? `A partir das ${currentEvent.startTime}`
-                      : currentEvent.endTime 
-                        ? `Até às ${currentEvent.endTime}`
+                  {currentEvent.startTime && currentEvent.endTime
+                    ? `${currentEvent.startTime.slice(0, 5)} - ${currentEvent.endTime.slice(0, 5)}`
+                    : currentEvent.startTime
+                      ? `A partir das ${currentEvent.startTime.slice(0, 5)}`
+                      : currentEvent.endTime
+                        ? `Até às ${currentEvent.endTime.slice(0, 5)}`
                         : 'Não definido'
                   }
                 </p>
@@ -151,7 +140,7 @@ export function EventDetailsModal({ isOpen, onClose, events, selectedDate }: Eve
             </div>
           </div>
 
-          {/* Client and Location Row */}
+          {/* Cliente e local */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center">
@@ -174,7 +163,7 @@ export function EventDetailsModal({ isOpen, onClose, events, selectedDate }: Eve
             </div>
           </div>
 
-          {/* Financial Information */}
+          {/* Informações financeiras */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center">
@@ -182,7 +171,9 @@ export function EventDetailsModal({ isOpen, onClose, events, selectedDate }: Eve
               </div>
               <div>
                 <p className="text-sm text-gray-400">Receita Estimada</p>
-                <p className="font-medium text-green-400">{formatCurrency(currentEvent.estimatedRevenue)}</p>
+                <p className="font-medium text-green-400">
+                  {formatCurrency(currentEvent.estimatedRevenue)}
+                </p>
               </div>
             </div>
 
@@ -192,7 +183,9 @@ export function EventDetailsModal({ isOpen, onClose, events, selectedDate }: Eve
               </div>
               <div>
                 <p className="text-sm text-gray-400">Despesa Estimada</p>
-                <p className="font-medium text-red-400">{formatCurrency(currentEvent.estimatedExpenses)}</p>
+                <p className="font-medium text-red-400">
+                  {formatCurrency(currentEvent.estimatedExpenses)}
+                </p>
               </div>
             </div>
 
@@ -214,7 +207,7 @@ export function EventDetailsModal({ isOpen, onClose, events, selectedDate }: Eve
             </div>
           </div>
 
-          {/* Map Section */}
+          {/* Mapa */}
           {currentEvent.latitude && currentEvent.longitude && (
             <div className="space-y-3">
               <div className="flex items-center gap-3">
@@ -234,12 +227,14 @@ export function EventDetailsModal({ isOpen, onClose, events, selectedDate }: Eve
                 />
               </div>
               {currentEvent.formattedAddress && (
-                <p className="text-sm text-gray-400 mt-2">{currentEvent.formattedAddress}</p>
+                <p className="text-sm text-gray-400 mt-2">
+                  {currentEvent.formattedAddress}
+                </p>
               )}
             </div>
           )}
 
-          {/* Notes Section */}
+          {/* Notas */}
           {currentEvent.notes && (
             <div className="space-y-2">
               <p className="text-sm text-gray-400">Observações</p>
@@ -247,7 +242,7 @@ export function EventDetailsModal({ isOpen, onClose, events, selectedDate }: Eve
             </div>
           )}
 
-          {/* Action Buttons */}
+          {/* Botões */}
           <div className="flex justify-between items-center pt-4 border-t border-gray-700">
             <Button 
               variant="outline" 
