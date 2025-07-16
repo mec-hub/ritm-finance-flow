@@ -64,7 +64,7 @@ export function EventDetailsModal({ isOpen, onClose, events, selectedDate }: Eve
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto text-white border-gray-700"
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto text-white border-[#191919]"
         style={{ backgroundColor: '#121212' }}
       >
         <DialogHeader className="space-y-4">
@@ -221,7 +221,7 @@ export function EventDetailsModal({ isOpen, onClose, events, selectedDate }: Eve
           )}
 
           {/* Ações */}
-          <div className="flex justify-between items-center pt-4 border-t border-gray-700">
+          <div className="flex justify-between items-center pt-4 border-t border-[#191919]">
             <Button variant="outline" onClick={onClose} className="border-gray-600 text-gray-300 hover:bg-gray-800">
               Fechar
             </Button>
