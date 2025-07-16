@@ -91,11 +91,30 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
         /* Remove faixa (range) que pode causar fundo amarelo */
         .calendar-enhanced .rdp-day_range_start,
         .calendar-enhanced .rdp-day_range_middle,
-        .calendar-enhanced .rdp-day_range_end {
+       .calendar-enhanced .rdp-day_range_end,
+        .calendar-enhanced .rdp-range_start,
+        .calendar-enhanced .rdp-range_middle,
+        .calendar-enhanced .rdp-range_end {
           background-color: transparent !important;
+          background: transparent !important;
           color: inherit !important;
           box-shadow: none !important;
           border: none !important;
+        }
+
+        /* Remove qualquer estilo de seleção de intervalo */
+        .calendar-enhanced [data-selected],
+        .calendar-enhanced [data-range-start],
+        .calendar-enhanced [data-range-middle],
+        .calendar-enhanced [data-range-end] {
+          background-color: transparent !important;
+          background: transparent !important;
+        }
+
+        /* Override direto dos estilos Tailwind que podem estar causando o problema */
+        .calendar-enhanced .bg-primary,
+        .calendar-enhanced .bg-accent {
+          background-color: transparent !important;
         }
       `}</style>
 
