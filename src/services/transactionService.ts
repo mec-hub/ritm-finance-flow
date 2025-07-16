@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Transaction } from '@/types';
+import { RecurringTransactionService } from './recurringTransactionService';
 
 export interface TeamTransactionAssignment {
   id?: string;
@@ -99,6 +100,8 @@ export class TransactionService {
   }
 
   static async create(transaction: Omit<Transaction, 'id'>): Promise<Transaction> {
+    console.log('TransactionService.create - Creating transaction:', transaction);
+    
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('User not authenticated');
 
@@ -129,6 +132,8 @@ export class TransactionService {
 
     if (error) throw error;
 
+    console.log('TransactionService.create - Transaction created:', data.id);
+
     // Create team assignments
     if (transaction.teamPercentages && transaction.teamPercentages.length > 0) {
       const assignments = transaction.teamPercentages.map(assignment => ({
@@ -142,6 +147,24 @@ export class TransactionService {
         .insert(assignments);
 
       if (assignmentError) throw assignmentError;
+    }
+
+    // Create recurring schedule if this is a recurring transaction
+    if (transaction.isRecurring && transaction.recurrenceMonths && transaction.recurrenceMonths > 1) {
+      console.log('TransactionService.create - Creating recurring schedule for transaction:', data.id);
+      
+      try {
+        await RecurringTransactionService.createRecurringSchedule(
+          data.id,
+          transaction.date,
+          transaction.recurrenceMonths
+        );
+        console.log('TransactionService.create - Recurring schedule created successfully');
+      } catch (recurringError) {
+        console.error('TransactionService.create - Error creating recurring schedule:', recurringError);
+        // Don't throw here as the main transaction was created successfully
+        // We could show a warning to the user instead
+      }
     }
 
     return { ...transaction, id: data.id };
@@ -206,6 +229,14 @@ export class TransactionService {
       .from('team_transaction_assignments')
       .delete()
       .eq('transaction_id', id);
+
+    // Delete recurring transactions if this is a parent transaction
+    try {
+      await RecurringTransactionService.deleteRecurringTransactions(id);
+    } catch (error) {
+      console.error('Error deleting recurring transactions:', error);
+      // Continue with deleting the main transaction even if recurring deletion fails
+    }
 
     const { error } = await supabase
       .from('transactions')
