@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { TransactionService } from './transactionService';
 
 interface RecurringTransaction {
   id: string;
@@ -33,7 +34,8 @@ export class RecurringTransactionService {
 
     const recurringEntries = [];
     
-    for (let i = 1; i <= months; i++) {
+    // Fix: Create only months - 1 entries since the original transaction is the first installment
+    for (let i = 1; i < months; i++) {
       const scheduledDate = new Date(startDate);
       scheduledDate.setMonth(scheduledDate.getMonth() + i);
       
@@ -47,15 +49,17 @@ export class RecurringTransactionService {
 
     console.log('RecurringTransactionService.createRecurringSchedule - Insert data:', recurringEntries);
 
-    const { error } = await supabase
-      .from('recurring_transactions')
-      .insert(recurringEntries);
+    if (recurringEntries.length > 0) {
+      const { error } = await supabase
+        .from('recurring_transactions')
+        .insert(recurringEntries);
 
-    console.log('RecurringTransactionService.createRecurringSchedule - Query result:', { error });
+      console.log('RecurringTransactionService.createRecurringSchedule - Query result:', { error });
 
-    if (error) {
-      console.error('RecurringTransactionService.createRecurringSchedule - Error:', error);
-      throw error;
+      if (error) {
+        console.error('RecurringTransactionService.createRecurringSchedule - Error:', error);
+        throw error;
+      }
     }
   }
 
@@ -87,6 +91,57 @@ export class RecurringTransactionService {
       userId: item.user_id,
       createdAt: new Date(item.created_at)
     }));
+  }
+
+  static async generateNextInstallment(recurringId: string): Promise<string> {
+    console.log('RecurringTransactionService.generateNextInstallment - Starting request:', {
+      recurringId
+    });
+
+    // Get the recurring transaction and parent transaction details
+    const { data: recurringData, error: recurringError } = await supabase
+      .from('recurring_transactions')
+      .select(`
+        *,
+        transactions!parent_transaction_id (*)
+      `)
+      .eq('id', recurringId)
+      .eq('is_generated', false)
+      .single();
+
+    if (recurringError || !recurringData) {
+      console.error('RecurringTransactionService.generateNextInstallment - Error fetching recurring transaction:', recurringError);
+      throw new Error('Recurring transaction not found or already generated');
+    }
+
+    const parentTransaction = recurringData.transactions;
+    
+    // Create the new transaction based on the parent
+    const newTransaction = {
+      amount: parentTransaction.amount,
+      description: parentTransaction.description,
+      date: new Date(recurringData.scheduled_date),
+      category: parentTransaction.category,
+      subcategory: parentTransaction.subcategory,
+      type: parentTransaction.type as 'income' | 'expense',
+      eventId: parentTransaction.event_id,
+      clientId: parentTransaction.client_id,
+      notes: parentTransaction.notes,
+      status: 'not_paid' as const,
+      attachments: parentTransaction.attachments || [],
+      isRecurring: false,
+      teamPercentages: []
+    };
+
+    // Create the new transaction
+    const createdTransaction = await TransactionService.create(newTransaction);
+    
+    // Mark the recurring transaction as generated
+    await this.markAsGenerated(recurringId, createdTransaction.id);
+
+    console.log('RecurringTransactionService.generateNextInstallment - Generated transaction:', createdTransaction.id);
+    
+    return createdTransaction.id;
   }
 
   static async markAsGenerated(
@@ -161,5 +216,43 @@ export class RecurringTransactionService {
       console.error('RecurringTransactionService.deleteRecurringTransactions - Error:', error);
       throw error;
     }
+  }
+
+  static async getUpcomingRecurringTransactions(daysAhead: number = 7): Promise<RecurringTransaction[]> {
+    console.log('RecurringTransactionService.getUpcomingRecurringTransactions - Starting request:', {
+      daysAhead
+    });
+
+    const today = new Date().toISOString().split('T')[0];
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + daysAhead);
+    const futureDateStr = futureDate.toISOString().split('T')[0];
+
+    const { data, error } = await supabase
+      .from('recurring_transactions')
+      .select(`
+        *,
+        transactions!parent_transaction_id (*)
+      `)
+      .eq('is_generated', false)
+      .gte('scheduled_date', today)
+      .lte('scheduled_date', futureDateStr);
+
+    console.log('RecurringTransactionService.getUpcomingRecurringTransactions - Query result:', { data, error });
+
+    if (error) {
+      console.error('RecurringTransactionService.getUpcomingRecurringTransactions - Error:', error);
+      throw error;
+    }
+
+    return data.map(item => ({
+      id: item.id,
+      parentTransactionId: item.parent_transaction_id,
+      scheduledDate: new Date(item.scheduled_date),
+      isGenerated: item.is_generated,
+      generatedTransactionId: item.generated_transaction_id,
+      userId: item.user_id,
+      createdAt: new Date(item.created_at)
+    }));
   }
 }

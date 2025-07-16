@@ -8,24 +8,30 @@ import { Transaction } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Eye, Edit, Trash2, Calendar, ArrowUpDown } from 'lucide-react';
+import { Eye, Edit, Calendar, ArrowUpDown, Play, CheckCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { RecurringTransactionService } from '@/services/recurringTransactionService';
+import { useToast } from '@/hooks/use-toast';
 
 interface RecurringTransactionsProps {
   transactions: Transaction[];
+  onTransactionGenerated?: () => void;
 }
 
-export function RecurringTransactions({ transactions }: RecurringTransactionsProps) {
+export function RecurringTransactions({ transactions, onTransactionGenerated }: RecurringTransactionsProps) {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
+  const { toast } = useToast();
 
-  // Generate future recurring transactions
+  // Generate future recurring transactions - Fix: only generate recurrenceMonths - 1 projections
   const generateFutureTransactions = (transaction: Transaction) => {
     if (!transaction.isRecurring || !transaction.recurrenceMonths) return [];
     
     const futureTransactions = [];
     const baseDate = new Date(transaction.date);
     
-    for (let i = 1; i <= transaction.recurrenceMonths; i++) {
+    // Fix: Generate only recurrenceMonths - 1 future transactions since the original is the first installment
+    for (let i = 1; i < transaction.recurrenceMonths; i++) {
       const futureDate = new Date(baseDate);
       futureDate.setMonth(baseDate.getMonth() + i);
       
@@ -34,7 +40,8 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
         id: `${transaction.id}-future-${i}`,
         date: futureDate,
         status: 'not_paid' as const,
-        isFuture: true
+        isFuture: true,
+        installmentNumber: i + 1
       });
     }
     
@@ -43,7 +50,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
 
   // Get all transactions including future ones
   const allRecurringTransactions = transactions.flatMap(transaction => [
-    { ...transaction, isFuture: false },
+    { ...transaction, isFuture: false, installmentNumber: 1 },
     ...generateFutureTransactions(transaction)
   ]);
 
@@ -57,6 +64,48 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
   const handleSort = () => {
     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
   };
+
+  const handleGenerateInstallment = async (transactionId: string, futureTransactionId: string) => {
+    try {
+      setGeneratingIds(prev => new Set(prev).add(futureTransactionId));
+      
+      // Get recurring transactions for this parent
+      const recurringTransactions = await RecurringTransactionService.getRecurringTransactionsByParent(transactionId);
+      
+      // Find the first non-generated recurring transaction
+      const nextRecurring = recurringTransactions.find(rt => !rt.isGenerated);
+      
+      if (!nextRecurring) {
+        throw new Error('Nenhuma parcela pendente encontrada');
+      }
+      
+      // Generate the next installment
+      await RecurringTransactionService.generateNextInstallment(nextRecurring.id);
+      
+      toast({
+        title: "Sucesso",
+        description: "Parcela gerada com sucesso!",
+      });
+      
+      onTransactionGenerated?.();
+      
+    } catch (error) {
+      console.error('Error generating installment:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível gerar a parcela.",
+        variant: "destructive"
+      });
+    } finally {
+      setGeneratingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(futureTransactionId);
+        return newSet;
+      });
+    }
+  };
+
+  const isGenerating = (id: string) => generatingIds.has(id);
 
   if (transactions.length === 0) {
     return (
@@ -127,7 +176,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
         <CardHeader>
           <CardTitle>Cronograma de Transações Recorrentes</CardTitle>
           <CardDescription>
-            Visualize suas transações recorrentes atuais e futuras
+            Visualize suas transações recorrentes atuais e futuras. Use o botão "Gerar" para criar manualmente uma parcela futura.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -145,6 +194,7 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                       <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                   </TableHead>
+                  <TableHead>Parcela</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
@@ -154,7 +204,6 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                   <TableRow key={transaction.id} className={transaction.isFuture ? 'opacity-60' : ''}>
                     <TableCell className="font-medium">
                       {transaction.description}
-                      {transaction.isFuture && <span className="text-xs text-muted-foreground ml-2">(Projetada)</span>}
                     </TableCell>
                     <TableCell>{transaction.category}</TableCell>
                     <TableCell>
@@ -167,6 +216,11 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                     </TableCell>
                     <TableCell>
                       {format(new Date(transaction.date), 'dd/MM/yyyy', { locale: ptBR })}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {transaction.installmentNumber}/{transaction.recurrenceMonths}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge 
@@ -182,20 +236,36 @@ export function RecurringTransactions({ transactions }: RecurringTransactionsPro
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {!transaction.isFuture && (
-                        <div className="flex items-center space-x-2">
-                          <Button asChild variant="ghost" size="sm">
-                            <Link to={`/financas/detalhes/${transaction.id}`}>
-                              <Eye className="h-4 w-4" />
-                            </Link>
+                      <div className="flex items-center space-x-2">
+                        {!transaction.isFuture ? (
+                          <>
+                            <Button asChild variant="ghost" size="sm">
+                              <Link to={`/financas/detalhes/${transaction.id}`}>
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                            <Button asChild variant="ghost" size="sm">
+                              <Link to={`/financas/editar/${transaction.id}`}>
+                                <Edit className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleGenerateInstallment(transaction.id.split('-future-')[0], transaction.id)}
+                            disabled={isGenerating(transaction.id)}
+                            title="Gerar esta parcela agora"
+                          >
+                            {isGenerating(transaction.id) ? (
+                              <CheckCircle className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Play className="h-4 w-4" />
+                            )}
                           </Button>
-                          <Button asChild variant="ghost" size="sm">
-                            <Link to={`/financas/editar/${transaction.id}`}>
-                              <Edit className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

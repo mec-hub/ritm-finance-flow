@@ -123,6 +123,10 @@ const Financas = () => {
     fetchTransactions();
   };
 
+  const handleTransactionGenerated = () => {
+    fetchTransactions();
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -227,7 +231,10 @@ const Financas = () => {
           </TabsContent>
 
           <TabsContent value="recurring" className="space-y-4">
-            <RecurringTransactions transactions={paidTransactions.filter(t => t.isRecurring)} />
+            <RecurringTransactions 
+              transactions={paidTransactions.filter(t => t.isRecurring)} 
+              onTransactionGenerated={handleTransactionGenerated}
+            />
           </TabsContent>
 
           <TabsContent value="budget" className="space-y-4">
