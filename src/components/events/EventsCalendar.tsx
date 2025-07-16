@@ -140,7 +140,6 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: 'transparent',
                 },
                 caption: {
                   fontSize: '1.3rem',
