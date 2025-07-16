@@ -130,6 +130,7 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
                   height: '60px',
                   textAlign: 'center',
                   padding: '4px',
+                  background: 'transparent',
                 },
                 day: {
                   transform: 'scale(1.2)',
@@ -139,6 +140,7 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  background: 'transparent',
                 },
                 caption: {
                   fontSize: '1.3rem',
