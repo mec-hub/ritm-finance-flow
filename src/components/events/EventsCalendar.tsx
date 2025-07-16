@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent } from '@/components/ui/card';
@@ -66,30 +67,55 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
           border: 1px solid rgba(255, 191, 0, 0.4) !important;
         }
 
-        /* Estilo do dia selecionado (quadrado branco, texto preto) */
+        /* Remove TODAS as estilizações padrão do dia selecionado */
         .calendar-enhanced .rdp-day_selected,
-        .calendar-enhanced button[aria-selected="true"] {
-          background-color: #ffffff !important;
-          color: #000000 !important;
+        .calendar-enhanced button[aria-selected="true"],
+        .calendar-enhanced .rdp-day_selected:hover,
+        .calendar-enhanced .rdp-day_selected:focus,
+        .calendar-enhanced .rdp-day_selected:active {
+          background-color: transparent !important;
+          background: transparent !important;
+          color: #ffffff !important;
+          border: none !important;
           border-radius: 6px !important;
-          border: 1px solid #ffffff !important;
           outline: none !important;
-          box-shadow: none !important;
+          box-shadow: 0 0 0 2px rgba(40, 48, 72, 0.8) !important;
         }
 
-        .calendar-enhanced .rdp-day_selected:focus {
-          outline: none !important;
-          box-shadow: none !important;
+        /* Remove qualquer fundo de células que contenham dias selecionados */
+        .calendar-enhanced .rdp-cell:has(.rdp-day_selected),
+        .calendar-enhanced .rdp-cell:has([aria-selected="true"]) {
+          background-color: transparent !important;
+          background: transparent !important;
         }
 
         /* Remove faixa (range) que pode causar fundo amarelo */
         .calendar-enhanced .rdp-day_range_start,
         .calendar-enhanced .rdp-day_range_middle,
-        .calendar-enhanced .rdp-day_range_end {
+        .calendar-enhanced .rdp-day_range_end,
+        .calendar-enhanced .rdp-range_start,
+        .calendar-enhanced .rdp-range_middle,
+        .calendar-enhanced .rdp-range_end {
           background-color: transparent !important;
+          background: transparent !important;
           color: inherit !important;
           box-shadow: none !important;
           border: none !important;
+        }
+
+        /* Remove qualquer estilo de seleção de intervalo */
+        .calendar-enhanced [data-selected],
+        .calendar-enhanced [data-range-start],
+        .calendar-enhanced [data-range-middle],
+        .calendar-enhanced [data-range-end] {
+          background-color: transparent !important;
+          background: transparent !important;
+        }
+
+        /* Override direto dos estilos Tailwind que podem estar causando o problema */
+        .calendar-enhanced .bg-primary,
+        .calendar-enhanced .bg-accent {
+          background-color: transparent !important;
         }
       `}</style>
 
@@ -124,6 +150,7 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
                   height: '60px',
                   textAlign: 'center',
                   padding: '4px',
+                  background: 'transparent',
                 },
                 day: {
                   transform: 'scale(1.2)',
@@ -133,6 +160,14 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  background: 'transparent',
+                },
+                day_selected: {
+                  backgroundColor: 'transparent',
+                  background: 'transparent',
+                  color: '#ffffff',
+                  border: 'none',
+                  boxShadow: '0 0 0 2px rgba(40, 48, 72, 0.8)',
                 },
                 caption: {
                   fontSize: '1.3rem',
