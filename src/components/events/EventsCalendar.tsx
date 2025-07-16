@@ -42,7 +42,7 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
   
   return (
     <>
-      <style>{`
+            <style>{`
         @keyframes eventDayGlow {
           0%, 100% { 
             box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.8), 0 0 8px rgba(255, 215, 0, 0.3);
@@ -51,57 +51,61 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
             box-shadow: 0 0 0 2px rgba(255, 191, 0, 1), 0 0 16px rgba(255, 215, 0, 0.5);
           }
         }
-        
+      
         @keyframes selectedDayGlow {
           0%, 100% { 
-            box-shadow: 0 0 0 2px rgba(40, 48, 72, 0.8), 0 0 8px rgba(133, 147, 152, 0.3);
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8), 0 0 8px rgba(255, 255, 255, 0.3);
           }
           50% { 
-            box-shadow: 0 0 0 2px rgba(133, 147, 152, 1), 0 0 16px rgba(40, 48, 72, 0.5);
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 1), 0 0 16px rgba(255, 255, 255, 0.5);
           }
         }
-        
+      
         .calendar-enhanced .rdp-head_cell {
           text-align: center !important;
           justify-content: center !important;
           display: flex !important;
           align-items: center !important;
         }
-        
+      
         .calendar-enhanced .rdp-cell {
           display: flex !important;
           align-items: center !important;
           justify-content: center !important;
         }
-        
+      
         .calendar-enhanced .rdp-day_today {
           background-color: rgba(255, 191, 0, 0.15) !important;
           color: #000000 !important;
           border-radius: 6px !important;
           border: 1px solid rgba(255, 191, 0, 0.4) !important;
         }
-        
+      
         .calendar-enhanced .rdp-day_selected {
-          background: transparent !important;
+          background-color: rgba(255, 255, 255, 0.1) !important;
           color: #ffffff !important;
           border-radius: 6px !important;
-          border: 2px solid transparent !important;
-          animation: selectedDayGlow 2.5s ease-in-out infinite !important;
+          border: 1px solid rgba(255, 255, 255, 0.6) !important;
           position: relative !important;
+          box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3), 0 0 8px rgba(255, 255, 255, 0.2);
+          animation: selectedDayGlow 2.5s ease-in-out infinite !important;
         }
-        
+      
         .calendar-enhanced .rdp-day_selected:not(.rdp-day_outside) {
-          background-color: transparent !important;
+          background-color: rgba(255, 255, 255, 0.1) !important;
         }
-        
+      
         .calendar-enhanced .rdp-day_selected:focus {
           background-color: transparent !important;
           outline: none !important;
+          box-shadow: none !important;
         }
-        
+      
         .calendar-enhanced button[aria-selected="true"] {
           background-color: transparent !important;
           background: transparent !important;
+          outline: none !important;
+          box-shadow: none !important;
         }
       `}</style>
       <div className="flex justify-center p-4 w-full">
