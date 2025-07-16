@@ -26,12 +26,10 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
     ? eventsByDate[selectedDate.toDateString()] || []
     : [];
 
-  // Verifica se há evento em um determinado dia
   const hasEventOnDay = (day: Date) => {
     return !!eventsByDate[day.toDateString()];
   };
 
-  // Ação ao clicar em um dia
   const handleDayClick = (date: Date | undefined) => {
     setSelectedDate(date);
     if (date && hasEventOnDay(date)) {
@@ -41,7 +39,6 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
 
   return (
     <>
-      {/* Estilos customizados do calendário */}
       <style>{`
         @keyframes eventDayGlow {
           0%, 100% {
@@ -52,6 +49,7 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
           }
         }
 
+        /* Corrige cabeçalhos e células */
         .calendar-enhanced .rdp-head_cell,
         .calendar-enhanced .rdp-cell {
           display: flex !important;
@@ -60,6 +58,7 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
           text-align: center !important;
         }
 
+        /* Estilo do dia atual */
         .calendar-enhanced .rdp-day_today {
           background-color: rgba(255, 191, 0, 0.15) !important;
           color: #000000 !important;
@@ -67,18 +66,8 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
           border: 1px solid rgba(255, 191, 0, 0.4) !important;
         }
 
-        .calendar-enhanced .rdp-day_selected {
-          background-color: #ffffff !important;
-          color: #000000 !important;
-          border-radius: 6px !important;
-          border: 1px solid #ffffff !important;
-        }
-
-        .calendar-enhanced .rdp-day_selected:focus {
-          outline: none !important;
-          box-shadow: none !important;
-        }
-
+        /* Estilo do dia selecionado (quadrado branco, texto preto) */
+        .calendar-enhanced .rdp-day_selected,
         .calendar-enhanced button[aria-selected="true"] {
           background-color: #ffffff !important;
           color: #000000 !important;
@@ -87,9 +76,23 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
           outline: none !important;
           box-shadow: none !important;
         }
+
+        .calendar-enhanced .rdp-day_selected:focus {
+          outline: none !important;
+          box-shadow: none !important;
+        }
+
+        /* Remove faixa (range) que pode causar fundo amarelo */
+        .calendar-enhanced .rdp-day_range_start,
+        .calendar-enhanced .rdp-day_range_middle,
+        .calendar-enhanced .rdp-day_range_end {
+          background-color: transparent !important;
+          color: inherit !important;
+          box-shadow: none !important;
+          border: none !important;
+        }
       `}</style>
 
-      {/* Componente visual */}
       <div className="flex justify-center p-4 w-full">
         <Card className="w-full max-w-full">
           <CardContent className="p-4">
@@ -153,7 +156,6 @@ export function EventsCalendar({ events }: EventsCalendarProps) {
         </Card>
       </div>
 
-      {/* Modal de detalhes de eventos */}
       <EventDetailsModal
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
