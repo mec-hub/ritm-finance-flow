@@ -65,7 +65,7 @@ export function EventDetailsModal({ isOpen, onClose, events, selectedDate }: Eve
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-black text-white border-gray-700">
+     <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-[#121212] text-white border-gray-700">
         <DialogHeader className="space-y-4">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-2xl font-bold text-white">
