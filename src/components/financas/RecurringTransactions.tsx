@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,46 +18,88 @@ interface RecurringTransactionsProps {
   onTransactionGenerated?: () => void;
 }
 
+interface RecurringScheduleItem {
+  id: string;
+  parentTransactionId: string;
+  scheduledDate: Date;
+  isGenerated: boolean;
+  generatedTransactionId?: string;
+  parentTransaction: Transaction;
+  installmentNumber: number;
+  isFuture: boolean;
+}
+
 export function RecurringTransactions({ transactions, onTransactionGenerated }: RecurringTransactionsProps) {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
+  const [allScheduleItems, setAllScheduleItems] = useState<RecurringScheduleItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // Generate future recurring transactions - Fix: only generate recurrenceMonths - 1 projections
-  const generateFutureTransactions = (transaction: Transaction) => {
-    if (!transaction.isRecurring || !transaction.recurrenceMonths) return [];
-    
-    const futureTransactions = [];
-    const baseDate = new Date(transaction.date);
-    
-    // Fix: Generate only recurrenceMonths - 1 future transactions since the original is the first installment
-    for (let i = 1; i < transaction.recurrenceMonths; i++) {
-      const futureDate = new Date(baseDate);
-      futureDate.setMonth(baseDate.getMonth() + i);
-      
-      futureTransactions.push({
-        ...transaction,
-        id: `${transaction.id}-future-${i}`,
-        date: futureDate,
-        status: 'not_paid' as const,
-        isFuture: true,
-        installmentNumber: i + 1
-      });
-    }
-    
-    return futureTransactions;
-  };
+  // Load all recurring schedule items from database
+  useEffect(() => {
+    const loadRecurringSchedule = async () => {
+      try {
+        setLoading(true);
+        console.log('Loading recurring schedule for transactions:', transactions.length);
+        
+        const scheduleItems: RecurringScheduleItem[] = [];
+        
+        for (const transaction of transactions) {
+          if (!transaction.isRecurring || !transaction.recurrenceMonths) continue;
+          
+          // Add the original transaction as installment 1
+          scheduleItems.push({
+            id: transaction.id,
+            parentTransactionId: transaction.id,
+            scheduledDate: new Date(transaction.date),
+            isGenerated: true,
+            generatedTransactionId: transaction.id,
+            parentTransaction: transaction,
+            installmentNumber: 1,
+            isFuture: false
+          });
+          
+          // Get recurring schedule from database
+          const recurringTransactions = await RecurringTransactionService.getRecurringTransactionsByParent(transaction.id);
+          console.log(`Found ${recurringTransactions.length} recurring entries for transaction ${transaction.id}`);
+          
+          // Add scheduled future installments
+          recurringTransactions.forEach((recurring, index) => {
+            scheduleItems.push({
+              id: recurring.id,
+              parentTransactionId: recurring.parentTransactionId,
+              scheduledDate: recurring.scheduledDate,
+              isGenerated: recurring.isGenerated,
+              generatedTransactionId: recurring.generatedTransactionId,
+              parentTransaction: transaction,
+              installmentNumber: index + 2, // +2 because original is installment 1
+              isFuture: !recurring.isGenerated
+            });
+          });
+        }
+        
+        console.log('Total schedule items loaded:', scheduleItems.length);
+        setAllScheduleItems(scheduleItems);
+      } catch (error) {
+        console.error('Error loading recurring schedule:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar o cronograma de recorrências.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Get all transactions including future ones
-  const allRecurringTransactions = transactions.flatMap(transaction => [
-    { ...transaction, isFuture: false, installmentNumber: 1 },
-    ...generateFutureTransactions(transaction)
-  ]);
+    loadRecurringSchedule();
+  }, [transactions, toast]);
 
-  // Sort transactions
-  const sortedTransactions = [...allRecurringTransactions].sort((a, b) => {
-    const dateA = new Date(a.date).getTime();
-    const dateB = new Date(b.date).getTime();
+  // Sort schedule items
+  const sortedScheduleItems = [...allScheduleItems].sort((a, b) => {
+    const dateA = new Date(a.scheduledDate).getTime();
+    const dateB = new Date(b.scheduledDate).getTime();
     return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
   });
 
@@ -65,29 +107,25 @@ export function RecurringTransactions({ transactions, onTransactionGenerated }: 
     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
   };
 
-  const handleGenerateInstallment = async (transactionId: string, futureTransactionId: string) => {
+  const handleGenerateInstallment = async (recurringId: string) => {
     try {
-      setGeneratingIds(prev => new Set(prev).add(futureTransactionId));
+      setGeneratingIds(prev => new Set(prev).add(recurringId));
       
-      // Get recurring transactions for this parent
-      const recurringTransactions = await RecurringTransactionService.getRecurringTransactionsByParent(transactionId);
-      
-      // Find the first non-generated recurring transaction
-      const nextRecurring = recurringTransactions.find(rt => !rt.isGenerated);
-      
-      if (!nextRecurring) {
-        throw new Error('Nenhuma parcela pendente encontrada');
-      }
+      console.log('Generating installment for recurring transaction:', recurringId);
       
       // Generate the next installment
-      await RecurringTransactionService.generateNextInstallment(nextRecurring.id);
+      await RecurringTransactionService.generateNextInstallment(recurringId);
       
       toast({
         title: "Sucesso",
         description: "Parcela gerada com sucesso!",
       });
       
+      // Reload the schedule
       onTransactionGenerated?.();
+      
+      // Refresh the local data
+      window.location.reload();
       
     } catch (error) {
       console.error('Error generating installment:', error);
@@ -99,13 +137,29 @@ export function RecurringTransactions({ transactions, onTransactionGenerated }: 
     } finally {
       setGeneratingIds(prev => {
         const newSet = new Set(prev);
-        newSet.delete(futureTransactionId);
+        newSet.delete(recurringId);
         return newSet;
       });
     }
   };
 
   const isGenerating = (id: string) => generatingIds.has(id);
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Transações Recorrentes</CardTitle>
+          <CardDescription>Carregando cronograma...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-6">
+            <p>Carregando...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (transactions.length === 0) {
     return (
@@ -127,13 +181,13 @@ export function RecurringTransactions({ transactions, onTransactionGenerated }: 
     );
   }
 
-  const totalMonthlyIncome = allRecurringTransactions
-    .filter(t => t.type === 'income' && !t.isFuture)
-    .reduce((sum, t) => sum + t.amount, 0);
+  const totalMonthlyIncome = allScheduleItems
+    .filter(item => item.parentTransaction.type === 'income' && !item.isFuture)
+    .reduce((sum, item) => sum + item.parentTransaction.amount, 0);
 
-  const totalMonthlyExpenses = allRecurringTransactions
-    .filter(t => t.type === 'expense' && !t.isFuture)
-    .reduce((sum, t) => sum + t.amount, 0);
+  const totalMonthlyExpenses = allScheduleItems
+    .filter(item => item.parentTransaction.type === 'expense' && !item.isFuture)
+    .reduce((sum, item) => sum + item.parentTransaction.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -200,71 +254,69 @@ export function RecurringTransactions({ transactions, onTransactionGenerated }: 
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedTransactions.map((transaction) => (
-                  <TableRow key={transaction.id} className={transaction.isFuture ? 'opacity-60' : ''}>
+                {sortedScheduleItems.map((item) => (
+                  <TableRow key={item.id} className={item.isFuture ? 'opacity-60' : ''}>
                     <TableCell className="font-medium">
-                      {transaction.description}
+                      {item.parentTransaction.description}
                     </TableCell>
-                    <TableCell>{transaction.category}</TableCell>
+                    <TableCell>{item.parentTransaction.category}</TableCell>
                     <TableCell>
-                      <Badge variant={transaction.type === 'income' ? 'default' : 'destructive'}>
-                        {transaction.type === 'income' ? 'Receita' : 'Despesa'}
+                      <Badge variant={item.parentTransaction.type === 'income' ? 'default' : 'destructive'}>
+                        {item.parentTransaction.type === 'income' ? 'Receita' : 'Despesa'}
                       </Badge>
                     </TableCell>
-                    <TableCell className={transaction.type === 'income' ? 'text-green-500' : 'text-red-500'}>
-                      {formatCurrency(transaction.amount)}
+                    <TableCell className={item.parentTransaction.type === 'income' ? 'text-green-500' : 'text-red-500'}>
+                      {formatCurrency(item.parentTransaction.amount)}
                     </TableCell>
                     <TableCell>
-                      {format(new Date(transaction.date), 'dd/MM/yyyy', { locale: ptBR })}
+                      {format(new Date(item.scheduledDate), 'dd/MM/yyyy', { locale: ptBR })}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {transaction.installmentNumber}/{transaction.recurrenceMonths}
+                        {item.installmentNumber}/{item.parentTransaction.recurrenceMonths}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge 
                         variant={
-                          transaction.isFuture ? 'outline' :
-                          transaction.status === 'paid' ? 'default' : 
-                          transaction.status === 'canceled' ? 'destructive' : 'secondary'
+                          item.isFuture ? 'outline' :
+                          item.isGenerated ? 'default' : 'secondary'
                         }
                       >
-                        {transaction.isFuture ? 'Projetada' :
-                         transaction.status === 'paid' ? 'Pago' : 
-                         transaction.status === 'canceled' ? 'Cancelado' : 'Não Pago'}
+                        {item.isFuture ? 'Projetada' :
+                         item.isGenerated ? 'Gerada' : 'Pendente'}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
-                        {!transaction.isFuture ? (
+                        {!item.isFuture && item.generatedTransactionId ? (
                           <>
                             <Button asChild variant="ghost" size="sm">
-                              <Link to={`/financas/detalhes/${transaction.id}`}>
+                              <Link to={`/financas/detalhes/${item.generatedTransactionId}`}>
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
                             <Button asChild variant="ghost" size="sm">
-                              <Link to={`/financas/editar/${transaction.id}`}>
+                              <Link to={`/financas/editar/${item.generatedTransactionId}`}>
                                 <Edit className="h-4 w-4" />
                               </Link>
                             </Button>
                           </>
-                        ) : (
+                        ) : item.isFuture ? (
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleGenerateInstallment(transaction.id.split('-future-')[0], transaction.id)}
-                            disabled={isGenerating(transaction.id)}
+                            onClick={() => handleGenerateInstallment(item.id)}
+                            disabled={isGenerating(item.id)}
                             title="Gerar esta parcela agora"
                           >
-                            {isGenerating(transaction.id) ? (
+                            {isGenerating(item.id) ? (
                               <CheckCircle className="h-4 w-4 animate-spin" />
                             ) : (
                               <Play className="h-4 w-4" />
                             )}
                           </Button>
-                        )}
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>

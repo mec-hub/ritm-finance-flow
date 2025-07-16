@@ -34,7 +34,7 @@ export class RecurringTransactionService {
 
     const recurringEntries = [];
     
-    // Fix: Create only months - 1 entries since the original transaction is the first installment
+    // Create only months - 1 entries since the original transaction is the first installment
     for (let i = 1; i < months; i++) {
       const scheduledDate = new Date(startDate);
       scheduledDate.setMonth(scheduledDate.getMonth() + i);
@@ -116,6 +116,9 @@ export class RecurringTransactionService {
 
     const parentTransaction = recurringData.transactions;
     
+    console.log('RecurringTransactionService.generateNextInstallment - Parent transaction:', parentTransaction);
+    console.log('RecurringTransactionService.generateNextInstallment - Scheduled date:', recurringData.scheduled_date);
+    
     // Create the new transaction based on the parent
     const newTransaction = {
       amount: parentTransaction.amount,
@@ -129,12 +132,16 @@ export class RecurringTransactionService {
       notes: parentTransaction.notes,
       status: 'not_paid' as const,
       attachments: parentTransaction.attachments || [],
-      isRecurring: false,
+      isRecurring: false, // Generated transactions are not recurring themselves
       teamPercentages: []
     };
 
+    console.log('RecurringTransactionService.generateNextInstallment - Creating new transaction:', newTransaction);
+
     // Create the new transaction
     const createdTransaction = await TransactionService.create(newTransaction);
+    
+    console.log('RecurringTransactionService.generateNextInstallment - Created transaction:', createdTransaction.id);
     
     // Mark the recurring transaction as generated
     await this.markAsGenerated(recurringId, createdTransaction.id);
@@ -254,5 +261,31 @@ export class RecurringTransactionService {
       userId: item.user_id,
       createdAt: new Date(item.created_at)
     }));
+  }
+
+  // New method to automatically generate pending installments (for automatic system)
+  static async generatePendingInstallments(): Promise<{ generated: number; errors: string[] }> {
+    console.log('RecurringTransactionService.generatePendingInstallments - Starting automatic generation');
+
+    const pendingTransactions = await this.getPendingRecurringTransactions();
+    console.log(`Found ${pendingTransactions.length} pending recurring transactions`);
+
+    let generated = 0;
+    const errors: string[] = [];
+
+    for (const pending of pendingTransactions) {
+      try {
+        await this.generateNextInstallment(pending.id);
+        generated++;
+        console.log(`Generated installment for recurring transaction ${pending.id}`);
+      } catch (error) {
+        console.error(`Error generating installment for ${pending.id}:`, error);
+        errors.push(`Failed to generate installment for ${pending.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    console.log(`Automatic generation completed: ${generated} generated, ${errors.length} errors`);
+    
+    return { generated, errors };
   }
 }
