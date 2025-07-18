@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { TransactionService } from './transactionService';
 
@@ -61,6 +60,126 @@ export class RecurringTransactionService {
         throw error;
       }
     }
+  }
+
+  static async updateRecurringSchedule(
+    parentTransactionId: string,
+    startDate: Date,
+    newMonths: number
+  ): Promise<{ success: boolean; message: string; deletedCount?: number; addedCount?: number }> {
+    console.log('RecurringTransactionService.updateRecurringSchedule - Starting request:', {
+      parentTransactionId,
+      startDate,
+      newMonths
+    });
+
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      throw new Error('User not authenticated');
+    }
+
+    // Get current recurring transactions for this parent
+    const currentRecurring = await this.getRecurringTransactionsByParent(parentTransactionId);
+    const currentTotalInstallments = currentRecurring.length + 1; // +1 for the original transaction
+    
+    console.log('RecurringTransactionService.updateRecurringSchedule - Current installments:', currentTotalInstallments, 'New installments:', newMonths);
+
+    if (newMonths === currentTotalInstallments) {
+      return { success: true, message: 'No changes needed - installment count is already correct' };
+    }
+
+    let deletedCount = 0;
+    let addedCount = 0;
+
+    // Case 1: Reducing installments (delete excess)
+    if (newMonths < currentTotalInstallments) {
+      console.log('RecurringTransactionService.updateRecurringSchedule - Reducing installments');
+      
+      // Calculate how many to keep (newMonths - 1, since original is installment 1)
+      const toKeep = newMonths - 1;
+      
+      // Sort by scheduled date to keep the earliest ones
+      const sortedRecurring = [...currentRecurring].sort((a, b) => 
+        new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime()
+      );
+      
+      // Identify which ones to delete (the ones beyond the new limit)
+      const toDelete = sortedRecurring.slice(toKeep);
+      
+      // Check if any of the transactions to delete have been generated
+      const generatedToDelete = toDelete.filter(r => r.isGenerated);
+      
+      if (generatedToDelete.length > 0) {
+        return {
+          success: false,
+          message: `Cannot reduce installments because ${generatedToDelete.length} installment(s) have already been generated. Please manage generated transactions separately.`
+        };
+      }
+      
+      // Delete the excess ungenerated recurring transactions
+      if (toDelete.length > 0) {
+        const idsToDelete = toDelete.map(r => r.id);
+        
+        const { error } = await supabase
+          .from('recurring_transactions')
+          .delete()
+          .in('id', idsToDelete);
+          
+        if (error) {
+          console.error('RecurringTransactionService.updateRecurringSchedule - Error deleting:', error);
+          throw error;
+        }
+        
+        deletedCount = toDelete.length;
+        console.log('RecurringTransactionService.updateRecurringSchedule - Deleted excess installments:', deletedCount);
+      }
+    }
+    
+    // Case 2: Increasing installments (add missing)
+    else if (newMonths > currentTotalInstallments) {
+      console.log('RecurringTransactionService.updateRecurringSchedule - Increasing installments');
+      
+      // Calculate how many to add
+      const toAdd = newMonths - currentTotalInstallments;
+      const newEntries = [];
+      
+      // Start from the current total installments
+      for (let i = currentTotalInstallments; i < newMonths; i++) {
+        const scheduledDate = new Date(startDate);
+        scheduledDate.setMonth(scheduledDate.getMonth() + i);
+        
+        newEntries.push({
+          parent_transaction_id: parentTransactionId,
+          scheduled_date: scheduledDate.toISOString().split('T')[0],
+          is_generated: false,
+          user_id: userData.user.id
+        });
+      }
+      
+      if (newEntries.length > 0) {
+        const { error } = await supabase
+          .from('recurring_transactions')
+          .insert(newEntries);
+          
+        if (error) {
+          console.error('RecurringTransactionService.updateRecurringSchedule - Error inserting:', error);
+          throw error;
+        }
+        
+        addedCount = newEntries.length;
+        console.log('RecurringTransactionService.updateRecurringSchedule - Added new installments:', addedCount);
+      }
+    }
+
+    let message = 'Recurring schedule updated successfully';
+    if (deletedCount > 0) {
+      message += ` - removed ${deletedCount} future installment(s)`;
+    }
+    if (addedCount > 0) {
+      message += ` - added ${addedCount} new installment(s)`;
+    }
+
+    return { success: true, message, deletedCount, addedCount };
   }
 
   static async getPendingRecurringTransactions(): Promise<RecurringTransaction[]> {

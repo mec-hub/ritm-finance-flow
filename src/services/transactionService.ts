@@ -170,7 +170,13 @@ export class TransactionService {
     return { ...transaction, id: data.id };
   }
 
-  static async update(id: string, updates: Partial<Transaction>): Promise<void> {
+  static async update(id: string, updates: Partial<Transaction>): Promise<{ success: boolean; message?: string }> {
+    // Get the current transaction to compare recurring settings
+    const currentTransaction = await this.getById(id);
+    if (!currentTransaction) {
+      throw new Error('Transaction not found');
+    }
+
     const updateData: any = {};
     
     if (updates.amount !== undefined) updateData.amount = updates.amount;
@@ -221,6 +227,52 @@ export class TransactionService {
         if (assignmentError) throw assignmentError;
       }
     }
+
+    // Handle recurring schedule updates
+    let recurringUpdateResult = null;
+    if (currentTransaction.isRecurring && updates.recurrenceMonths !== undefined) {
+      const currentMonths = currentTransaction.recurrenceMonths || 1;
+      const newMonths = updates.recurrenceMonths;
+      
+      console.log('TransactionService.update - Recurring months changed:', { currentMonths, newMonths });
+      
+      if (currentMonths !== newMonths && newMonths > 1) {
+        try {
+          recurringUpdateResult = await RecurringTransactionService.updateRecurringSchedule(
+            id,
+            updates.date || currentTransaction.date,
+            newMonths
+          );
+          console.log('TransactionService.update - Recurring schedule update result:', recurringUpdateResult);
+        } catch (recurringError) {
+          console.error('TransactionService.update - Error updating recurring schedule:', recurringError);
+          // Don't throw here as the main transaction was updated successfully
+          return {
+            success: true,
+            message: `Transaction updated, but there was an issue with the recurring schedule: ${recurringError instanceof Error ? recurringError.message : 'Unknown error'}`
+          };
+        }
+      }
+    }
+
+    // Handle case where transaction is no longer recurring
+    if (currentTransaction.isRecurring && updates.isRecurring === false) {
+      try {
+        await RecurringTransactionService.deleteRecurringTransactions(id);
+        console.log('TransactionService.update - Deleted recurring schedule for non-recurring transaction');
+      } catch (recurringError) {
+        console.error('TransactionService.update - Error deleting recurring schedule:', recurringError);
+        return {
+          success: true,
+          message: 'Transaction updated, but there was an issue cleaning up the recurring schedule.'
+        };
+      }
+    }
+
+    return {
+      success: true,
+      message: recurringUpdateResult?.message || 'Transaction updated successfully'
+    };
   }
 
   static async delete(id: string): Promise<void> {
