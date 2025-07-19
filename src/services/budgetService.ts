@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Budget, BudgetAttachment, CreateBudgetData, UpdateBudgetData } from '@/types/budget';
 
@@ -21,7 +20,10 @@ export class BudgetService {
     }
 
     console.log('BudgetService - Fetched budgets:', data);
-    return data || [];
+    return (data || []).map(item => ({
+      ...item,
+      status: item.status as Budget['status']
+    }));
   }
 
   static async getById(id: string): Promise<Budget | null> {
@@ -42,7 +44,10 @@ export class BudgetService {
       throw error;
     }
 
-    return data;
+    return data ? {
+      ...data,
+      status: data.status as Budget['status']
+    } : null;
   }
 
   static async create(budgetData: CreateBudgetData): Promise<Budget> {
@@ -68,7 +73,10 @@ export class BudgetService {
     }
 
     console.log('BudgetService - Created budget:', data);
-    return data;
+    return {
+      ...data,
+      status: data.status as Budget['status']
+    };
   }
 
   static async update(id: string, budgetData: UpdateBudgetData): Promise<Budget> {
@@ -91,7 +99,10 @@ export class BudgetService {
     }
 
     console.log('BudgetService - Updated budget:', data);
-    return data;
+    return {
+      ...data,
+      status: data.status as Budget['status']
+    };
   }
 
   static async delete(id: string): Promise<void> {
@@ -148,7 +159,10 @@ export class BudgetService {
       throw error;
     }
 
-    return data || [];
+    return (data || []).map(item => ({
+      ...item,
+      status: item.status as Budget['status']
+    }));
   }
 
   static async getAttachments(budgetId: string): Promise<BudgetAttachment[]> {
