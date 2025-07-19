@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -15,6 +14,7 @@ import { Transaction } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
 import { TransactionService } from '@/services/transactionService';
 import { toast } from '@/hooks/use-toast';
+import { BudgetRepository } from '@/components/budgets/BudgetRepository';
 
 const Financas = () => {
   const [activeTab, setActiveTab] = useState('transactions');
@@ -238,7 +238,7 @@ const Financas = () => {
           </TabsContent>
 
           <TabsContent value="budget" className="space-y-4">
-            <BudgetManager transactions={paidTransactions} />
+            <BudgetRepository />
           </TabsContent>
         </Tabs>
       </div>

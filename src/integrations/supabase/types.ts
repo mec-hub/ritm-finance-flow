@@ -14,6 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
+      budget_attachments: {
+        Row: {
+          budget_id: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          uploaded_at: string
+        }
+        Insert: {
+          budget_id: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          uploaded_at?: string
+        }
+        Update: {
+          budget_id?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_attachments_budget_id_fkey"
+            columns: ["budget_id"]
+            isOneToOne: false
+            referencedRelation: "budgets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budgets: {
+        Row: {
+          amount: number | null
+          budget_type: string | null
+          created_at: string
+          description: string | null
+          external_url: string | null
+          id: string
+          metadata: Json | null
+          name: string
+          period_end: string | null
+          period_start: string | null
+          status: string | null
+          tags: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          budget_type?: string | null
+          created_at?: string
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          metadata?: Json | null
+          name: string
+          period_end?: string | null
+          period_start?: string | null
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          budget_type?: string | null
+          created_at?: string
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string
+          period_end?: string | null
+          period_start?: string | null
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           color: string | null
