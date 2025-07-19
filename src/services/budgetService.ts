@@ -21,10 +21,7 @@ export class BudgetService {
     }
 
     console.log('BudgetService - Fetched budgets:', data);
-    return (data || []).map(item => ({
-      ...item,
-      status: item.status as 'draft' | 'active' | 'archived' | 'completed'
-    }));
+    return data || [];
   }
 
   static async getById(id: string): Promise<Budget | null> {
@@ -45,13 +42,10 @@ export class BudgetService {
       throw error;
     }
 
-    return data ? {
-      ...data,
-      status: data.status as 'draft' | 'active' | 'archived' | 'completed'
-    } : null;
+    return data;
   }
 
-  static async create(budgetData: CreateBudgetData, files?: File[]): Promise<Budget> {
+  static async create(budgetData: CreateBudgetData): Promise<Budget> {
     const { data: user } = await supabase.auth.getUser();
     if (!user.user) throw new Error('User not authenticated');
 
@@ -74,16 +68,7 @@ export class BudgetService {
     }
 
     console.log('BudgetService - Created budget:', data);
-    
-    // Upload files if provided
-    if (files && files.length > 0) {
-      await this.uploadMultipleAttachments(data.id, files);
-    }
-
-    return {
-      ...data,
-      status: data.status as 'draft' | 'active' | 'archived' | 'completed'
-    };
+    return data;
   }
 
   static async update(id: string, budgetData: UpdateBudgetData): Promise<Budget> {
@@ -106,10 +91,7 @@ export class BudgetService {
     }
 
     console.log('BudgetService - Updated budget:', data);
-    return {
-      ...data,
-      status: data.status as 'draft' | 'active' | 'archived' | 'completed'
-    };
+    return data;
   }
 
   static async delete(id: string): Promise<void> {
@@ -166,10 +148,7 @@ export class BudgetService {
       throw error;
     }
 
-    return (data || []).map(item => ({
-      ...item,
-      status: item.status as 'draft' | 'active' | 'archived' | 'completed'
-    }));
+    return data || [];
   }
 
   static async getAttachments(budgetId: string): Promise<BudgetAttachment[]> {
@@ -232,22 +211,6 @@ export class BudgetService {
 
     console.log('BudgetService - Uploaded attachment:', data);
     return data;
-  }
-
-  static async uploadMultipleAttachments(budgetId: string, files: File[]): Promise<BudgetAttachment[]> {
-    const attachments: BudgetAttachment[] = [];
-    
-    for (const file of files) {
-      try {
-        const attachment = await this.uploadAttachment(budgetId, file);
-        attachments.push(attachment);
-      } catch (error) {
-        console.error('Error uploading file:', file.name, error);
-        // Continue with other files even if one fails
-      }
-    }
-    
-    return attachments;
   }
 
   static async deleteAttachment(attachmentId: string): Promise<void> {

@@ -324,7 +324,7 @@ export function BudgetRepository() {
 
       {/* Form Dialog */}
       <Dialog open={formDialog} onOpenChange={setFormDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <BudgetForm
             budget={selectedBudget || undefined}
             onSubmit={selectedBudget ? handleUpdateBudget : handleCreateBudget}
