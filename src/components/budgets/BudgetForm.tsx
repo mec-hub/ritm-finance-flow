@@ -1,7 +1,6 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -46,6 +45,7 @@ export function BudgetForm({ budget, onSubmit, onCancel, loading }: BudgetFormPr
   });
   
   const [newTag, setNewTag] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,192 +98,306 @@ export function BudgetForm({ budget, onSubmit, onCancel, loading }: BudgetFormPr
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles = files.filter(file => {
+      const allowedTypes = [
+        'application/pdf',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/csv',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+        'image/gif'
+      ];
+      return allowedTypes.includes(file.type) && file.size <= 10 * 1024 * 1024; // 10MB limit
+    });
+
+    if (validFiles.length !== files.length) {
+      toast({
+        title: "Alguns arquivos foram rejeitados",
+        description: "Apenas PDF, Excel, Word, CSV e imagens até 10MB são permitidos.",
+        variant: "destructive"
+      });
+    }
+
+    setSelectedFiles(prev => [...prev, ...validFiles]);
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const files = Array.from(e.dataTransfer.files);
+    const validFiles = files.filter(file => {
+      const allowedTypes = [
+        'application/pdf',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/csv',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+        'image/gif'
+      ];
+      return allowedTypes.includes(file.type) && file.size <= 10 * 1024 * 1024;
+    });
+
+    if (validFiles.length !== files.length) {
+      toast({
+        title: "Alguns arquivos foram rejeitados",
+        description: "Apenas PDF, Excel, Word, CSV e imagens até 10MB são permitidos.",
+        variant: "destructive"
+      });
+    }
+
+    setSelectedFiles(prev => [...prev, ...validFiles]);
+  };
+
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>
+    <div className="w-full max-w-2xl mx-auto p-6">
+      <div className="mb-6">
+        <h2 className="text-2xl font-semibold">
           {budget ? 'Editar Orçamento' : 'Novo Orçamento'}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
+        </h2>
+      </div>
+      
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="name">Nome do Orçamento *</Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            placeholder="Digite o nome do orçamento"
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="description">Descrição</Label>
+          <Textarea
+            id="description"
+            value={formData.description}
+            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            placeholder="Descreva o orçamento (opcional)"
+            rows={3}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nome do Orçamento *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Digite o nome do orçamento"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Descrição</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Descreva o orçamento (opcional)"
-              rows={3}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="budget_type">Tipo</Label>
-              <Select value={formData.budget_type} onValueChange={(value) => setFormData(prev => ({ ...prev, budget_type: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {budgetTypes.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as any }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Rascunho</SelectItem>
-                  <SelectItem value="active">Ativo</SelectItem>
-                  <SelectItem value="archived">Arquivado</SelectItem>
-                  <SelectItem value="completed">Concluído</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="amount">Valor (opcional)</Label>
-            <Input
-              id="amount"
-              type="number"
-              step="0.01"
-              value={formData.amount}
-              onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
-              placeholder="0.00"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Data de Início</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !formData.period_start && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.period_start ? format(formData.period_start, "dd/MM/yyyy") : "Selecione uma data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={formData.period_start}
-                    onSelect={(date) => setFormData(prev => ({ ...prev, period_start: date }))}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Data de Fim</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !formData.period_end && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.period_end ? format(formData.period_end, "dd/MM/yyyy") : "Selecione uma data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={formData.period_end}
-                    onSelect={(date) => setFormData(prev => ({ ...prev, period_end: date }))}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="external_url">Link Externo</Label>
-            <Input
-              id="external_url"
-              type="url"
-              value={formData.external_url}
-              onChange={(e) => setFormData(prev => ({ ...prev, external_url: e.target.value }))}
-              placeholder="https://exemplo.com"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Tags</Label>
-            <div className="flex gap-2">
-              <Input
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Adicionar tag"
-              />
-              <Button type="button" onClick={addTag} variant="outline">
-                Adicionar
-              </Button>
-            </div>
-            {formData.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {formData.tags.map((tag) => (
-                  <div key={tag} className="flex items-center gap-1 bg-secondary px-2 py-1 rounded-md text-sm">
-                    <span>{tag}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeTag(tag)}
-                      className="h-4 w-4 p-0"
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
+            <Label htmlFor="budget_type">Tipo</Label>
+            <Select value={formData.budget_type} onValueChange={(value) => setFormData(prev => ({ ...prev, budget_type: value }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                {budgetTypes.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
                 ))}
-              </div>
-            )}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Salvando...' : budget ? 'Atualizar' : 'Criar Orçamento'}
+          <div className="space-y-2">
+            <Label htmlFor="status">Status</Label>
+            <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as any }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">Rascunho</SelectItem>
+                <SelectItem value="active">Ativo</SelectItem>
+                <SelectItem value="archived">Arquivado</SelectItem>
+                <SelectItem value="completed">Concluído</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="amount">Valor (opcional)</Label>
+          <Input
+            id="amount"
+            type="number"
+            step="0.01"
+            value={formData.amount}
+            onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+            placeholder="0.00"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Data de Início</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !formData.period_start && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {formData.period_start ? format(formData.period_start, "dd/MM/yyyy") : "Selecione uma data"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={formData.period_start}
+                  onSelect={(date) => setFormData(prev => ({ ...prev, period_start: date }))}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Data de Fim</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !formData.period_end && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {formData.period_end ? format(formData.period_end, "dd/MM/yyyy") : "Selecione uma data"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={formData.period_end}
+                  onSelect={(date) => setFormData(prev => ({ ...prev, period_end: date }))}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="external_url">Link Externo</Label>
+          <Input
+            id="external_url"
+            type="url"
+            value={formData.external_url}
+            onChange={(e) => setFormData(prev => ({ ...prev, external_url: e.target.value }))}
+            placeholder="https://exemplo.com"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Anexar Arquivos</Label>
+          <div
+            className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-muted-foreground/50 transition-colors"
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+          >
+            <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground mb-2">
+              Arraste arquivos aqui ou clique para selecionar
+            </p>
+            <p className="text-xs text-muted-foreground mb-4">
+              PDF, Excel, Word, CSV, imagens até 10MB
+            </p>
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.xlsx,.xls,.csv,.doc,.docx,.jpg,.jpeg,.png,.gif"
+              onChange={handleFileSelect}
+              className="hidden"
+              id="file-upload"
+            />
+            <Button type="button" variant="outline" onClick={() => document.getElementById('file-upload')?.click()}>
+              Selecionar Arquivos
             </Button>
           </div>
-        </form>
-      </CardContent>
-    </Card>
+          
+          {selectedFiles.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Arquivos selecionados:</p>
+              {selectedFiles.map((file, index) => (
+                <div key={index} className="flex items-center justify-between bg-muted p-2 rounded">
+                  <span className="text-sm truncate">{file.name}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeFile(index)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Tags</Label>
+          <div className="flex gap-2">
+            <Input
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Adicionar tag"
+            />
+            <Button type="button" onClick={addTag} variant="outline">
+              Adicionar
+            </Button>
+          </div>
+          {formData.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {formData.tags.map((tag) => (
+                <div key={tag} className="flex items-center gap-1 bg-secondary px-2 py-1 rounded-md text-sm">
+                  <span>{tag}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeTag(tag)}
+                    className="h-4 w-4 p-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-4">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? 'Salvando...' : budget ? 'Atualizar' : 'Criar Orçamento'}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }
