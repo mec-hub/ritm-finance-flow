@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +11,7 @@ import { Eye, Edit, Calendar, ArrowUpDown, Play, CheckCircle } from 'lucide-reac
 import { Link } from 'react-router-dom';
 import { RecurringTransactionService } from '@/services/recurringTransactionService';
 import { useToast } from '@/hooks/use-toast';
+import { TransactionDetailsModal } from '@/components/transactions/TransactionDetailsModal';
 
 interface RecurringTransactionsProps {
   transactions: Transaction[];
@@ -34,7 +34,19 @@ export function RecurringTransactions({ transactions, onTransactionGenerated }: 
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
   const [allScheduleItems, setAllScheduleItems] = useState<RecurringScheduleItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
+
+  const handleViewDetails = (transactionId: string) => {
+    setSelectedTransactionId(transactionId);
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedTransactionId(null);
+  };
 
   // Load all recurring schedule items from database
   useEffect(() => {
@@ -190,142 +202,151 @@ export function RecurringTransactions({ transactions, onTransactionGenerated }: 
     .reduce((sum, item) => sum + item.parentTransaction.amount, 0);
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Receitas Mensais</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-500">
+                {formatCurrency(totalMonthlyIncome)}
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Despesas Mensais</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-500">
+                {formatCurrency(totalMonthlyExpenses)}
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Saldo Mensal</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${totalMonthlyIncome - totalMonthlyExpenses >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {formatCurrency(totalMonthlyIncome - totalMonthlyExpenses)}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Receitas Mensais</CardTitle>
+          <CardHeader>
+            <CardTitle>Cronograma de Transações Recorrentes</CardTitle>
+            <CardDescription>
+              Visualize suas transações recorrentes atuais e futuras. Use o botão "Gerar" para criar manualmente uma parcela futura.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-500">
-              {formatCurrency(totalMonthlyIncome)}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Despesas Mensais</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-500">
-              {formatCurrency(totalMonthlyExpenses)}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Saldo Mensal</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${totalMonthlyIncome - totalMonthlyExpenses >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {formatCurrency(totalMonthlyIncome - totalMonthlyExpenses)}
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={handleSort} className="p-0 h-auto">
+                        Data
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>Parcela</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedScheduleItems.map((item) => (
+                    <TableRow key={item.id} className={item.isFuture ? 'opacity-60' : ''}>
+                      <TableCell className="font-medium">
+                        {item.parentTransaction.description}
+                      </TableCell>
+                      <TableCell>{item.parentTransaction.category}</TableCell>
+                      <TableCell>
+                        <Badge variant={item.parentTransaction.type === 'income' ? 'default' : 'destructive'}>
+                          {item.parentTransaction.type === 'income' ? 'Receita' : 'Despesa'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className={item.parentTransaction.type === 'income' ? 'text-green-500' : 'text-red-500'}>
+                        {formatCurrency(item.parentTransaction.amount)}
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(item.scheduledDate), 'dd/MM/yyyy', { locale: ptBR })}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {item.installmentNumber}/{item.parentTransaction.recurrenceMonths}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            item.isFuture ? 'outline' :
+                            item.isGenerated ? 'default' : 'secondary'
+                          }
+                        >
+                          {item.isFuture ? 'Projetada' :
+                           item.isGenerated ? 'Gerada' : 'Pendente'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          {!item.isFuture && item.generatedTransactionId ? (
+                            <>
+                              <Button variant="ghost" size="sm" onClick={() => handleViewDetails(item.generatedTransactionId!)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button asChild variant="ghost" size="sm">
+                                <Link to={`/financas/editar/${item.generatedTransactionId}`}>
+                                  <Edit className="h-4 w-4" />
+                                </Link>
+                              </Button>
+                            </>
+                          ) : item.isFuture ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleGenerateInstallment(item.id)}
+                              disabled={isGenerating(item.id)}
+                              title="Gerar esta parcela agora"
+                            >
+                              {isGenerating(item.id) ? (
+                                <CheckCircle className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Play className="h-4 w-4" />
+                              )}
+                            </Button>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Cronograma de Transações Recorrentes</CardTitle>
-          <CardDescription>
-            Visualize suas transações recorrentes atuais e futuras. Use o botão "Gerar" para criar manualmente uma parcela futura.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>
-                    <Button variant="ghost" onClick={handleSort} className="p-0 h-auto">
-                      Data
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead>Parcela</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedScheduleItems.map((item) => (
-                  <TableRow key={item.id} className={item.isFuture ? 'opacity-60' : ''}>
-                    <TableCell className="font-medium">
-                      {item.parentTransaction.description}
-                    </TableCell>
-                    <TableCell>{item.parentTransaction.category}</TableCell>
-                    <TableCell>
-                      <Badge variant={item.parentTransaction.type === 'income' ? 'default' : 'destructive'}>
-                        {item.parentTransaction.type === 'income' ? 'Receita' : 'Despesa'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className={item.parentTransaction.type === 'income' ? 'text-green-500' : 'text-red-500'}>
-                      {formatCurrency(item.parentTransaction.amount)}
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(item.scheduledDate), 'dd/MM/yyyy', { locale: ptBR })}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {item.installmentNumber}/{item.parentTransaction.recurrenceMonths}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={
-                          item.isFuture ? 'outline' :
-                          item.isGenerated ? 'default' : 'secondary'
-                        }
-                      >
-                        {item.isFuture ? 'Projetada' :
-                         item.isGenerated ? 'Gerada' : 'Pendente'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        {!item.isFuture && item.generatedTransactionId ? (
-                          <>
-                            <Button asChild variant="ghost" size="sm">
-                              <Link to={`/financas/detalhes/${item.generatedTransactionId}`}>
-                                <Eye className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                            <Button asChild variant="ghost" size="sm">
-                              <Link to={`/financas/editar/${item.generatedTransactionId}`}>
-                                <Edit className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                          </>
-                        ) : item.isFuture ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleGenerateInstallment(item.id)}
-                            disabled={isGenerating(item.id)}
-                            title="Gerar esta parcela agora"
-                          >
-                            {isGenerating(item.id) ? (
-                              <CheckCircle className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Play className="h-4 w-4" />
-                            )}
-                          </Button>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      {selectedTransactionId && (
+        <TransactionDetailsModal
+          transactionId={selectedTransactionId}
+          open={isModalOpen}
+          onOpenChange={handleModalClose}
+          onTransactionDeleted={onTransactionGenerated}
+        />
+      )}
+    </>
   );
 }

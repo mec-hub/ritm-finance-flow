@@ -18,7 +18,6 @@ import Configuracoes from "./pages/Configuracoes";
 import Auth from "./pages/Auth";
 import NovaTransacao from "./pages/NovaTransacao";
 import EditarTransacao from "./pages/EditarTransacao";
-import DetalhesTransacao from "./pages/DetalhesTransacao";
 import NovoEvento from "./pages/NovoEvento";
 import EditarEvento from "./pages/EditarEvento";
 import NovoCliente from "./pages/NovoCliente";
@@ -56,13 +55,12 @@ function AppRoutes() {
       {/* Transaction routes */}
       <Route path="/financas/nova" element={<ProtectedRoute><NovaTransacao /></ProtectedRoute>} />
       <Route path="/financas/editar/:id" element={<ProtectedRoute><EditarTransacao /></ProtectedRoute>} />
-      <Route path="/financas/detalhes/:id" element={<ProtectedRoute><DetalhesTransacao /></ProtectedRoute>} />
       
-      {/* Event routes - FIXED PATHS */}
+      {/* Event routes */}
       <Route path="/eventos/novo" element={<ProtectedRoute><NovoEvento /></ProtectedRoute>} />
       <Route path="/eventos/editar/:id" element={<ProtectedRoute><EditarEvento /></ProtectedRoute>} />
       
-      {/* Client routes - FIXED PATHS */}
+      {/* Client routes */}
       <Route path="/clientes/novo" element={<ProtectedRoute><NovoCliente /></ProtectedRoute>} />
       <Route path="/clientes/editar/:id" element={<ProtectedRoute><EditarCliente /></ProtectedRoute>} />
       
