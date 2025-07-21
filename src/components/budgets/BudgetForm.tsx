@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,10 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, X, Upload } from 'lucide-react';
+import { CalendarIcon, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Budget, CreateBudgetData, UpdateBudgetData } from '@/types/budget';
+import { Budget, BudgetAttachment, CreateBudgetData, UpdateBudgetData } from '@/types/budget';
+import { BudgetService } from '@/services/budgetService';
+import { BudgetFileUpload } from './BudgetFileUpload';
 import { toast } from '@/hooks/use-toast';
 
 interface BudgetFormProps {
@@ -46,6 +48,23 @@ export function BudgetForm({ budget, onSubmit, onCancel, loading }: BudgetFormPr
   });
   
   const [newTag, setNewTag] = useState('');
+  const [attachments, setAttachments] = useState<BudgetAttachment[]>([]);
+
+  useEffect(() => {
+    if (budget?.id) {
+      // Fetch existing attachments
+      BudgetService.getAttachments(budget.id)
+        .then(setAttachments)
+        .catch(error => {
+          console.error('Error fetching attachments:', error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar os anexos.",
+            variant: "destructive"
+          });
+        });
+    }
+  }, [budget?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +118,7 @@ export function BudgetForm({ budget, onSubmit, onCancel, loading }: BudgetFormPr
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
+    <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
         <CardTitle>
           {budget ? 'Editar Orçamento' : 'Novo Orçamento'}
@@ -273,6 +292,14 @@ export function BudgetForm({ budget, onSubmit, onCancel, loading }: BudgetFormPr
               </div>
             )}
           </div>
+
+          {/* File Upload Section */}
+          <BudgetFileUpload
+            budgetId={budget?.id}
+            existingAttachments={attachments}
+            onAttachmentsChange={setAttachments}
+            disabled={loading}
+          />
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onCancel}>

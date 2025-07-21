@@ -1,28 +1,13 @@
 
-import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { 
-  MoreVertical, 
-  Eye, 
-  Edit, 
-  Archive, 
-  Trash2, 
-  ExternalLink,
-  Paperclip,
-  Calendar,
-  DollarSign
-} from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Eye, Edit, Trash2, Archive, MoreHorizontal, Calendar, DollarSign, ExternalLink, Paperclip } from 'lucide-react';
 import { Budget } from '@/types/budget';
 import { formatCurrency } from '@/utils/formatters';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface BudgetCardProps {
   budget: Budget;
@@ -33,62 +18,58 @@ interface BudgetCardProps {
   onArchive: (budget: Budget) => void;
 }
 
-const statusColors = {
-  draft: 'bg-gray-100 text-gray-800',
-  active: 'bg-green-100 text-green-800',
-  archived: 'bg-yellow-100 text-yellow-800',
-  completed: 'bg-blue-100 text-blue-800'
-};
-
-const statusLabels = {
-  draft: 'Rascunho',
-  active: 'Ativo',
-  archived: 'Arquivado',
-  completed: 'Concluído'
-};
-
-export function BudgetCard({ 
-  budget, 
-  attachmentCount, 
-  onView, 
-  onEdit, 
-  onDelete, 
-  onArchive 
-}: BudgetCardProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const handleExternalLink = () => {
-    if (budget.external_url) {
-      window.open(budget.external_url, '_blank');
-    }
+const getBudgetTypeLabel = (type: string) => {
+  const types: Record<string, string> = {
+    'general': 'Geral',
+    'project': 'Projeto',
+    'event': 'Evento',
+    'annual': 'Anual',
+    'monthly': 'Mensal',
+    'marketing': 'Marketing',
+    'equipment': 'Equipamentos',
+    'personal': 'Pessoal'
   };
+  return types[type] || type;
+};
 
+const getStatusColor = (status: string) => {
+  const colors: Record<string, string> = {
+    'draft': 'bg-gray-100 text-gray-800',
+    'active': 'bg-green-100 text-green-800',
+    'archived': 'bg-yellow-100 text-yellow-800',
+    'completed': 'bg-blue-100 text-blue-800'
+  };
+  return colors[status] || 'bg-gray-100 text-gray-800';
+};
+
+const getStatusLabel = (status: string) => {
+  const labels: Record<string, string> = {
+    'draft': 'Rascunho',
+    'active': 'Ativo',
+    'archived': 'Arquivado',
+    'completed': 'Concluído'
+  };
+  return labels[status] || status;
+};
+
+export function BudgetCard({ budget, attachmentCount, onView, onEdit, onDelete, onArchive }: BudgetCardProps) {
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="text-lg font-semibold line-clamp-2">
-              {budget.name}
-            </CardTitle>
-            <div className="flex items-center gap-2 mt-2">
-              <Badge 
-                variant="secondary" 
-                className={statusColors[budget.status]}
-              >
-                {statusLabels[budget.status]}
+            <CardTitle className="text-lg mb-2">{budget.name}</CardTitle>
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="secondary">{getBudgetTypeLabel(budget.budget_type)}</Badge>
+              <Badge className={getStatusColor(budget.status)}>
+                {getStatusLabel(budget.status)}
               </Badge>
-              {budget.budget_type !== 'general' && (
-                <Badge variant="outline">
-                  {budget.budget_type}
-                </Badge>
-              )}
             </div>
           </div>
-          <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+          <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -106,10 +87,7 @@ export function BudgetCard({
                   Arquivar
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem 
-                onClick={() => onDelete(budget)}
-                className="text-red-600 focus:text-red-600"
-              >
+              <DropdownMenuItem onClick={() => onDelete(budget)} className="text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
                 Excluir
               </DropdownMenuItem>
@@ -118,68 +96,76 @@ export function BudgetCard({
         </div>
       </CardHeader>
       
-      <CardContent className="pt-0">
+      <CardContent>
         {budget.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
             {budget.description}
           </p>
         )}
         
-        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+        <div className="space-y-2">
           {budget.amount && (
-            <div className="flex items-center gap-1">
-              <DollarSign className="h-4 w-4" />
-              <span>{formatCurrency(budget.amount)}</span>
+            <div className="flex items-center text-sm">
+              <DollarSign className="mr-2 h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">{formatCurrency(budget.amount)}</span>
             </div>
           )}
           
           {(budget.period_start || budget.period_end) && (
-            <div className="flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Calendar className="mr-2 h-4 w-4" />
               <span>
-                {budget.period_start && format(new Date(budget.period_start), 'MMM yyyy')}
+                {budget.period_start && format(new Date(budget.period_start), 'dd/MM/yyyy', { locale: ptBR })}
                 {budget.period_start && budget.period_end && ' - '}
-                {budget.period_end && format(new Date(budget.period_end), 'MMM yyyy')}
+                {budget.period_end && format(new Date(budget.period_end), 'dd/MM/yyyy', { locale: ptBR })}
               </span>
             </div>
           )}
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            {attachmentCount > 0 && (
-              <div className="flex items-center gap-1">
-                <Paperclip className="h-4 w-4" />
-                <span>{attachmentCount}</span>
-              </div>
-            )}
-            
-            {budget.external_url && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleExternalLink}
-                className="h-6 px-2"
+          
+          {budget.external_url && (
+            <div className="flex items-center text-sm text-muted-foreground">
+              <ExternalLink className="mr-2 h-4 w-4" />
+              <a 
+                href={budget.external_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-primary truncate"
               >
-                <ExternalLink className="h-3 w-3" />
-              </Button>
-            )}
-          </div>
+                Link externo
+              </a>
+            </div>
+          )}
+          
+          {attachmentCount > 0 && (
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Paperclip className="mr-2 h-4 w-4" />
+              <span>{attachmentCount} documento(s) anexado(s)</span>
+            </div>
+          )}
           
           {budget.tags.length > 0 && (
-            <div className="flex gap-1">
-              {budget.tags.slice(0, 2).map((tag) => (
+            <div className="flex flex-wrap gap-1 mt-3">
+              {budget.tags.slice(0, 3).map((tag) => (
                 <Badge key={tag} variant="outline" className="text-xs">
                   {tag}
                 </Badge>
               ))}
-              {budget.tags.length > 2 && (
+              {budget.tags.length > 3 && (
                 <Badge variant="outline" className="text-xs">
-                  +{budget.tags.length - 2}
+                  +{budget.tags.length - 3}
                 </Badge>
               )}
             </div>
           )}
+        </div>
+        
+        <div className="flex justify-between items-center mt-4 pt-3 border-t">
+          <span className="text-xs text-muted-foreground">
+            Criado em {format(new Date(budget.created_at), 'dd/MM/yyyy', { locale: ptBR })}
+          </span>
+          <Button variant="outline" size="sm" onClick={() => onView(budget)}>
+            Ver detalhes
+          </Button>
         </div>
       </CardContent>
     </Card>

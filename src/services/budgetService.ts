@@ -22,7 +22,8 @@ export class BudgetService {
     console.log('BudgetService - Fetched budgets:', data);
     return (data || []).map(item => ({
       ...item,
-      status: item.status as Budget['status']
+      status: item.status as Budget['status'],
+      metadata: (item.metadata as Record<string, any>) || {}
     }));
   }
 
@@ -46,7 +47,8 @@ export class BudgetService {
 
     return data ? {
       ...data,
-      status: data.status as Budget['status']
+      status: data.status as Budget['status'],
+      metadata: (data.metadata as Record<string, any>) || {}
     } : null;
   }
 
@@ -75,7 +77,8 @@ export class BudgetService {
     console.log('BudgetService - Created budget:', data);
     return {
       ...data,
-      status: data.status as Budget['status']
+      status: data.status as Budget['status'],
+      metadata: (data.metadata as Record<string, any>) || {}
     };
   }
 
@@ -101,7 +104,8 @@ export class BudgetService {
     console.log('BudgetService - Updated budget:', data);
     return {
       ...data,
-      status: data.status as Budget['status']
+      status: data.status as Budget['status'],
+      metadata: (data.metadata as Record<string, any>) || {}
     };
   }
 
@@ -161,7 +165,8 @@ export class BudgetService {
 
     return (data || []).map(item => ({
       ...item,
-      status: item.status as Budget['status']
+      status: item.status as Budget['status'],
+      metadata: (item.metadata as Record<string, any>) || {}
     }));
   }
 
