@@ -24,7 +24,7 @@ import { CompactTeamFilter } from '@/components/analises/CompactTeamFilter';
 import { FilteredTeamCharts } from '@/components/analises/FilteredTeamCharts';
 import { AnnualTeamChart } from '@/components/analises/AnnualTeamChart';
 import { formatCurrency } from '@/utils/formatters';
-import { Calendar as CalendarIcon, ChartBar, PieChart, TrendingUp, Users } from 'lucide-react';
+import { Calendar as CalendarIcon, ChartBar, TrendingUp, Users } from 'lucide-react';
 import { TransactionService } from '@/services/transactionService';
 import { EventService } from '@/services/eventService';
 import { ClientService } from '@/services/clientService';
@@ -333,14 +333,10 @@ const Analises = () => {
         </div>
         
         <Tabs defaultValue="revenue" value={selectedAnalysisType} onValueChange={setSelectedAnalysisType}>
-          <TabsList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+          <TabsList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-6">
             <TabsTrigger value="revenue" className="flex items-center">
               <ChartBar className="mr-2 h-4 w-4" /> 
               Receitas & Despesas
-            </TabsTrigger>
-            <TabsTrigger value="categories" className="flex items-center">
-              <PieChart className="mr-2 h-4 w-4" />
-              Categorias
             </TabsTrigger>
             <TabsTrigger value="events-customers" className="flex items-center">
               <Users className="mr-2 h-4 w-4" />
@@ -357,6 +353,20 @@ const Analises = () => {
               transactions={filteredTransactions} 
               timeRange={selectedTimeRange}
             />
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CategoryPieChart
+                transactions={filteredTransactions.filter(t => t.type === 'income')}
+                title="Receitas por Categoria"
+                type="income"
+              />
+              
+              <CategoryPieChart
+                transactions={filteredTransactions.filter(t => t.type === 'expense')}
+                title="Despesas por Categoria"
+                type="expense"
+              />
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card>
@@ -430,23 +440,6 @@ const Analises = () => {
               </Card>
             </div>
           </TabsContent>
-          
-          <TabsContent value="categories" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <CategoryPieChart
-                transactions={filteredTransactions.filter(t => t.type === 'income')}
-                title="Receitas por Categoria"
-                type="income"
-              />
-              
-              <CategoryPieChart
-                transactions={filteredTransactions.filter(t => t.type === 'expense')}
-                title="Despesas por Categoria"
-                type="expense"
-              />
-            </div>
-          </TabsContent>
-          
           
           <TabsContent value="events-customers" className="space-y-4">
             <EventsCustomersCharts
