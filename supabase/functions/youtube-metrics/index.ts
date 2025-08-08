@@ -75,6 +75,26 @@ async function saveToCache(supabase: any, userId: string, cacheKey: string, data
     })
 }
 
+async function fetchAnalyticsData(accessToken: string, channelId: string, startDate: string, endDate: string, metrics: string, dimensions: string = 'day'): Promise<any> {
+  const url = new URL('https://youtubeanalytics.googleapis.com/v2/reports')
+  url.searchParams.set('ids', `channel==${channelId}`)
+  url.searchParams.set('startDate', startDate)
+  url.searchParams.set('endDate', endDate)
+  url.searchParams.set('metrics', metrics)
+  url.searchParams.set('dimensions', dimensions)
+
+  const response = await fetch(url.toString(), {
+    headers: { 'Authorization': `Bearer ${accessToken}` },
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(`Analytics API error: ${errorData.error?.message || response.statusText}`)
+  }
+
+  return await response.json()
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -119,7 +139,7 @@ Deno.serve(async (req) => {
         accessToken = await refreshAccessToken(tokenData.refresh_token)
         
         // Update token in database
-        const newExpiresAt = new Date(Date.now() + 3600 * 1000) // 1 hour from now
+        const newExpiresAt = new Date(Date.now() + 3600 * 1000)
         await supabaseClient
           .from('youtube_tokens')
           .update({
@@ -143,9 +163,11 @@ Deno.serve(async (req) => {
 
     const { searchParams } = new URL(req.url)
     const metricsType = searchParams.get('type') || 'overview'
+    const startDate = searchParams.get('startDate') || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0]
 
     // Check cache first
-    const cacheKey = `metrics_${metricsType}`
+    const cacheKey = `metrics_${metricsType}_${startDate}_${endDate}`
     const cachedData = await fetchFromCache(supabaseClient, user.id, cacheKey)
     
     if (cachedData) {
@@ -170,59 +192,130 @@ Deno.serve(async (req) => {
         )
         const channelData = await channelResponse.json()
 
-        // Recent videos
+        // Recent videos with detailed statistics
         const videosResponse = await fetch(
-          `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${tokenData.channel_id}&order=date&maxResults=5&type=video`,
+          `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${tokenData.channel_id}&order=date&maxResults=10&type=video`,
           {
             headers: { 'Authorization': `Bearer ${accessToken}` },
           }
         )
         const videosData = await videosResponse.json()
 
-        responseData = {
-          channel: channelData.items?.[0] || null,
-          recentVideos: videosData.items || [],
-        }
-        break
-
-      case 'analytics':
-        // YouTube Analytics API requires different permissions
-        // For now, we'll use basic statistics
-        const endDate = new Date().toISOString().split('T')[0]
-        const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-
-        try {
-          const analyticsResponse = await fetch(
-            `https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==${tokenData.channel_id}&startDate=${startDate}&endDate=${endDate}&metrics=views,estimatedMinutesWatched,subscribersGained&dimensions=day`,
+        // Get video statistics for recent videos
+        const videoIds = videosData.items?.map((video: any) => video.id.videoId).join(',')
+        let videoStats = null
+        if (videoIds) {
+          const videoStatsResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet&id=${videoIds}`,
             {
               headers: { 'Authorization': `Bearer ${accessToken}` },
             }
           )
-          
-          if (analyticsResponse.ok) {
-            const analyticsData = await analyticsResponse.json()
-            responseData = { analytics: analyticsData }
-          } else {
-            // Fallback to channel statistics
-            const fallbackResponse = await fetch(
-              `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${tokenData.channel_id}`,
-              {
-                headers: { 'Authorization': `Bearer ${accessToken}` },
-              }
-            )
-            const fallbackData = await fallbackResponse.json()
-            responseData = { 
-              analytics: null,
-              fallback: fallbackData.items?.[0]?.statistics || null,
-              error: 'Analytics API not available with current permissions'
-            }
+          const videoStatsData = await videoStatsResponse.json()
+          videoStats = videoStatsData.items || []
+        }
+
+        responseData = {
+          channel: channelData.items?.[0] || null,
+          recentVideos: videosData.items || [],
+          videoStats: videoStats,
+        }
+        break
+
+      case 'analytics':
+        try {
+          // Main analytics metrics
+          const mainMetrics = await fetchAnalyticsData(
+            accessToken, 
+            tokenData.channel_id, 
+            startDate, 
+            endDate,
+            'views,impressions,impressionClickThroughRate,averageViewDuration,estimatedMinutesWatched,subscribersGained'
+          )
+
+          // Traffic source data
+          const trafficSources = await fetchAnalyticsData(
+            accessToken, 
+            tokenData.channel_id, 
+            startDate, 
+            endDate,
+            'views,estimatedMinutesWatched',
+            'trafficSourceType'
+          )
+
+          // Device type data
+          const deviceTypes = await fetchAnalyticsData(
+            accessToken, 
+            tokenData.channel_id, 
+            startDate, 
+            endDate,
+            'views,estimatedMinutesWatched',
+            'deviceType'
+          )
+
+          // Geographic data
+          const geographicData = await fetchAnalyticsData(
+            accessToken, 
+            tokenData.channel_id, 
+            startDate, 
+            endDate,
+            'views,estimatedMinutesWatched',
+            'country'
+          )
+
+          responseData = {
+            analytics: mainMetrics,
+            trafficSources: trafficSources,
+            deviceTypes: deviceTypes,
+            geographic: geographicData,
+            dateRange: { startDate, endDate }
           }
         } catch (error) {
           console.error('Analytics API error:', error)
+          // Fallback to basic channel statistics
+          const fallbackResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${tokenData.channel_id}`,
+            {
+              headers: { 'Authorization': `Bearer ${accessToken}` },
+            }
+          )
+          const fallbackData = await fallbackResponse.json()
           responseData = { 
             analytics: null,
-            error: 'Failed to fetch analytics data'
+            fallback: fallbackData.items?.[0]?.statistics || null,
+            error: 'Analytics API not available with current permissions'
           }
+        }
+        break
+
+      case 'top-videos':
+        // Get channel's videos with statistics
+        const channelVideosResponse = await fetch(
+          `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${tokenData.channel_id}&order=viewCount&maxResults=50&type=video`,
+          {
+            headers: { 'Authorization': `Bearer ${accessToken}` },
+          }
+        )
+        const channelVideosData = await channelVideosResponse.json()
+
+        // Get detailed video statistics
+        const allVideoIds = channelVideosData.items?.map((video: any) => video.id.videoId).join(',')
+        let allVideoStats = []
+        if (allVideoIds) {
+          const allVideoStatsResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet,contentDetails&id=${allVideoIds}`,
+            {
+              headers: { 'Authorization': `Bearer ${accessToken}` },
+            }
+          )
+          const allVideoStatsData = await allVideoStatsResponse.json()
+          allVideoStats = allVideoStatsData.items || []
+        }
+
+        responseData = {
+          topVideos: allVideoStats.sort((a: any, b: any) => 
+            parseInt(b.statistics.viewCount || '0') - parseInt(a.statistics.viewCount || '0')
+          ).slice(0, 20)
         }
         break
 
@@ -230,10 +323,10 @@ Deno.serve(async (req) => {
         throw new Error(`Unknown metrics type: ${metricsType}`)
     }
 
-    // Cache the response for 1 hour
-    await saveToCache(supabaseClient, user.id, cacheKey, responseData, 60)
+    // Cache the response
+    await saveToCache(supabaseClient, user.id, cacheKey, responseData, 30)
 
-    console.log('Fetched and cached YouTube metrics:', metricsType)
+    console.log('Fetched and cached YouTube metrics:', metricsType, 'for period:', startDate, 'to', endDate)
 
     return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

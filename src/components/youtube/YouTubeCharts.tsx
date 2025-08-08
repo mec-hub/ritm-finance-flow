@@ -1,24 +1,125 @@
 
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { BarChart3, TrendingUp, Clock } from 'lucide-react';
+import { BarChart3, TrendingUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DateRangePicker } from './DateRangePicker';
+import { MetricsOverview } from './MetricsOverview';
+import { TrafficSourcesChart } from './TrafficSourcesChart';
+import { DeviceAnalytics } from './DeviceAnalytics';
 
 export function YouTubeCharts() {
+  const [dateRange, setDateRange] = useState({
+    from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+    to: new Date(),
+  });
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['youtube-metrics', 'analytics'],
+    queryKey: ['youtube-metrics', 'analytics', dateRange.from, dateRange.to],
     queryFn: async () => {
+      const startDate = dateRange.from.toISOString().split('T')[0];
+      const endDate = dateRange.to.toISOString().split('T')[0];
+      
       const { data, error } = await supabase.functions.invoke('youtube-metrics', {
-        body: { type: 'analytics' }
+        body: { 
+          type: 'analytics',
+          startDate,
+          endDate
+        }
       });
       
       if (error) throw error;
       return data;
     },
-    refetchInterval: 10 * 60 * 1000, // Refetch every 10 minutes
+    refetchInterval: 10 * 60 * 1000,
   });
+
+  const processedData = useMemo(() => {
+    if (!data?.analytics?.rows) return null;
+
+    // Process main analytics data
+    const chartData = data.analytics.rows.map((row: any[]) => {
+      const date = row[0];
+      const views = row[1] || 0;
+      const impressions = row[2] || 0;
+      const clickThroughRate = row[3] || 0;
+      const avgDuration = row[4] || 0;
+      const watchTime = row[5] || 0;
+      const subscribers = row[6] || 0;
+
+      return {
+        date: new Date(date).toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' }),
+        views,
+        impressions,
+        clickThroughRate: clickThroughRate * 100,
+        avgDuration: Math.round(avgDuration),
+        watchTime: Math.round(watchTime / 60),
+        subscribers,
+      };
+    });
+
+    // Calculate totals for overview cards
+    const totals = data.analytics.rows.reduce((acc: any, row: any[]) => ({
+      views: acc.views + (row[1] || 0),
+      impressions: acc.impressions + (row[2] || 0),
+      clickThroughRate: acc.clickThroughRate + (row[3] || 0),
+      avgDuration: acc.avgDuration + (row[4] || 0),
+      watchTime: acc.watchTime + (row[5] || 0),
+      subscribers: acc.subscribers + (row[6] || 0),
+    }), {
+      views: 0,
+      impressions: 0,
+      clickThroughRate: 0,
+      avgDuration: 0,
+      watchTime: 0,
+      subscribers: 0,
+    });
+
+    // Calculate averages
+    const dayCount = data.analytics.rows.length;
+    totals.clickThroughRate = (totals.clickThroughRate / dayCount) * 100;
+    totals.avgDuration = totals.avgDuration / dayCount;
+    totals.watchTime = Math.round(totals.watchTime / 60);
+
+    return { chartData, totals };
+  }, [data]);
+
+  const trafficSourcesData = useMemo(() => {
+    if (!data?.trafficSources?.rows) return [];
+
+    return data.trafficSources.rows.map((row: any[]) => {
+      const source = row[0];
+      const views = row[1] || 0;
+      const totalViews = data.trafficSources.rows.reduce((sum: number, r: any[]) => sum + (r[1] || 0), 0);
+      
+      return {
+        source,
+        views,
+        percentage: totalViews > 0 ? (views / totalViews) * 100 : 0,
+      };
+    });
+  }, [data]);
+
+  const deviceData = useMemo(() => {
+    if (!data?.deviceTypes?.rows) return [];
+
+    return data.deviceTypes.rows.map((row: any[]) => {
+      const device = row[0];
+      const views = row[1] || 0;
+      const watchTimeMinutes = row[2] || 0;
+      const totalWatchTime = data.deviceTypes.rows.reduce((sum: number, r: any[]) => sum + (r[2] || 0), 0);
+      
+      return {
+        device,
+        views,
+        watchTimeHours: Math.round(watchTimeMinutes / 60),
+        percentage: totalWatchTime > 0 ? (watchTimeMinutes / totalWatchTime) * 100 : 0,
+      };
+    });
+  }, [data]);
 
   if (error) {
     return (
@@ -35,25 +136,34 @@ export function YouTubeCharts() {
 
   if (isLoading) {
     return (
-      <div className="grid gap-6 md:grid-cols-1">
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-32" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-64 w-full" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-32" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-64 w-full" />
-          </CardContent>
-        </Card>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-10 w-[280px]" />
+        </div>
+        
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <Skeleton className="h-4 w-20 mb-2" />
+                <Skeleton className="h-8 w-16 mb-1" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-64 w-full" />
+            </CardContent>
+          </Card>
+        ))}
       </div>
     );
   }
@@ -62,6 +172,11 @@ export function YouTubeCharts() {
   if (!data?.analytics && data?.error) {
     return (
       <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold">Análises Detalhadas</h2>
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -108,9 +223,7 @@ export function YouTubeCharts() {
     );
   }
 
-  // Process analytics data if available
-  const analytics = data?.analytics;
-  if (!analytics?.rows) {
+  if (!processedData) {
     return (
       <Card>
         <CardHeader>
@@ -123,116 +236,92 @@ export function YouTubeCharts() {
     );
   }
 
-  // Transform data for charts
-  const chartData = analytics.rows.map((row: any[], index: number) => {
-    const date = row[0]; // day dimension
-    const views = row[1]; // views metric
-    const watchTime = row[2]; // estimatedMinutesWatched metric
-    const subscribers = row[3]; // subscribersGained metric
-
-    return {
-      date: new Date(date).toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' }),
-      views: views || 0,
-      watchTime: Math.round((watchTime || 0) / 60), // Convert to hours
-      subscribers: subscribers || 0,
-    };
-  });
-
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Visualizações (Últimos 30 dias)
-          </CardTitle>
-          <CardDescription>
-            Evolução diária das visualizações do seu canal
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip 
-                formatter={(value: any) => [value.toLocaleString(), 'Visualizações']}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="views" 
-                stroke="#ef4444" 
-                fill="#fca5a5" 
-                strokeWidth={2}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Análises Detalhadas</h2>
+        <DateRangePicker value={dateRange} onChange={setDateRange} />
+      </div>
+
+      <MetricsOverview data={processedData.totals} />
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Tempo de Exibição (Horas)
+              <BarChart3 className="h-5 w-5" />
+              Visualizações
             </CardTitle>
             <CardDescription>
-              Total de horas assistidas por dia
+              Evolução diária das visualizações
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={chartData}>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={processedData.chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip 
-                  formatter={(value: any) => [`${value}h`, 'Tempo de Exibição']}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="watchTime" 
-                  stroke="#8b5cf6" 
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Novos Inscritos
-            </CardTitle>
-            <CardDescription>
-              Inscritos ganhos por dia
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <AreaChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip 
-                  formatter={(value: any) => [value, 'Novos Inscritos']}
+                  formatter={(value: any) => [value.toLocaleString(), 'Visualizações']}
                 />
                 <Area 
                   type="monotone" 
-                  dataKey="subscribers" 
-                  stroke="#10b981" 
-                  fill="#86efac" 
+                  dataKey="views" 
+                  stroke="#ef4444" 
+                  fill="#fca5a5" 
                   strokeWidth={2}
                 />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Impressões e Taxa de Cliques</CardTitle>
+            <CardDescription>
+              Quantas vezes seu conteúdo foi exibido
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={processedData.chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis yAxisId="left" />
+                <YAxis yAxisId="right" orientation="right" />
+                <Tooltip />
+                <Line 
+                  yAxisId="left"
+                  type="monotone" 
+                  dataKey="impressions" 
+                  stroke="#3b82f6" 
+                  strokeWidth={2}
+                  name="Impressões"
+                />
+                <Line 
+                  yAxisId="right"
+                  type="monotone" 
+                  dataKey="clickThroughRate" 
+                  stroke="#10b981" 
+                  strokeWidth={2}
+                  name="Taxa de Cliques (%)"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {trafficSourcesData.length > 0 && (
+          <TrafficSourcesChart data={trafficSourcesData} />
+        )}
+        
+        {deviceData.length > 0 && (
+          <DeviceAnalytics data={deviceData} />
+        )}
       </div>
     </div>
   );
