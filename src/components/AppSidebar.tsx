@@ -1,5 +1,4 @@
-
-import { Home, DollarSign, Calendar, Users, BarChart3, FileText, Settings } from "lucide-react"
+import { Home, DollarSign, Calendar, Users, BarChart3, FileText, Settings, Youtube } from "lucide-react"
 import { useNavigate, useLocation } from 'react-router-dom'
 
 import {
@@ -37,6 +36,11 @@ const items = [
     title: "Clientes",
     url: "/clientes",
     icon: Users,
+  },
+  {
+    title: "YouTube",
+    url: "/youtube",
+    icon: Youtube,
   },
   {
     title: "Análises",

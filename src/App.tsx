@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,6 +14,7 @@ import Clientes from "./pages/Clientes";
 import Analises from "./pages/Analises";
 import Relatorios from "./pages/Relatorios";
 import Configuracoes from "./pages/Configuracoes";
+import YouTube from "./pages/YouTube";
 import Auth from "./pages/Auth";
 import NovaTransacao from "./pages/NovaTransacao";
 import EditarTransacao from "./pages/EditarTransacao";
@@ -48,6 +48,7 @@ function AppRoutes() {
       <Route path="/financas" element={<ProtectedRoute><Financas /></ProtectedRoute>} />
       <Route path="/eventos" element={<ProtectedRoute><Eventos /></ProtectedRoute>} />
       <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+      <Route path="/youtube" element={<ProtectedRoute><YouTube /></ProtectedRoute>} />
       <Route path="/analises" element={<ProtectedRoute><Analises /></ProtectedRoute>} />
       <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
       <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
