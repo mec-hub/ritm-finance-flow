@@ -1,1 +1,24 @@
+
 project_id = "welnbkjzqowilggnxuoa"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[auth]
+enabled = true
+port = 54324
+site_url = "https://welnbkjzqowilggnxuoa.supabase.co"
+additional_redirect_urls = []
+jwt_expiry = 3600
+enable_signup = true
+enable_anonymous_sign_ins = false
+enable_manual_linking = false
+enable_external_links = false
+min_password_length = 6
+
+[functions.youtube-auth-callback]
+verify_jwt = false
