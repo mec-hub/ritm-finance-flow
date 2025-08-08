@@ -98,7 +98,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
             initialFocus
             mode="range"
             defaultMonth={value?.from}
-            selected={selectedRange}
+            selected={selectedRange.from && selectedRange.to ? selectedRange : undefined}
             onSelect={handleRangeSelect}
             numberOfMonths={2}
           />

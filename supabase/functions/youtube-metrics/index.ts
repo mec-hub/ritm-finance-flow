@@ -161,10 +161,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { searchParams } = new URL(req.url)
-    const metricsType = searchParams.get('type') || 'overview'
-    const startDate = searchParams.get('startDate') || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0]
+    // Get parameters from request body
+    const requestBody = await req.json()
+    const metricsType = requestBody.type || 'overview'
+    const startDate = requestBody.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const endDate = requestBody.endDate || new Date().toISOString().split('T')[0]
+
+    console.log('Processing request:', { metricsType, startDate, endDate })
 
     // Check cache first
     const cacheKey = `metrics_${metricsType}_${startDate}_${endDate}`
@@ -192,7 +195,6 @@ Deno.serve(async (req) => {
         )
         const channelData = await channelResponse.json()
 
-        // Recent videos with detailed statistics
         const videosResponse = await fetch(
           `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${tokenData.channel_id}&order=date&maxResults=10&type=video`,
           {
@@ -201,7 +203,6 @@ Deno.serve(async (req) => {
         )
         const videosData = await videosResponse.json()
 
-        // Get video statistics for recent videos
         const videoIds = videosData.items?.map((video: any) => video.id.videoId).join(',')
         let videoStats = null
         if (videoIds) {
@@ -224,6 +225,8 @@ Deno.serve(async (req) => {
 
       case 'analytics':
         try {
+          console.log('Fetching analytics data for channel:', tokenData.channel_id)
+
           // Main analytics metrics
           const mainMetrics = await fetchAnalyticsData(
             accessToken, 
@@ -263,6 +266,12 @@ Deno.serve(async (req) => {
             'country'
           )
 
+          console.log('Successfully fetched analytics data:', {
+            mainMetrics: mainMetrics?.rows?.length || 0,
+            trafficSources: trafficSources?.rows?.length || 0,
+            deviceTypes: deviceTypes?.rows?.length || 0
+          })
+
           responseData = {
             analytics: mainMetrics,
             trafficSources: trafficSources,
@@ -298,7 +307,6 @@ Deno.serve(async (req) => {
         )
         const channelVideosData = await channelVideosResponse.json()
 
-        // Get detailed video statistics
         const allVideoIds = channelVideosData.items?.map((video: any) => video.id.videoId).join(',')
         let allVideoStats = []
         if (allVideoIds) {
