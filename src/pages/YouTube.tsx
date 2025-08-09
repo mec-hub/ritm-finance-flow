@@ -25,37 +25,32 @@ export default function YouTube() {
       
       const { data, error } = await supabase
         .from('youtube_tokens')
-        .select('channel_id, channel_title, channel_thumbnail')
+        .select('channel_id, channel_title')
         .eq('user_id', user.id)
         .single();
       
       if (error || !data) return null;
       
-      // If we don't have channel_thumbnail, try to fetch it
-      if (!data.channel_thumbnail && data.channel_id) {
+      // Fetch channel thumbnail from the API
+      let channelThumbnail = null;
+      if (data.channel_id) {
         try {
           const { data: channelInfo } = await supabase.functions.invoke('youtube-metrics', {
             body: { type: 'channel-info' }
           });
           
           if (channelInfo?.channel?.snippet?.thumbnails?.default?.url) {
-            // Update the database with the thumbnail
-            await supabase
-              .from('youtube_tokens')
-              .update({ channel_thumbnail: channelInfo.channel.snippet.thumbnails.default.url })
-              .eq('user_id', user.id);
-              
-            return {
-              ...data,
-              channel_thumbnail: channelInfo.channel.snippet.thumbnails.default.url
-            };
+            channelThumbnail = channelInfo.channel.snippet.thumbnails.default.url;
           }
         } catch (error) {
           console.error('Error fetching channel thumbnail:', error);
         }
       }
       
-      return data;
+      return {
+        ...data,
+        channel_thumbnail: channelThumbnail
+      };
     },
     enabled: !!user,
   });
