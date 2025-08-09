@@ -7,9 +7,9 @@ interface VideoData {
   id: string;
   title: string;
   publishedAt: string;
-  thumbnails: {
-    default: { url: string };
-    medium: { url: string };
+  thumbnails?: {
+    default?: { url: string };
+    medium?: { url: string };
   };
   statistics: {
     viewCount: string;
@@ -52,6 +52,14 @@ export function TopVideosTable({ videos }: TopVideosTableProps) {
     return number.toLocaleString();
   };
 
+  const getThumbnailUrl = (video: VideoData) => {
+    // Handle cases where thumbnails might be undefined
+    if (!video.thumbnails) {
+      return '/placeholder.svg'; // Fallback to placeholder
+    }
+    return video.thumbnails.medium?.url || video.thumbnails.default?.url || '/placeholder.svg';
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -76,12 +84,12 @@ export function TopVideosTable({ videos }: TopVideosTableProps) {
               
               <div className="relative flex-shrink-0">
                 <img 
-                  src={video.thumbnails.medium?.url || video.thumbnails.default?.url}
+                  src={getThumbnailUrl(video)}
                   alt={video.title}
                   className="w-32 h-20 object-cover rounded-md"
                 />
                 <div className="absolute bottom-1 right-1 bg-black/75 text-white text-xs px-1 rounded">
-                  {formatDuration(video.contentDetails?.duration)}
+                  {formatDuration(video.contentDetails?.duration || '')}
                 </div>
               </div>
               
