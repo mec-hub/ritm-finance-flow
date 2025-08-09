@@ -4,11 +4,9 @@ import { Eye, MousePointer, Clock, TrendingUp, Users, PlayCircle } from 'lucide-
 
 interface MetricsData {
   views: number;
-  impressions: number;
-  clickThroughRate: number;
-  averageViewDuration: number;
+  avgDuration: number;
   watchTime: number;
-  subscribersGained: number;
+  subscribers: number;
 }
 
 interface MetricsOverviewProps {
@@ -16,7 +14,11 @@ interface MetricsOverviewProps {
 }
 
 export function MetricsOverview({ data }: MetricsOverviewProps) {
-  const formatNumber = (num: number) => {
+  const formatNumber = (num: number | undefined) => {
+    if (num === undefined || num === null || isNaN(num)) {
+      return '0';
+    }
+    
     if (num >= 1000000) {
       return `${(num / 1000000).toFixed(1)}M`;
     }
@@ -26,13 +28,21 @@ export function MetricsOverview({ data }: MetricsOverviewProps) {
     return num.toLocaleString();
   };
 
-  const formatDuration = (seconds: number) => {
+  const formatDuration = (seconds: number | undefined) => {
+    if (seconds === undefined || seconds === null || isNaN(seconds)) {
+      return '0:00';
+    }
+    
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  const formatWatchTime = (minutes: number) => {
+  const formatWatchTime = (minutes: number | undefined) => {
+    if (minutes === undefined || minutes === null || isNaN(minutes)) {
+      return '0m';
+    }
+    
     const hours = Math.floor(minutes / 60);
     if (hours > 0) {
       return `${formatNumber(hours)}h`;
@@ -41,7 +51,7 @@ export function MetricsOverview({ data }: MetricsOverviewProps) {
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Visualizações</CardTitle>
@@ -54,31 +64,11 @@ export function MetricsOverview({ data }: MetricsOverviewProps) {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Impressões</CardTitle>
-          <PlayCircle className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(data.impressions)}</div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Taxa de Cliques</CardTitle>
-          <MousePointer className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{data.clickThroughRate.toFixed(1)}%</div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Duração Média</CardTitle>
           <Clock className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatDuration(data.averageViewDuration)}</div>
+          <div className="text-2xl font-bold">{formatDuration(data.avgDuration)}</div>
         </CardContent>
       </Card>
 
@@ -95,10 +85,12 @@ export function MetricsOverview({ data }: MetricsOverviewProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Novos Inscritos</CardTitle>
-          <Users className="h-4 w-4 text-muted-foregreen" />
+          <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{data.subscribersGained >= 0 ? '+' : ''}{formatNumber(data.subscribersGained)}</div>
+          <div className="text-2xl font-bold">
+            {data.subscribers !== undefined && data.subscribers >= 0 ? '+' : ''}{formatNumber(data.subscribers)}
+          </div>
         </CardContent>
       </Card>
     </div>
