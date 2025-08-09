@@ -98,9 +98,13 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
             initialFocus
             mode="range"
             defaultMonth={value?.from}
-            selected={selectedRange.from && selectedRange.to ? selectedRange : undefined}
+            selected={selectedRange.from && selectedRange.to ? {
+              from: selectedRange.from,
+              to: selectedRange.to
+            } : undefined}
             onSelect={handleRangeSelect}
             numberOfMonths={2}
+            className="pointer-events-auto"
           />
         </div>
       </PopoverContent>

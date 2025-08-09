@@ -44,19 +44,15 @@ export function YouTubeCharts() {
     const chartData = data.analytics.rows.map((row: any[]) => {
       const date = row[0];
       const views = row[1] || 0;
-      const impressions = row[2] || 0;
-      const clickThroughRate = row[3] || 0;
-      const avgDuration = row[4] || 0;
-      const watchTime = row[5] || 0;
-      const subscribers = row[6] || 0;
+      const avgDuration = row[2] || 0;
+      const watchTime = row[3] || 0;
+      const subscribers = row[4] || 0;
 
       return {
         date: new Date(date).toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' }),
         views,
-        impressions,
-        clickThroughRate: clickThroughRate * 100,
         avgDuration: Math.round(avgDuration),
-        watchTime: Math.round(watchTime / 60),
+        watchTime: Math.round(watchTime / 60), // Convert to minutes
         subscribers,
       };
     });
@@ -64,15 +60,11 @@ export function YouTubeCharts() {
     // Calculate totals for overview cards
     const totals = data.analytics.rows.reduce((acc: any, row: any[]) => ({
       views: acc.views + (row[1] || 0),
-      impressions: acc.impressions + (row[2] || 0),
-      clickThroughRate: acc.clickThroughRate + (row[3] || 0),
-      avgDuration: acc.avgDuration + (row[4] || 0),
-      watchTime: acc.watchTime + (row[5] || 0),
-      subscribers: acc.subscribers + (row[6] || 0),
+      avgDuration: acc.avgDuration + (row[2] || 0),
+      watchTime: acc.watchTime + (row[3] || 0),
+      subscribers: acc.subscribers + (row[4] || 0),
     }), {
       views: 0,
-      impressions: 0,
-      clickThroughRate: 0,
       avgDuration: 0,
       watchTime: 0,
       subscribers: 0,
@@ -80,9 +72,8 @@ export function YouTubeCharts() {
 
     // Calculate averages
     const dayCount = data.analytics.rows.length;
-    totals.clickThroughRate = (totals.clickThroughRate / dayCount) * 100;
     totals.avgDuration = totals.avgDuration / dayCount;
-    totals.watchTime = Math.round(totals.watchTime / 60);
+    totals.watchTime = Math.round(totals.watchTime / 60); // Convert to minutes
 
     return { chartData, totals };
   }, [data]);
@@ -143,7 +134,7 @@ export function YouTubeCharts() {
         </div>
         
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}>
               <CardContent className="p-6">
                 <Skeleton className="h-4 w-20 mb-2" />
@@ -153,7 +144,7 @@ export function YouTubeCharts() {
           ))}
         </div>
 
-        {Array.from({ length: 3 }).map((_, i) => (
+        {Array.from({ length: 2 }).map((_, i) => (
           <Card key={i}>
             <CardHeader>
               <Skeleton className="h-6 w-48" />
@@ -184,14 +175,14 @@ export function YouTubeCharts() {
               Análises Detalhadas
             </CardTitle>
             <CardDescription>
-              Para ter acesso às análises detalhadas, é necessário configurar permissões adicionais da API do YouTube
+              Para ter acesso às análises detalhadas, é necessário habilitar a YouTube Analytics API
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-center py-8">
               <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">Análises Limitadas</h3>
-              <p className="text-muted-foreground max-w-md mx-auto">
+              <p className="text-muted-foreground max-w-md mx-auto mb-4">
                 {data.error}
               </p>
               {data?.fallback && (
@@ -216,6 +207,15 @@ export function YouTubeCharts() {
                   </div>
                 </div>
               )}
+              <div className="mt-6 text-sm text-muted-foreground">
+                <p>Para habilitar análises detalhadas:</p>
+                <ol className="list-decimal list-inside mt-2 space-y-1 text-left max-w-md mx-auto">
+                  <li>Acesse o Google Cloud Console</li>
+                  <li>Habilite a YouTube Analytics API</li>
+                  <li>Configure os escopos necessários</li>
+                  <li>Reconecte sua conta do YouTube</li>
+                </ol>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -229,7 +229,7 @@ export function YouTubeCharts() {
         <CardHeader>
           <CardTitle>Dados de análise não disponíveis</CardTitle>
           <CardDescription>
-            Não há dados suficientes para exibir os gráficos
+            Não há dados suficientes para exibir os gráficos no período selecionado
           </CardDescription>
         </CardHeader>
       </Card>
@@ -279,9 +279,9 @@ export function YouTubeCharts() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Impressões e Taxa de Cliques</CardTitle>
+            <CardTitle>Tempo de Exibição</CardTitle>
             <CardDescription>
-              Quantas vezes seu conteúdo foi exibido
+              Minutos assistidos ao longo do tempo
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -289,24 +289,16 @@ export function YouTubeCharts() {
               <LineChart data={processedData.chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <Tooltip />
-                <Line 
-                  yAxisId="left"
-                  type="monotone" 
-                  dataKey="impressions" 
-                  stroke="#3b82f6" 
-                  strokeWidth={2}
-                  name="Impressões"
+                <YAxis />
+                <Tooltip 
+                  formatter={(value: any) => [value.toLocaleString(), 'Minutos']}
                 />
                 <Line 
-                  yAxisId="right"
                   type="monotone" 
-                  dataKey="clickThroughRate" 
-                  stroke="#10b981" 
+                  dataKey="watchTime" 
+                  stroke="#3b82f6" 
                   strokeWidth={2}
-                  name="Taxa de Cliques (%)"
+                  name="Tempo de Exibição (min)"
                 />
               </LineChart>
             </ResponsiveContainer>

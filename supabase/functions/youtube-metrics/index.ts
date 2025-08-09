@@ -83,12 +83,15 @@ async function fetchAnalyticsData(accessToken: string, channelId: string, startD
   url.searchParams.set('metrics', metrics)
   url.searchParams.set('dimensions', dimensions)
 
+  console.log('Analytics API URL:', url.toString())
+
   const response = await fetch(url.toString(), {
     headers: { 'Authorization': `Bearer ${accessToken}` },
   })
 
   if (!response.ok) {
     const errorData = await response.json()
+    console.error('Analytics API error:', errorData)
     throw new Error(`Analytics API error: ${errorData.error?.message || response.statusText}`)
   }
 
@@ -227,57 +230,95 @@ Deno.serve(async (req) => {
         try {
           console.log('Fetching analytics data for channel:', tokenData.channel_id)
 
-          // Main analytics metrics
-          const mainMetrics = await fetchAnalyticsData(
-            accessToken, 
-            tokenData.channel_id, 
-            startDate, 
-            endDate,
-            'views,impressions,impressionClickThroughRate,averageViewDuration,estimatedMinutesWatched,subscribersGained'
-          )
+          // Try YouTube Analytics API v2 with only valid metrics
+          let mainMetrics = null
+          let trafficSources = null
+          let deviceTypes = null
+          let geographicData = null
+          
+          try {
+            // Main analytics metrics - using only confirmed valid metrics
+            mainMetrics = await fetchAnalyticsData(
+              accessToken, 
+              tokenData.channel_id, 
+              startDate, 
+              endDate,
+              'views,averageViewDuration,estimatedMinutesWatched,subscribersGained'
+            )
+            console.log('Successfully fetched main analytics')
+          } catch (error) {
+            console.log('Main analytics failed:', error.message)
+          }
 
-          // Traffic source data
-          const trafficSources = await fetchAnalyticsData(
-            accessToken, 
-            tokenData.channel_id, 
-            startDate, 
-            endDate,
-            'views,estimatedMinutesWatched',
-            'trafficSourceType'
-          )
+          try {
+            // Traffic source data
+            trafficSources = await fetchAnalyticsData(
+              accessToken, 
+              tokenData.channel_id, 
+              startDate, 
+              endDate,
+              'views,estimatedMinutesWatched',
+              'trafficSourceType'
+            )
+            console.log('Successfully fetched traffic sources')
+          } catch (error) {
+            console.log('Traffic sources failed:', error.message)
+          }
 
-          // Device type data
-          const deviceTypes = await fetchAnalyticsData(
-            accessToken, 
-            tokenData.channel_id, 
-            startDate, 
-            endDate,
-            'views,estimatedMinutesWatched',
-            'deviceType'
-          )
+          try {
+            // Device type data
+            deviceTypes = await fetchAnalyticsData(
+              accessToken, 
+              tokenData.channel_id, 
+              startDate, 
+              endDate,
+              'views,estimatedMinutesWatched',
+              'deviceType'
+            )
+            console.log('Successfully fetched device types')
+          } catch (error) {
+            console.log('Device types failed:', error.message)
+          }
 
-          // Geographic data
-          const geographicData = await fetchAnalyticsData(
-            accessToken, 
-            tokenData.channel_id, 
-            startDate, 
-            endDate,
-            'views,estimatedMinutesWatched',
-            'country'
-          )
+          try {
+            // Geographic data
+            geographicData = await fetchAnalyticsData(
+              accessToken, 
+              tokenData.channel_id, 
+              startDate, 
+              endDate,
+              'views,estimatedMinutesWatched',
+              'country'
+            )
+            console.log('Successfully fetched geographic data')
+          } catch (error) {
+            console.log('Geographic data failed:', error.message)
+          }
 
-          console.log('Successfully fetched analytics data:', {
-            mainMetrics: mainMetrics?.rows?.length || 0,
-            trafficSources: trafficSources?.rows?.length || 0,
-            deviceTypes: deviceTypes?.rows?.length || 0
-          })
-
-          responseData = {
-            analytics: mainMetrics,
-            trafficSources: trafficSources,
-            deviceTypes: deviceTypes,
-            geographic: geographicData,
-            dateRange: { startDate, endDate }
+          // If we got any analytics data, return it
+          if (mainMetrics || trafficSources || deviceTypes) {
+            responseData = {
+              analytics: mainMetrics,
+              trafficSources: trafficSources,
+              deviceTypes: deviceTypes,
+              geographic: geographicData,
+              dateRange: { startDate, endDate }
+            }
+          } else {
+            // Fallback to basic channel statistics
+            console.log('No analytics data available, falling back to basic stats')
+            const fallbackResponse = await fetch(
+              `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${tokenData.channel_id}`,
+              {
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+              }
+            )
+            const fallbackData = await fallbackResponse.json()
+            responseData = { 
+              analytics: null,
+              fallback: fallbackData.items?.[0]?.statistics || null,
+              error: 'Detailed analytics not available. This may be due to insufficient permissions or the Analytics API not being enabled for your application.'
+            }
           }
         } catch (error) {
           console.error('Analytics API error:', error)
