@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -172,11 +171,22 @@ Deno.serve(async (req) => {
 
     console.log('Processing request:', { metricsType, startDate, endDate })
 
+    // For top-videos, always clear cache to debug
+    if (metricsType === 'top-videos') {
+      const cacheKey = `metrics_${metricsType}_${startDate}_${endDate}`
+      await supabaseClient
+        .from('youtube_cache')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('cache_key', cacheKey)
+      console.log('Cleared cache for top-videos to debug thumbnails')
+    }
+
     // Check cache first
     const cacheKey = `metrics_${metricsType}_${startDate}_${endDate}`
     const cachedData = await fetchFromCache(supabaseClient, user.id, cacheKey)
     
-    if (cachedData) {
+    if (cachedData && metricsType !== 'top-videos') {
       console.log('Returning cached data for:', cacheKey)
       return new Response(JSON.stringify(cachedData), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -227,6 +237,7 @@ Deno.serve(async (req) => {
         break
 
       case 'analytics':
+        
         try {
           console.log('Fetching analytics data for channel:', tokenData.channel_id)
 
@@ -339,6 +350,8 @@ Deno.serve(async (req) => {
         break
 
       case 'top-videos':
+        console.log('=== DEBUGGING TOP VIDEOS THUMBNAILS ===')
+        
         // Get channel's videos with statistics and thumbnails
         const channelVideosResponse = await fetch(
           `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${tokenData.channel_id}&order=viewCount&maxResults=50&type=video`,
@@ -347,9 +360,22 @@ Deno.serve(async (req) => {
           }
         )
         const channelVideosData = await channelVideosResponse.json()
+        
+        console.log('Search API response structure:', {
+          itemsCount: channelVideosData.items?.length || 0,
+          firstItemStructure: channelVideosData.items?.[0] ? {
+            id: channelVideosData.items[0].id,
+            snippet: {
+              title: channelVideosData.items[0].snippet?.title,
+              hasThumbnails: !!channelVideosData.items[0].snippet?.thumbnails,
+              thumbnailKeys: channelVideosData.items[0].snippet?.thumbnails ? Object.keys(channelVideosData.items[0].snippet.thumbnails) : []
+            }
+          } : null
+        })
 
         const allVideoIds = channelVideosData.items?.map((video: any) => video.id.videoId).join(',')
         let allVideoStats = []
+        
         if (allVideoIds) {
           // Include snippet part to get thumbnail data
           const allVideoStatsResponse = await fetch(
@@ -360,17 +386,41 @@ Deno.serve(async (req) => {
           )
           const allVideoStatsData = await allVideoStatsResponse.json()
           
-          // Map the data to include thumbnail information
-          allVideoStats = (allVideoStatsData.items || []).map((video: any) => ({
-            id: video.id,
-            title: video.snippet?.title || '',
-            publishedAt: video.snippet?.publishedAt || '',
-            thumbnails: video.snippet?.thumbnails || null,
-            statistics: video.statistics || { viewCount: '0', likeCount: '0', commentCount: '0' },
-            contentDetails: video.contentDetails || { duration: 'PT0S' }
-          }))
+          console.log('Videos API response structure:', {
+            itemsCount: allVideoStatsData.items?.length || 0,
+            firstItemThumbnails: allVideoStatsData.items?.[0]?.snippet?.thumbnails ? {
+              keys: Object.keys(allVideoStatsData.items[0].snippet.thumbnails),
+              defaultUrl: allVideoStatsData.items[0].snippet.thumbnails.default?.url,
+              mediumUrl: allVideoStatsData.items[0].snippet.thumbnails.medium?.url,
+              highUrl: allVideoStatsData.items[0].snippet.thumbnails.high?.url
+            } : 'NO_THUMBNAILS'
+          })
           
-          console.log('Video stats with thumbnails:', allVideoStats.slice(0, 2))
+          // Map the data to include thumbnail information
+          allVideoStats = (allVideoStatsData.items || []).map((video: any) => {
+            const videoData = {
+              id: video.id,
+              title: video.snippet?.title || '',
+              publishedAt: video.snippet?.publishedAt || '',
+              thumbnails: video.snippet?.thumbnails || null,
+              statistics: video.statistics || { viewCount: '0', likeCount: '0', commentCount: '0' },
+              contentDetails: video.contentDetails || { duration: 'PT0S' }
+            }
+            
+            console.log(`Video ${video.id} thumbnails:`, {
+              hasThumbnails: !!videoData.thumbnails,
+              thumbnailKeys: videoData.thumbnails ? Object.keys(videoData.thumbnails) : [],
+              defaultUrl: videoData.thumbnails?.default?.url,
+              mediumUrl: videoData.thumbnails?.medium?.url
+            })
+            
+            return videoData
+          })
+          
+          console.log('Processed video stats sample:', {
+            totalVideos: allVideoStats.length,
+            firstVideoThumbnail: allVideoStats[0]?.thumbnails
+          })
         }
 
         responseData = {
@@ -378,16 +428,24 @@ Deno.serve(async (req) => {
             parseInt(b.statistics.viewCount || '0') - parseInt(a.statistics.viewCount || '0')
           ).slice(0, 20)
         }
+        
+        console.log('Final response thumbnails check:', {
+          topVideosCount: responseData.topVideos?.length || 0,
+          firstTopVideoThumbnails: responseData.topVideos?.[0]?.thumbnails
+        })
+        console.log('=== END DEBUGGING ===')
         break
 
       default:
         throw new Error(`Unknown metrics type: ${metricsType}`)
     }
 
-    // Cache the response
-    await saveToCache(supabaseClient, user.id, cacheKey, responseData, 30)
+    // Cache the response (except for top-videos while debugging)
+    if (metricsType !== 'top-videos') {
+      await saveToCache(supabaseClient, user.id, cacheKey, responseData, 30)
+    }
 
-    console.log('Fetched and cached YouTube metrics:', metricsType, 'for period:', startDate, 'to', endDate)
+    console.log('Fetched YouTube metrics:', metricsType, 'for period:', startDate, 'to', endDate)
 
     return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

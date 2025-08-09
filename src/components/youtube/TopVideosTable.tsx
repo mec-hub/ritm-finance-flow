@@ -10,6 +10,7 @@ interface VideoData {
   thumbnails?: {
     default?: { url: string };
     medium?: { url: string };
+    high?: { url: string };
   };
   statistics: {
     viewCount: string;
@@ -53,12 +54,37 @@ export function TopVideosTable({ videos }: TopVideosTableProps) {
   };
 
   const getThumbnailUrl = (video: VideoData) => {
+    console.log(`Getting thumbnail for video ${video.id}:`, {
+      hasThumbnails: !!video.thumbnails,
+      thumbnailKeys: video.thumbnails ? Object.keys(video.thumbnails) : [],
+      thumbnailsData: video.thumbnails
+    });
+
     // Handle cases where thumbnails might be undefined
     if (!video.thumbnails) {
-      return '/placeholder.svg'; // Fallback to placeholder
+      console.log(`No thumbnails object for video ${video.id}`);
+      return '/placeholder.svg';
     }
-    return video.thumbnails.medium?.url || video.thumbnails.default?.url || '/placeholder.svg';
+
+    // Try different thumbnail sizes in order of preference
+    const thumbnailUrl = video.thumbnails.high?.url || 
+                        video.thumbnails.medium?.url || 
+                        video.thumbnails.default?.url;
+
+    if (!thumbnailUrl) {
+      console.log(`No valid thumbnail URL found for video ${video.id}`, video.thumbnails);
+      return '/placeholder.svg';
+    }
+
+    console.log(`Using thumbnail URL for video ${video.id}:`, thumbnailUrl);
+    return thumbnailUrl;
   };
+
+  console.log('TopVideosTable received videos:', {
+    count: videos.length,
+    firstVideoThumbnails: videos[0]?.thumbnails,
+    allVideoThumbnails: videos.map(v => ({ id: v.id, hasThumbnails: !!v.thumbnails })).slice(0, 3)
+  });
 
   return (
     <Card>
@@ -73,60 +99,69 @@ export function TopVideosTable({ videos }: TopVideosTableProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {videos.slice(0, 10).map((video, index) => (
-            <div 
-              key={video.id} 
-              className="flex items-start gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex-shrink-0 text-lg font-bold text-muted-foreground w-6">
-                {index + 1}
-              </div>
-              
-              <div className="relative flex-shrink-0">
-                <img 
-                  src={getThumbnailUrl(video)}
-                  alt={video.title}
-                  className="w-32 h-20 object-cover rounded-md"
-                />
-                <div className="absolute bottom-1 right-1 bg-black/75 text-white text-xs px-1 rounded">
-                  {formatDuration(video.contentDetails?.duration || '')}
+          {videos.slice(0, 10).map((video, index) => {
+            const thumbnailUrl = getThumbnailUrl(video);
+            
+            return (
+              <div 
+                key={video.id} 
+                className="flex items-start gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex-shrink-0 text-lg font-bold text-muted-foreground w-6">
+                  {index + 1}
                 </div>
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <h4 className="font-medium line-clamp-2 mb-2">
-                  {video.title}
-                </h4>
                 
-                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
-                  <div className="flex items-center gap-1">
-                    <Eye className="h-3 w-3" />
-                    {formatNumber(video.statistics.viewCount)} visualizações
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {new Date(video.publishedAt).toLocaleDateString('pt-BR')}
+                <div className="relative flex-shrink-0">
+                  <img 
+                    src={thumbnailUrl}
+                    alt={video.title}
+                    className="w-32 h-20 object-cover rounded-md"
+                    onError={(e) => {
+                      console.log('Thumbnail failed to load:', thumbnailUrl);
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/placeholder.svg';
+                    }}
+                  />
+                  <div className="absolute bottom-1 right-1 bg-black/75 text-white text-xs px-1 rounded">
+                    {formatDuration(video.contentDetails?.duration || '')}
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between">
-                  <div className="flex gap-4 text-sm text-muted-foreground">
-                    <span>{formatNumber(video.statistics.likeCount)} curtidas</span>
-                    <span>{formatNumber(video.statistics.commentCount)} comentários</span>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium line-clamp-2 mb-2">
+                    {video.title}
+                  </h4>
+                  
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
+                    <div className="flex items-center gap-1">
+                      <Eye className="h-3 w-3" />
+                      {formatNumber(video.statistics.viewCount)} visualizações
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {new Date(video.publishedAt).toLocaleDateString('pt-BR')}
+                    </div>
                   </div>
                   
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => window.open(`https://youtube.com/watch?v=${video.id}`, '_blank')}
-                  >
-                    <ExternalLink className="h-3 w-3 mr-1" />
-                    Abrir
-                  </Button>
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-4 text-sm text-muted-foreground">
+                      <span>{formatNumber(video.statistics.likeCount)} curtidas</span>
+                      <span>{formatNumber(video.statistics.commentCount)} comentários</span>
+                    </div>
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => window.open(`https://youtube.com/watch?v=${video.id}`, '_blank')}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      Abrir
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
     </Card>
