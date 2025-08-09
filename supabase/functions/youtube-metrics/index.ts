@@ -339,7 +339,7 @@ Deno.serve(async (req) => {
         break
 
       case 'top-videos':
-        // Get channel's videos with statistics
+        // Get channel's videos with statistics and thumbnails
         const channelVideosResponse = await fetch(
           `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${tokenData.channel_id}&order=viewCount&maxResults=50&type=video`,
           {
@@ -351,6 +351,7 @@ Deno.serve(async (req) => {
         const allVideoIds = channelVideosData.items?.map((video: any) => video.id.videoId).join(',')
         let allVideoStats = []
         if (allVideoIds) {
+          // Include snippet part to get thumbnail data
           const allVideoStatsResponse = await fetch(
             `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet,contentDetails&id=${allVideoIds}`,
             {
@@ -358,7 +359,18 @@ Deno.serve(async (req) => {
             }
           )
           const allVideoStatsData = await allVideoStatsResponse.json()
-          allVideoStats = allVideoStatsData.items || []
+          
+          // Map the data to include thumbnail information
+          allVideoStats = (allVideoStatsData.items || []).map((video: any) => ({
+            id: video.id,
+            title: video.snippet?.title || '',
+            publishedAt: video.snippet?.publishedAt || '',
+            thumbnails: video.snippet?.thumbnails || null,
+            statistics: video.statistics || { viewCount: '0', likeCount: '0', commentCount: '0' },
+            contentDetails: video.contentDetails || { duration: 'PT0S' }
+          }))
+          
+          console.log('Video stats with thumbnails:', allVideoStats.slice(0, 2))
         }
 
         responseData = {

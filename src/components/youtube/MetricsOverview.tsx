@@ -33,8 +33,11 @@ export function MetricsOverview({ data }: MetricsOverviewProps) {
       return '0:00';
     }
     
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
+    // Ensure we work with whole seconds
+    const totalSeconds = Math.floor(seconds);
+    const minutes = Math.floor(totalSeconds / 60);
+    const remainingSeconds = totalSeconds % 60;
+    
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
@@ -49,6 +52,9 @@ export function MetricsOverview({ data }: MetricsOverviewProps) {
     }
     return `${formatNumber(minutes)}m`;
   };
+
+  console.log('MetricsOverview data:', data);
+  console.log('avgDuration before formatting:', data.avgDuration);
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

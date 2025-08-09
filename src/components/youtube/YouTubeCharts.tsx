@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,40 +39,55 @@ export function YouTubeCharts() {
   const processedData = useMemo(() => {
     if (!data?.analytics?.rows) return null;
 
+    console.log('Raw analytics data:', data.analytics.rows);
+
     // Process main analytics data
     const chartData = data.analytics.rows.map((row: any[]) => {
       const date = row[0];
       const views = row[1] || 0;
-      const avgDuration = row[2] || 0;
+      const avgDuration = row[2] || 0; // This is already in seconds from the API
       const watchTime = row[3] || 0;
       const subscribers = row[4] || 0;
 
       return {
         date: new Date(date).toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' }),
         views,
-        avgDuration: Math.round(avgDuration),
+        avgDuration: Math.round(avgDuration), // Keep in seconds
         watchTime: Math.round(watchTime / 60), // Convert to minutes
         subscribers,
       };
     });
 
     // Calculate totals for overview cards
-    const totals = data.analytics.rows.reduce((acc: any, row: any[]) => ({
-      views: acc.views + (row[1] || 0),
-      avgDuration: acc.avgDuration + (row[2] || 0),
-      watchTime: acc.watchTime + (row[3] || 0),
-      subscribers: acc.subscribers + (row[4] || 0),
-    }), {
+    const totals = data.analytics.rows.reduce((acc: any, row: any[], index: number) => {
+      const views = row[1] || 0;
+      const avgDuration = row[2] || 0; // Already in seconds
+      const watchTime = row[3] || 0;
+      const subscribers = row[4] || 0;
+
+      return {
+        views: acc.views + views,
+        avgDuration: acc.avgDuration + avgDuration, // Sum for averaging
+        watchTime: acc.watchTime + watchTime,
+        subscribers: acc.subscribers + subscribers,
+        count: acc.count + 1,
+      };
+    }, {
       views: 0,
       avgDuration: 0,
       watchTime: 0,
       subscribers: 0,
+      count: 0,
     });
 
-    // Calculate averages
-    const dayCount = data.analytics.rows.length;
-    totals.avgDuration = totals.avgDuration / dayCount;
+    // Calculate proper averages
+    const dayCount = totals.count;
+    if (dayCount > 0) {
+      totals.avgDuration = Math.round(totals.avgDuration / dayCount); // Average duration in seconds
+    }
     totals.watchTime = Math.round(totals.watchTime / 60); // Convert to minutes
+
+    console.log('Processed totals:', totals);
 
     return { chartData, totals };
   }, [data]);
@@ -97,19 +111,33 @@ export function YouTubeCharts() {
   const deviceData = useMemo(() => {
     if (!data?.deviceTypes?.rows) return [];
 
-    return data.deviceTypes.rows.map((row: any[]) => {
+    console.log('Raw device data:', data.deviceTypes.rows);
+
+    const processedDeviceData = data.deviceTypes.rows.map((row: any[]) => {
       const device = row[0];
       const views = row[1] || 0;
       const watchTimeMinutes = row[2] || 0;
-      const totalWatchTime = data.deviceTypes.rows.reduce((sum: number, r: any[]) => sum + (r[2] || 0), 0);
       
       return {
         device,
         views,
         watchTimeHours: Math.round(watchTimeMinutes / 60),
-        percentage: totalWatchTime > 0 ? (watchTimeMinutes / totalWatchTime) * 100 : 0,
+        watchTimeMinutes,
       };
     });
+
+    // Calculate total watch time for percentages
+    const totalWatchTime = processedDeviceData.reduce((sum, item) => sum + item.watchTimeMinutes, 0);
+
+    // Add percentage calculation
+    const deviceDataWithPercentages = processedDeviceData.map(item => ({
+      ...item,
+      percentage: totalWatchTime > 0 ? (item.watchTimeMinutes / totalWatchTime) * 100 : 0,
+    }));
+
+    console.log('Processed device data:', deviceDataWithPercentages);
+
+    return deviceDataWithPercentages;
   }, [data]);
 
   if (error) {
