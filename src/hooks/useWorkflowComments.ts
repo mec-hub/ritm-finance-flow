@@ -92,8 +92,10 @@ export const useWorkflowComments = (videoItemId: string) => {
   useEffect(() => {
     if (!videoItemId) return;
 
+    console.log('Setting up comments subscription for:', videoItemId);
+    
     const channel = supabase
-      .channel(`comments-${videoItemId}`)
+      .channel(`comments-${videoItemId}-${Date.now()}`) // Add timestamp to make unique
       .on(
         'postgres_changes',
         {
@@ -102,14 +104,18 @@ export const useWorkflowComments = (videoItemId: string) => {
           table: 'video_workflow_comments',
           filter: `video_item_id=eq.${videoItemId}`,
         },
-        () => {
+        (payload) => {
+          console.log('Comments realtime update:', payload);
           queryClient.invalidateQueries({ queryKey: ['workflow-comments', videoItemId] });
           queryClient.invalidateQueries({ queryKey: ['video-workflow-items'] });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Comments subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up comments subscription');
       supabase.removeChannel(channel);
     };
   }, [videoItemId, queryClient]);

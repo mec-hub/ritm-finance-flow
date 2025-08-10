@@ -103,8 +103,10 @@ export const useWorkflowApprovals = (videoItemId: string) => {
   useEffect(() => {
     if (!videoItemId) return;
 
+    console.log('Setting up approvals subscription for:', videoItemId);
+    
     const channel = supabase
-      .channel(`approvals-${videoItemId}`)
+      .channel(`approvals-${videoItemId}-${Date.now()}`) // Add timestamp to make unique
       .on(
         'postgres_changes',
         {
@@ -113,14 +115,18 @@ export const useWorkflowApprovals = (videoItemId: string) => {
           table: 'video_workflow_approvals',
           filter: `video_item_id=eq.${videoItemId}`,
         },
-        () => {
+        (payload) => {
+          console.log('Approvals realtime update:', payload);
           queryClient.invalidateQueries({ queryKey: ['workflow-approvals', videoItemId] });
           queryClient.invalidateQueries({ queryKey: ['video-workflow-items'] });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Approvals subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up approvals subscription');
       supabase.removeChannel(channel);
     };
   }, [videoItemId, queryClient]);
