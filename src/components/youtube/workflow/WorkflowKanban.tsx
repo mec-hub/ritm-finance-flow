@@ -8,12 +8,12 @@ import { Plus, Filter } from 'lucide-react';
 import { CreateItemDialog } from './CreateItemDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-const STAGES: { id: VideoStage; title: string; color: string }[] = [
-  { id: 'scripted', title: 'Roteirizado', color: 'bg-blue-100 border-blue-200' },
-  { id: 'recorded', title: 'Gravado', color: 'bg-yellow-100 border-yellow-200' },
-  { id: 'editing', title: 'Editando', color: 'bg-purple-100 border-purple-200' },
-  { id: 'awaiting_review', title: 'Aguardando Revisão', color: 'bg-orange-100 border-orange-200' },
-  { id: 'approved', title: 'Aprovado', color: 'bg-green-100 border-green-200' },
+const STAGES: { id: VideoStage; title: string; borderColor: string }[] = [
+  { id: 'scripted', title: 'Roteirizado', borderColor: 'border-l-blue-500' },
+  { id: 'recorded', title: 'Gravado', borderColor: 'border-l-yellow-500' },
+  { id: 'editing', title: 'Editando', borderColor: 'border-l-purple-500' },
+  { id: 'awaiting_review', title: 'Aguardando Revisão', borderColor: 'border-l-orange-500' },
+  { id: 'approved', title: 'Aprovado', borderColor: 'border-l-green-500' },
 ];
 
 export const WorkflowKanban = () => {
@@ -66,7 +66,7 @@ export const WorkflowKanban = () => {
           <select
             value={filterStage}
             onChange={(e) => setFilterStage(e.target.value as VideoStage | 'all')}
-            className="border rounded-md px-3 py-1 text-sm"
+            className="border rounded-md px-3 py-1 text-sm bg-background border-border"
           >
             <option value="all">Todos os estágios</option>
             {STAGES.map(stage => (
@@ -81,11 +81,11 @@ export const WorkflowKanban = () => {
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {STAGES.map(stage => (
-            <Card key={stage.id} className={`${stage.color} min-h-[600px]`}>
+            <Card key={stage.id} className={`bg-card border-border ${stage.borderColor} border-l-4 min-h-[600px]`}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center justify-between">
                   {stage.title}
-                  <span className="bg-white/70 text-xs px-2 py-1 rounded-full">
+                  <span className="bg-secondary text-secondary-foreground text-xs px-2 py-1 rounded-full">
                     {getItemsByStage(stage.id).length}
                   </span>
                 </CardTitle>
@@ -97,7 +97,7 @@ export const WorkflowKanban = () => {
                     {...provided.droppableProps}
                     ref={provided.innerRef}
                     className={`space-y-3 min-h-[500px] ${
-                      snapshot.isDraggingOver ? 'bg-white/30' : ''
+                      snapshot.isDraggingOver ? 'bg-accent/20' : ''
                     }`}
                   >
                     {getItemsByStage(stage.id).map((item, index) => (
