@@ -33,6 +33,22 @@ export default function YouTube() {
     enabled: !!user,
   });
 
+  // Get channel info including thumbnail
+  const { data: channelInfo } = useQuery({
+    queryKey: ['youtube-channel-info', user?.id, refreshTrigger],
+    queryFn: async () => {
+      if (!user || !isConnected) return null;
+      
+      const { data, error } = await supabase.functions.invoke('youtube-metrics', {
+        body: { type: 'overview' }
+      });
+      
+      if (error) throw error;
+      return data?.channel;
+    },
+    enabled: !!user && !!isConnected,
+  });
+
   const handleConnectionSuccess = () => {
     setRefreshTrigger(prev => prev + 1);
   };
@@ -72,12 +88,22 @@ export default function YouTube() {
     );
   }
 
+  const channelThumbnail = channelInfo?.snippet?.thumbnails?.default?.url;
+
   return (
     <Layout>
       <div className="container mx-auto p-6">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-            <Youtube className="h-6 w-6 text-red-600" />
+          <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center overflow-hidden">
+            {channelThumbnail ? (
+              <img 
+                src={channelThumbnail} 
+                alt={isConnected.channel_title}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Youtube className="h-6 w-6 text-red-600" />
+            )}
           </div>
           <div>
             <h1 className="text-2xl font-bold">YouTube Analytics</h1>

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { StatCard } from '@/components/ui/dashboard/StatCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, Users, PlayCircle, Clock, TrendingUp } from 'lucide-react';
+import { Eye, Users, PlayCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TopVideosTable } from './TopVideosTable';
 
@@ -50,8 +50,8 @@ export function YouTubeStats() {
   if (overviewLoading || topVideosLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid gap-4 md:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
             <Card key={i}>
               <CardContent className="p-6">
                 <Skeleton className="h-4 w-20 mb-2" />
@@ -97,7 +97,7 @@ export function YouTubeStats() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <StatCard
           title="Visualizações Totais"
           value={formatNumber(statistics.viewCount || 0)}
@@ -117,14 +117,6 @@ export function YouTubeStats() {
           value={formatNumber(statistics.videoCount || 0)}
           icon={PlayCircle}
           description="Total de vídeos no canal"
-        />
-        
-        <StatCard
-          title="Canal Ativo"
-          value="Conectado"
-          icon={TrendingUp}
-          description="Status da conexão"
-          className="border-green-200 bg-green-50"
         />
       </div>
 
