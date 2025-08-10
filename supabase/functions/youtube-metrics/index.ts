@@ -5,8 +5,97 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Initialize cache outside the Deno.serve function
-const cache = new Map();
+interface CachedData {
+  data: any;
+  expiresAt: string;
+}
+
+async function refreshAccessToken(refreshToken: string): Promise<string> {
+  const clientId = Deno.env.get('GOOGLE_CLIENT_ID')
+  const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET')
+
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      client_id: clientId!,
+      client_secret: clientSecret!,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  })
+
+  const data = await response.json()
+  if (!response.ok) {
+    throw new Error(`Failed to refresh token: ${data.error_description}`)
+  }
+
+  return data.access_token
+}
+
+async function fetchFromCache(supabase: any, userId: string, cacheKey: string): Promise<any | null> {
+  const { data, error } = await supabase
+    .from('youtube_cache')
+    .select('cache_data, expires_at')
+    .eq('user_id', userId)
+    .eq('cache_key', cacheKey)
+    .single()
+
+  if (error || !data) return null
+
+  const expiresAt = new Date(data.expires_at)
+  if (expiresAt <= new Date()) {
+    // Cache expired, delete it
+    await supabase
+      .from('youtube_cache')
+      .delete()
+      .eq('user_id', userId)
+      .eq('cache_key', cacheKey)
+    return null
+  }
+
+  return data.cache_data
+}
+
+async function saveToCache(supabase: any, userId: string, cacheKey: string, data: any, ttlMinutes: number = 60) {
+  const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000)
+  
+  await supabase
+    .from('youtube_cache')
+    .upsert({
+      user_id: userId,
+      cache_key: cacheKey,
+      cache_data: data,
+      expires_at: expiresAt.toISOString(),
+    }, {
+      onConflict: 'user_id,cache_key'
+    })
+}
+
+async function fetchAnalyticsData(accessToken: string, channelId: string, startDate: string, endDate: string, metrics: string, dimensions: string = 'day'): Promise<any> {
+  const url = new URL('https://youtubeanalytics.googleapis.com/v2/reports')
+  url.searchParams.set('ids', `channel==${channelId}`)
+  url.searchParams.set('startDate', startDate)
+  url.searchParams.set('endDate', endDate)
+  url.searchParams.set('metrics', metrics)
+  url.searchParams.set('dimensions', dimensions)
+
+  console.log('Analytics API URL:', url.toString())
+
+  const response = await fetch(url.toString(), {
+    headers: { 'Authorization': `Bearer ${accessToken}` },
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    console.error('Analytics API error:', errorData)
+    throw new Error(`Analytics API error: ${errorData.error?.message || response.statusText}`)
+  }
+
+  return await response.json()
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -25,295 +114,351 @@ Deno.serve(async (req) => {
       throw new Error('Not authenticated')
     }
 
-    const { data: youtubeToken, error: tokenError } = await supabaseClient
+    // Get user's YouTube tokens
+    const { data: tokenData, error: tokenError } = await supabaseClient
       .from('youtube_tokens')
-      .select('access_token, refresh_token')
+      .select('*')
       .eq('user_id', user.id)
-      .single();
+      .single()
 
-    if (tokenError) {
-      throw new Error(`Could not fetch YouTube token: ${tokenError.message}`);
+    if (tokenError || !tokenData) {
+      return new Response(JSON.stringify({ 
+        error: 'YouTube not connected',
+        needsAuth: true 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      })
     }
 
-    let { access_token: accessToken, refresh_token: refreshToken } = youtubeToken;
-    const apiKey = Deno.env.get('GOOGLE_API_KEY');
+    let accessToken = tokenData.access_token
 
-    if (!apiKey) {
-      throw new Error('Google API Key not configured');
+    // Check if token is expired
+    const expiresAt = new Date(tokenData.expires_at)
+    if (expiresAt <= new Date()) {
+      console.log('Token expired, refreshing...')
+      try {
+        accessToken = await refreshAccessToken(tokenData.refresh_token)
+        
+        // Update token in database
+        const newExpiresAt = new Date(Date.now() + 3600 * 1000)
+        await supabaseClient
+          .from('youtube_tokens')
+          .update({
+            access_token: accessToken,
+            expires_at: newExpiresAt.toISOString(),
+          })
+          .eq('user_id', user.id)
+        
+        console.log('Token refreshed successfully')
+      } catch (error) {
+        console.error('Failed to refresh token:', error)
+        return new Response(JSON.stringify({ 
+          error: 'Token refresh failed',
+          needsAuth: true 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 401,
+        })
+      }
     }
 
-    // Check if the access token is expired and refresh it if necessary
-    const jwtPayload = JSON.parse(atob(accessToken.split('.')[1]));
-    const expiry = jwtPayload.exp * 1000; // Expiry in milliseconds
+    // Get parameters from request body
+    const requestBody = await req.json()
+    const metricsType = requestBody.type || 'overview'
+    const startDate = requestBody.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const endDate = requestBody.endDate || new Date().toISOString().split('T')[0]
 
-    if (Date.now() >= expiry) {
-      console.log('Access token expired, refreshing...');
+    console.log('Processing request:', { metricsType, startDate, endDate })
 
-      const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
-      const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET');
-
-      if (!clientId || !clientSecret) {
-        throw new Error('Google Client ID or Secret not configured');
-      }
-
-      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
-          refresh_token: refreshToken,
-          grant_type: 'refresh_token',
-        }),
-      });
-
-      if (!tokenResponse.ok) {
-        console.error('Failed to refresh token:', tokenResponse.status, tokenResponse.statusText);
-        throw new Error('Failed to refresh access token');
-      }
-
-      const newTokenData = await tokenResponse.json();
-      accessToken = newTokenData.access_token;
-
-      // Update the access token in the database
-      const { error: updateError } = await supabaseClient
-        .from('youtube_tokens')
-        .update({ access_token: accessToken })
-        .eq('user_id', user.id);
-
-      if (updateError) {
-        console.error('Failed to update access token in database:', updateError);
-        throw new Error('Failed to update access token in database');
-      }
-
-      console.log('Access token refreshed and updated in database.');
-    }
-
-    const { type = 'overview', startDate, endDate } = await req.json();
-    console.log('Processing request:', { metricsType: type, startDate, endDate });
-
-    // Cache key based on request parameters
-    const cacheKey = `metrics_${type}_${startDate || 'default'}_${endDate || 'default'}`;
-    
-    // For debugging thumbnails, clear cache temporarily
-    if (type === 'top-videos') {
-      console.log('Cleared cache for top-videos to debug thumbnails');
-      cache.delete(cacheKey);
+    // For top-videos, always clear cache to debug
+    if (metricsType === 'top-videos') {
+      const cacheKey = `metrics_${metricsType}_${startDate}_${endDate}`
+      await supabaseClient
+        .from('youtube_cache')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('cache_key', cacheKey)
+      console.log('Cleared cache for top-videos to debug thumbnails')
     }
 
     // Check cache first
-    if (cache.has(cacheKey)) {
-      const cachedData = cache.get(cacheKey);
-      console.log(`Returning cached data for: ${cacheKey}`);
+    const cacheKey = `metrics_${metricsType}_${startDate}_${endDate}`
+    const cachedData = await fetchFromCache(supabaseClient, user.id, cacheKey)
+    
+    if (cachedData && metricsType !== 'top-videos') {
+      console.log('Returning cached data for:', cacheKey)
       return new Response(JSON.stringify(cachedData), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
-      });
+      })
     }
 
-    const baseUrl = 'https://www.googleapis.com/youtube/v3';
-    let result = {};
+    let responseData = {}
 
-    if (type === 'channel-info') {
-      // New endpoint to fetch channel info including thumbnail
-      const channelResponse = await fetch(
-        `${baseUrl}/channels?part=snippet,statistics&mine=true&key=${apiKey}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
-      );
-
-      if (!channelResponse.ok) {
-        throw new Error(`Channel API error: ${channelResponse.status} ${channelResponse.statusText}`);
-      }
-
-      const channelData = await channelResponse.json();
-      console.log('Fetched channel info for thumbnail');
-
-      if (channelData.items && channelData.items.length > 0) {
-        result = {
-          channel: channelData.items[0]
-        };
-      }
-
-      // Cache for 1 hour
-      cache.set(cacheKey, result);
-      setTimeout(() => cache.delete(cacheKey), 60 * 60 * 1000);
-
-      return new Response(JSON.stringify(result), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      });
-    }
-
-    if (type === 'overview') {
-      // Fetch channel statistics
-      const channelResponse = await fetch(
-        `${baseUrl}/channels?part=statistics&mine=true&key=${apiKey}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
-      );
-
-      if (!channelResponse.ok) {
-        throw new Error(`Channel API error: ${channelResponse.status} ${channelResponse.statusText}`);
-      }
-
-      const channelData = await channelResponse.json();
-
-      if (!channelData.items || channelData.items.length === 0) {
-        throw new Error('No channel found for this account');
-      }
-
-      const channel = channelData.items[0];
-
-      // Fetch recent videos
-      const videosResponse = await fetch(
-        `${baseUrl}/search?part=snippet&mine=true&order=date&type=video&key=${apiKey}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
-      );
-
-      if (!videosResponse.ok) {
-        throw new Error(`Videos API error: ${videosResponse.status} ${videosResponse.statusText}`);
-      }
-
-      const videosData = await videosResponse.json();
-
-      result = {
-        channel: channel,
-        recentVideos: videosData.items || [],
-      };
-    } else if (type === 'analytics') {
-      if (!startDate || !endDate) {
-        throw new Error('Start and end dates are required for analytics');
-      }
-
-      // Fetch basic analytics data
-      const analyticsResponse = await fetch(
-        `${baseUrl}/reports?part=id,snippet&metrics=views,averageViewDuration,estimatedMinutesWatched,subscribersGained&dimensions=day&startDate=${startDate}&endDate=${endDate}&key=${apiKey}&currency=BRL`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
-      );
-
-      if (!analyticsResponse.ok) {
-        console.error('Analytics API error:', analyticsResponse.status, analyticsResponse.statusText);
-        
-        // Try to extract more detailed error information from the response
-        let errorMessage = `Analytics API error: ${analyticsResponse.status} ${analyticsResponse.statusText}`;
-        try {
-          const errorData = await analyticsResponse.json();
-          if (errorData.error && errorData.error.message) {
-            errorMessage += ` - ${errorData.error.message}`;
+    // Fetch different metrics based on type
+    switch (metricsType) {
+      case 'overview':
+        // Channel statistics
+        const channelResponse = await fetch(
+          `https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&id=${tokenData.channel_id}`,
+          {
+            headers: { 'Authorization': `Bearer ${accessToken}` },
           }
-        } catch (parseError) {
-          console.error('Failed to parse error response:', parseError);
-        }
-      
-        // If the error is related to YouTube Analytics API not being enabled, return a specific message
-        if (errorMessage.includes('youtubeAnalytics.readonly')) {
-          result = {
-            error: 'YouTube Analytics API não está habilitada. Por favor, habilite a API no Google Cloud Console.',
-            fallback: {
-              viewCount: '0',
-              subscriberCount: '0',
-              videoCount: '0'
+        )
+        const channelData = await channelResponse.json()
+
+        const videosResponse = await fetch(
+          `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${tokenData.channel_id}&order=date&maxResults=10&type=video`,
+          {
+            headers: { 'Authorization': `Bearer ${accessToken}` },
+          }
+        )
+        const videosData = await videosResponse.json()
+
+        const videoIds = videosData.items?.map((video: any) => video.id.videoId).join(',')
+        let videoStats = null
+        if (videoIds) {
+          const videoStatsResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet&id=${videoIds}`,
+            {
+              headers: { 'Authorization': `Bearer ${accessToken}` },
             }
-          };
-        } else {
-          throw new Error(errorMessage);
+          )
+          const videoStatsData = await videoStatsResponse.json()
+          videoStats = videoStatsData.items || []
         }
-      }
 
-      const analyticsData = await analyticsResponse.json();
-
-      // Fetch traffic sources
-      const trafficSourcesResponse = await fetch(
-        `${baseUrl}/reports?part=id,snippet&metrics=views&dimensions=trafficSource&startDate=${startDate}&endDate=${endDate}&key=${apiKey}&currency=BRL`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
+        responseData = {
+          channel: channelData.items?.[0] || null,
+          recentVideos: videosData.items || [],
+          videoStats: videoStats,
         }
-      );
+        break
 
-      if (!trafficSourcesResponse.ok) {
-        throw new Error(`Traffic Sources API error: ${trafficSourcesResponse.status} ${trafficSourcesResponse.statusText}`);
-      }
+      case 'analytics':
+        
+        try {
+          console.log('Fetching analytics data for channel:', tokenData.channel_id)
 
-      const trafficSourcesData = await trafficSourcesResponse.json();
+          // Try YouTube Analytics API v2 with only valid metrics
+          let mainMetrics = null
+          let trafficSources = null
+          let deviceTypes = null
+          let geographicData = null
+          
+          try {
+            // Main analytics metrics - using only confirmed valid metrics
+            mainMetrics = await fetchAnalyticsData(
+              accessToken, 
+              tokenData.channel_id, 
+              startDate, 
+              endDate,
+              'views,averageViewDuration,estimatedMinutesWatched,subscribersGained'
+            )
+            console.log('Successfully fetched main analytics')
+          } catch (error) {
+            console.log('Main analytics failed:', error.message)
+          }
 
-      // Fetch device types
-      const deviceTypesResponse = await fetch(
-        `${baseUrl}/reports?part=id,snippet&metrics=views,estimatedMinutesWatched&dimensions=deviceType&startDate=${startDate}&endDate=${endDate}&key=${apiKey}&currency=BRL`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
+          try {
+            // Traffic source data
+            trafficSources = await fetchAnalyticsData(
+              accessToken, 
+              tokenData.channel_id, 
+              startDate, 
+              endDate,
+              'views,estimatedMinutesWatched',
+              'trafficSourceType'
+            )
+            console.log('Successfully fetched traffic sources')
+          } catch (error) {
+            console.log('Traffic sources failed:', error.message)
+          }
+
+          try {
+            // Device type data
+            deviceTypes = await fetchAnalyticsData(
+              accessToken, 
+              tokenData.channel_id, 
+              startDate, 
+              endDate,
+              'views,estimatedMinutesWatched',
+              'deviceType'
+            )
+            console.log('Successfully fetched device types')
+          } catch (error) {
+            console.log('Device types failed:', error.message)
+          }
+
+          try {
+            // Geographic data
+            geographicData = await fetchAnalyticsData(
+              accessToken, 
+              tokenData.channel_id, 
+              startDate, 
+              endDate,
+              'views,estimatedMinutesWatched',
+              'country'
+            )
+            console.log('Successfully fetched geographic data')
+          } catch (error) {
+            console.log('Geographic data failed:', error.message)
+          }
+
+          // If we got any analytics data, return it
+          if (mainMetrics || trafficSources || deviceTypes) {
+            responseData = {
+              analytics: mainMetrics,
+              trafficSources: trafficSources,
+              deviceTypes: deviceTypes,
+              geographic: geographicData,
+              dateRange: { startDate, endDate }
+            }
+          } else {
+            // Fallback to basic channel statistics
+            console.log('No analytics data available, falling back to basic stats')
+            const fallbackResponse = await fetch(
+              `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${tokenData.channel_id}`,
+              {
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+              }
+            )
+            const fallbackData = await fallbackResponse.json()
+            responseData = { 
+              analytics: null,
+              fallback: fallbackData.items?.[0]?.statistics || null,
+              error: 'Detailed analytics not available. This may be due to insufficient permissions or the Analytics API not being enabled for your application.'
+            }
+          }
+        } catch (error) {
+          console.error('Analytics API error:', error)
+          // Fallback to basic channel statistics
+          const fallbackResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${tokenData.channel_id}`,
+            {
+              headers: { 'Authorization': `Bearer ${accessToken}` },
+            }
+          )
+          const fallbackData = await fallbackResponse.json()
+          responseData = { 
+            analytics: null,
+            fallback: fallbackData.items?.[0]?.statistics || null,
+            error: 'Analytics API not available with current permissions'
+          }
         }
-      );
+        break
 
-      if (!deviceTypesResponse.ok) {
-        throw new Error(`Device Types API error: ${deviceTypesResponse.status} ${deviceTypesResponse.statusText}`);
-      }
+      case 'top-videos':
+        console.log('=== DEBUGGING TOP VIDEOS THUMBNAILS ===')
+        
+        // Get channel's videos with statistics and thumbnails
+        const channelVideosResponse = await fetch(
+          `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${tokenData.channel_id}&order=viewCount&maxResults=50&type=video`,
+          {
+            headers: { 'Authorization': `Bearer ${accessToken}` },
+          }
+        )
+        const channelVideosData = await channelVideosResponse.json()
+        
+        console.log('Search API response structure:', {
+          itemsCount: channelVideosData.items?.length || 0,
+          firstItemStructure: channelVideosData.items?.[0] ? {
+            id: channelVideosData.items[0].id,
+            snippet: {
+              title: channelVideosData.items[0].snippet?.title,
+              hasThumbnails: !!channelVideosData.items[0].snippet?.thumbnails,
+              thumbnailKeys: channelVideosData.items[0].snippet?.thumbnails ? Object.keys(channelVideosData.items[0].snippet.thumbnails) : []
+            }
+          } : null
+        })
 
-      const deviceTypesData = await deviceTypesResponse.json();
-
-      result = {
-        analytics: analyticsData,
-        trafficSources: trafficSourcesData,
-        deviceTypes: deviceTypesData,
-      };
-    } else if (type === 'top-videos') {
-      // Fetch the most popular videos
-      const videosResponse = await fetch(
-        `${baseUrl}/videos?part=snippet,statistics,contentDetails&myRating=like&chart=mostPopular&maxResults=25&key=${apiKey}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
+        const allVideoIds = channelVideosData.items?.map((video: any) => video.id.videoId).join(',')
+        let allVideoStats = []
+        
+        if (allVideoIds) {
+          // Include snippet part to get thumbnail data
+          const allVideoStatsResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet,contentDetails&id=${allVideoIds}`,
+            {
+              headers: { 'Authorization': `Bearer ${accessToken}` },
+            }
+          )
+          const allVideoStatsData = await allVideoStatsResponse.json()
+          
+          console.log('Videos API response structure:', {
+            itemsCount: allVideoStatsData.items?.length || 0,
+            firstItemThumbnails: allVideoStatsData.items?.[0]?.snippet?.thumbnails ? {
+              keys: Object.keys(allVideoStatsData.items[0].snippet.thumbnails),
+              defaultUrl: allVideoStatsData.items[0].snippet.thumbnails.default?.url,
+              mediumUrl: allVideoStatsData.items[0].snippet.thumbnails.medium?.url,
+              highUrl: allVideoStatsData.items[0].snippet.thumbnails.high?.url
+            } : 'NO_THUMBNAILS'
+          })
+          
+          // Map the data to include thumbnail information
+          allVideoStats = (allVideoStatsData.items || []).map((video: any) => {
+            const videoData = {
+              id: video.id,
+              title: video.snippet?.title || '',
+              publishedAt: video.snippet?.publishedAt || '',
+              thumbnails: video.snippet?.thumbnails || null,
+              statistics: video.statistics || { viewCount: '0', likeCount: '0', commentCount: '0' },
+              contentDetails: video.contentDetails || { duration: 'PT0S' }
+            }
+            
+            console.log(`Video ${video.id} thumbnails:`, {
+              hasThumbnails: !!videoData.thumbnails,
+              thumbnailKeys: videoData.thumbnails ? Object.keys(videoData.thumbnails) : [],
+              defaultUrl: videoData.thumbnails?.default?.url,
+              mediumUrl: videoData.thumbnails?.medium?.url
+            })
+            
+            return videoData
+          })
+          
+          console.log('Processed video stats sample:', {
+            totalVideos: allVideoStats.length,
+            firstVideoThumbnail: allVideoStats[0]?.thumbnails
+          })
         }
-      );
 
-      if (!videosResponse.ok) {
-        throw new Error(`Videos API error: ${videosResponse.status} ${videosResponse.statusText}`);
-      }
+        responseData = {
+          topVideos: allVideoStats.sort((a: any, b: any) => 
+            parseInt(b.statistics.viewCount || '0') - parseInt(a.statistics.viewCount || '0')
+          ).slice(0, 20)
+        }
+        
+        console.log('Final response thumbnails check:', {
+          topVideosCount: responseData.topVideos?.length || 0,
+          firstTopVideoThumbnails: responseData.topVideos?.[0]?.thumbnails
+        })
+        console.log('=== END DEBUGGING ===')
+        break
 
-      const videosData = await videosResponse.json();
-      result = { topVideos: videosData.items || [] };
+      default:
+        throw new Error(`Unknown metrics type: ${metricsType}`)
     }
 
-    console.log(`Fetched YouTube metrics: ${type} for period: ${startDate || 'default'} to ${endDate || 'default'}`);
+    // Cache the response (except for top-videos while debugging)
+    if (metricsType !== 'top-videos') {
+      await saveToCache(supabaseClient, user.id, cacheKey, responseData, 30)
+    }
 
-    // Cache results for 15 minutes
-    cache.set(cacheKey, result);
-    setTimeout(() => cache.delete(cacheKey), 15 * 60 * 1000);
+    console.log('Fetched YouTube metrics:', metricsType, 'for period:', startDate, 'to', endDate)
 
-    return new Response(JSON.stringify(result), {
+    return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
-    });
+    })
 
-  } catch (error: any) {
-    console.error('Error in youtube-metrics:', error);
+  } catch (error) {
+    console.error('Error in youtube-metrics:', error)
     return new Response(JSON.stringify({ 
-      error: error.message,
-      details: error.stack 
+      error: error.message 
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
-    });
+    })
   }
-});
+})
