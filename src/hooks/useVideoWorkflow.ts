@@ -1,12 +1,12 @@
 
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
 
 export type VideoStage = 'scripted' | 'recorded' | 'editing' | 'awaiting_review' | 'approved';
 export type ContentType = 'tutorial' | 'review' | 'gameplay' | 'vlog' | 'short' | 'livestream' | 'other';
-export type ActivityType = 'created' | 'moved' | 'commented' | 'approved' | 'rejected';
 
 export interface VideoWorkflowItem {
   id: string;
@@ -32,7 +32,7 @@ export interface WorkflowComment {
   content: string;
   created_at: string;
   profiles?: {
-    full_name: string;
+    full_name: string | null;
   };
 }
 
@@ -44,7 +44,7 @@ export interface WorkflowApproval {
   comment?: string;
   created_at: string;
   profiles?: {
-    full_name: string;
+    full_name: string | null;
   };
 }
 
@@ -52,12 +52,12 @@ export interface WorkflowActivity {
   id: string;
   video_item_id: string;
   user_id: string;
-  activity_type: ActivityType;
+  activity_type: string;
   description: string;
   metadata: any;
   created_at: string;
   profiles?: {
-    full_name: string;
+    full_name: string | null;
   };
 }
 
@@ -66,7 +66,7 @@ export const useVideoWorkflow = () => {
   const queryClient = useQueryClient();
 
   // Fetch all workflow items
-  const { data: workflowItems, isLoading } = useQuery({
+  const { data: workflowItems = [], isLoading, error } = useQuery({
     queryKey: ['video-workflow-items', user?.id],
     queryFn: async () => {
       if (!user) return [];
@@ -75,10 +75,13 @@ export const useVideoWorkflow = () => {
         .from('video_workflow_items')
         .select('*')
         .eq('user_id', user.id)
-        .order('priority', { ascending: false })
         .order('created_at', { ascending: false });
-      
-      if (error) throw error;
+
+      if (error) {
+        console.error('Error fetching workflow items:', error);
+        throw error;
+      }
+
       return data as VideoWorkflowItem[];
     },
     enabled: !!user,
@@ -86,28 +89,61 @@ export const useVideoWorkflow = () => {
 
   // Create new workflow item
   const createItemMutation = useMutation({
-    mutationFn: async (item: Omit<VideoWorkflowItem, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (newItem: Omit<VideoWorkflowItem, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
       if (!user) throw new Error('User not authenticated');
       
       const { data, error } = await supabase
         .from('video_workflow_items')
-        .insert({
-          ...item,
+        .insert([{
+          ...newItem,
           user_id: user.id,
-        })
+        }])
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['video-workflow-items'] });
-      toast.success('Item criado com sucesso!');
+      toast({
+        title: "Item criado",
+        description: "Novo item adicionado ao workflow com sucesso.",
+      });
     },
     onError: (error) => {
       console.error('Error creating workflow item:', error);
-      toast.error('Erro ao criar item');
+      toast({
+        title: "Erro",
+        description: "Erro ao criar item no workflow.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update workflow item stage
+  const moveItemMutation = useMutation({
+    mutationFn: async ({ id, newStage }: { id: string; newStage: VideoStage }) => {
+      const { data, error } = await supabase
+        .from('video_workflow_items')
+        .update({ current_stage: newStage })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['video-workflow-items'] });
+    },
+    onError: (error) => {
+      console.error('Error moving workflow item:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao mover item no workflow.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -120,16 +156,24 @@ export const useVideoWorkflow = () => {
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['video-workflow-items'] });
+      toast({
+        title: "Item atualizado",
+        description: "Item do workflow atualizado com sucesso.",
+      });
     },
     onError: (error) => {
       console.error('Error updating workflow item:', error);
-      toast.error('Erro ao atualizar item');
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar item do workflow.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -140,175 +184,187 @@ export const useVideoWorkflow = () => {
         .from('video_workflow_items')
         .delete()
         .eq('id', id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['video-workflow-items'] });
-      toast.success('Item removido com sucesso!');
+      toast({
+        title: "Item removido",
+        description: "Item removido do workflow com sucesso.",
+      });
     },
     onError: (error) => {
       console.error('Error deleting workflow item:', error);
-      toast.error('Erro ao remover item');
+      toast({
+        title: "Erro",
+        description: "Erro ao remover item do workflow.",
+        variant: "destructive",
+      });
     },
   });
 
-  // Move item to different stage
-  const moveItemMutation = useMutation({
-    mutationFn: async ({ id, newStage }: { id: string; newStage: VideoStage }) => {
-      const { data, error } = await supabase
-        .from('video_workflow_items')
-        .update({ current_stage: newStage })
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['video-workflow-items'] });
-      toast.success('Item movido com sucesso!');
-    },
-    onError: (error) => {
-      console.error('Error moving workflow item:', error);
-      toast.error('Erro ao mover item');
-    },
-  });
-
-  return {
-    workflowItems: workflowItems || [],
-    isLoading,
-    createItem: createItemMutation.mutate,
-    updateItem: updateItemMutation.mutate,
-    deleteItem: deleteItemMutation.mutate,
-    moveItem: moveItemMutation.mutate,
-    isCreating: createItemMutation.isPending,
-    isUpdating: updateItemMutation.isPending,
-    isDeleting: deleteItemMutation.isPending,
-    isMoving: moveItemMutation.isPending,
-  };
-};
-
-export const useWorkflowComments = (videoItemId: string) => {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  // Fetch comments for a video item
-  const { data: comments, isLoading } = useQuery({
-    queryKey: ['workflow-comments', videoItemId],
-    queryFn: async () => {
+  // Fetch comments for a specific item
+  const fetchComments = async (videoItemId: string): Promise<WorkflowComment[]> => {
+    try {
       const { data, error } = await supabase
         .from('video_workflow_comments')
         .select(`
-          *,
-          profiles:user_id (
+          id,
+          video_item_id,
+          user_id,
+          content,
+          created_at,
+          profiles (
             full_name
           )
         `)
         .eq('video_item_id', videoItemId)
         .order('created_at', { ascending: true });
-      
-      if (error) throw error;
-      return data as WorkflowComment[];
-    },
-    enabled: !!videoItemId,
-  });
 
-  // Add comment
+      if (error) {
+        console.error('Error fetching comments:', error);
+        return [];
+      }
+
+      return (data || []).map(comment => ({
+        ...comment,
+        profiles: comment.profiles || { full_name: null }
+      })) as WorkflowComment[];
+    } catch (error) {
+      console.error('Error in fetchComments:', error);
+      return [];
+    }
+  };
+
+  // Add comment to workflow item
   const addCommentMutation = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async ({ videoItemId, content }: { videoItemId: string; content: string }) => {
       if (!user) throw new Error('User not authenticated');
       
       const { data, error } = await supabase
         .from('video_workflow_comments')
-        .insert({
+        .insert([{
           video_item_id: videoItemId,
           user_id: user.id,
           content,
-        })
+        }])
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflow-comments', videoItemId] });
+      toast({
+        title: "Comentário adicionado",
+        description: "Comentário adicionado com sucesso.",
+      });
     },
     onError: (error) => {
       console.error('Error adding comment:', error);
-      toast.error('Erro ao adicionar comentário');
+      toast({
+        title: "Erro",
+        description: "Erro ao adicionar comentário.",
+        variant: "destructive",
+      });
     },
   });
 
-  return {
-    comments: comments || [],
-    isLoading,
-    addComment: addCommentMutation.mutate,
-    isAdding: addCommentMutation.isPending,
-  };
-};
-
-export const useWorkflowApprovals = (videoItemId: string) => {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  // Fetch approvals for a video item
-  const { data: approvals, isLoading } = useQuery({
-    queryKey: ['workflow-approvals', videoItemId],
-    queryFn: async () => {
+  // Fetch approvals for a specific item
+  const fetchApprovals = async (videoItemId: string): Promise<WorkflowApproval[]> => {
+    try {
       const { data, error } = await supabase
         .from('video_workflow_approvals')
         .select(`
-          *,
-          profiles:user_id (
+          id,
+          video_item_id,
+          user_id,
+          approved,
+          comment,
+          created_at,
+          profiles (
             full_name
           )
         `)
         .eq('video_item_id', videoItemId)
         .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as WorkflowApproval[];
-    },
-    enabled: !!videoItemId,
-  });
 
-  // Add approval
+      if (error) {
+        console.error('Error fetching approvals:', error);
+        return [];
+      }
+
+      return (data || []).map(approval => ({
+        ...approval,
+        profiles: approval.profiles || { full_name: null }
+      })) as WorkflowApproval[];
+    } catch (error) {
+      console.error('Error in fetchApprovals:', error);
+      return [];
+    }
+  };
+
+  // Add approval to workflow item
   const addApprovalMutation = useMutation({
-    mutationFn: async ({ approved, comment }: { approved: boolean; comment?: string }) => {
+    mutationFn: async ({ 
+      videoItemId, 
+      approved, 
+      comment 
+    }: { 
+      videoItemId: string; 
+      approved: boolean; 
+      comment?: string;
+    }) => {
       if (!user) throw new Error('User not authenticated');
       
       const { data, error } = await supabase
         .from('video_workflow_approvals')
-        .upsert({
+        .upsert([{
           video_item_id: videoItemId,
           user_id: user.id,
           approved,
           comment,
+        }], {
+          onConflict: 'video_item_id,user_id'
         })
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflow-approvals', videoItemId] });
-      queryClient.invalidateQueries({ queryKey: ['video-workflow-items'] });
-      toast.success('Aprovação registrada!');
+      toast({
+        title: "Aprovação registrada",
+        description: "Aprovação registrada com sucesso.",
+      });
     },
     onError: (error) => {
       console.error('Error adding approval:', error);
-      toast.error('Erro ao registrar aprovação');
+      toast({
+        title: "Erro",
+        description: "Erro ao registrar aprovação.",
+        variant: "destructive",
+      });
     },
   });
 
   return {
-    approvals: approvals || [],
+    workflowItems,
     isLoading,
+    error,
+    createItem: createItemMutation.mutate,
+    moveItem: moveItemMutation.mutate,
+    updateItem: updateItemMutation.mutate,
+    deleteItem: deleteItemMutation.mutate,
+    fetchComments,
+    addComment: addCommentMutation.mutate,
+    fetchApprovals,
     addApproval: addApprovalMutation.mutate,
-    isAdding: addApprovalMutation.isPending,
+    isCreating: createItemMutation.isPending,
+    isMoving: moveItemMutation.isPending,
+    isUpdating: updateItemMutation.isPending,
+    isDeleting: deleteItemMutation.isPending,
   };
 };
