@@ -5,9 +5,10 @@ import { StatCard } from '@/components/ui/dashboard/StatCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, Users, PlayCircle, Clock, TrendingUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TopVideosTable } from './TopVideosTable';
 
 export function YouTubeStats() {
-  const { data, isLoading, error } = useQuery({
+  const { data: overviewData, isLoading: overviewLoading, error: overviewError } = useQuery({
     queryKey: ['youtube-metrics', 'overview'],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('youtube-metrics', {
@@ -20,36 +21,52 @@ export function YouTubeStats() {
     refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
   });
 
-  if (error) {
+  const { data: topVideosData, isLoading: topVideosLoading, error: topVideosError } = useQuery({
+    queryKey: ['youtube-metrics', 'top-videos'],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('youtube-metrics', {
+        body: { type: 'top-videos' }
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    refetchInterval: 30 * 60 * 1000, // Refetch every 30 minutes
+  });
+
+  if (overviewError || topVideosError) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="text-destructive">Erro ao carregar estatísticas</CardTitle>
           <CardDescription>
-            {error instanceof Error ? error.message : 'Erro desconhecido'}
+            {overviewError instanceof Error ? overviewError.message : topVideosError instanceof Error ? topVideosError.message : 'Erro desconhecido'}
           </CardDescription>
         </CardHeader>
       </Card>
     );
   }
 
-  if (isLoading) {
+  if (overviewLoading || topVideosLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i}>
-            <CardContent className="p-6">
-              <Skeleton className="h-4 w-20 mb-2" />
-              <Skeleton className="h-8 w-16 mb-1" />
-              <Skeleton className="h-3 w-24" />
-            </CardContent>
-          </Card>
-        ))}
+      <div className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <Skeleton className="h-4 w-20 mb-2" />
+                <Skeleton className="h-8 w-16 mb-1" />
+                <Skeleton className="h-3 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
 
-  const channel = data?.channel;
+  const channel = overviewData?.channel;
   const statistics = channel?.statistics;
 
   if (!statistics) {
@@ -75,6 +92,8 @@ export function YouTubeStats() {
     }
     return number.toLocaleString();
   };
+
+  const videos = topVideosData?.topVideos || [];
 
   return (
     <div className="space-y-6">
@@ -109,7 +128,7 @@ export function YouTubeStats() {
         />
       </div>
 
-      {data?.recentVideos?.length > 0 && (
+      {overviewData?.recentVideos?.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -122,7 +141,7 @@ export function YouTubeStats() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {data.recentVideos.slice(0, 5).map((video: any) => (
+              {overviewData.recentVideos.slice(0, 5).map((video: any) => (
                 <div key={video.id.videoId} className="flex items-start gap-4 p-4 border rounded-lg">
                   {video.snippet.thumbnails?.default && (
                     <img 
@@ -145,6 +164,8 @@ export function YouTubeStats() {
           </CardContent>
         </Card>
       )}
+
+      {videos.length > 0 && <TopVideosTable videos={videos} />}
     </div>
   );
 }

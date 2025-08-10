@@ -5,12 +5,12 @@ import { Layout } from '@/components/Layout';
 import { YouTubeConnection } from '@/components/youtube/YouTubeConnection';
 import { YouTubeStats } from '@/components/youtube/YouTubeStats';
 import { YouTubeCharts } from '@/components/youtube/YouTubeCharts';
-import { YouTubeTopVideos } from '@/components/youtube/YouTubeTopVideos';
+import { YouTubeScheduledVideos } from '@/components/youtube/YouTubeScheduledVideos';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Youtube, TrendingUp, BarChart3, PlayCircle } from 'lucide-react';
+import { Youtube, TrendingUp, BarChart3, Calendar } from 'lucide-react';
 
 export default function YouTube() {
   const { user } = useAuth();
@@ -97,9 +97,9 @@ export default function YouTube() {
               <BarChart3 className="h-4 w-4" />
               Análises
             </TabsTrigger>
-            <TabsTrigger value="videos" className="flex items-center gap-2">
-              <PlayCircle className="h-4 w-4" />
-              Vídeos
+            <TabsTrigger value="scheduled" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Vídeos Agendados
             </TabsTrigger>
           </TabsList>
 
@@ -111,8 +111,8 @@ export default function YouTube() {
             <YouTubeCharts />
           </TabsContent>
 
-          <TabsContent value="videos" className="space-y-6">
-            <YouTubeTopVideos />
+          <TabsContent value="scheduled" className="space-y-6">
+            <YouTubeScheduledVideos />
           </TabsContent>
         </Tabs>
       </div>

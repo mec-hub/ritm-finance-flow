@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
     const cacheKey = `metrics_${metricsType}_${startDate}_${endDate}`
     const cachedData = await fetchFromCache(supabaseClient, user.id, cacheKey)
     
-    if (cachedData && metricsType !== 'top-videos') {
+    if (cachedData && metricsType !== 'top-videos' && metricsType !== 'scheduled-videos') {
       console.log('Returning cached data for:', cacheKey)
       return new Response(JSON.stringify(cachedData), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -241,14 +241,12 @@ Deno.serve(async (req) => {
         try {
           console.log('Fetching analytics data for channel:', tokenData.channel_id)
 
-          // Try YouTube Analytics API v2 with only valid metrics
           let mainMetrics = null
           let trafficSources = null
           let deviceTypes = null
           let geographicData = null
           
           try {
-            // Main analytics metrics - using only confirmed valid metrics
             mainMetrics = await fetchAnalyticsData(
               accessToken, 
               tokenData.channel_id, 
@@ -262,7 +260,6 @@ Deno.serve(async (req) => {
           }
 
           try {
-            // Traffic source data
             trafficSources = await fetchAnalyticsData(
               accessToken, 
               tokenData.channel_id, 
@@ -277,7 +274,6 @@ Deno.serve(async (req) => {
           }
 
           try {
-            // Device type data
             deviceTypes = await fetchAnalyticsData(
               accessToken, 
               tokenData.channel_id, 
@@ -292,7 +288,6 @@ Deno.serve(async (req) => {
           }
 
           try {
-            // Geographic data
             geographicData = await fetchAnalyticsData(
               accessToken, 
               tokenData.channel_id, 
@@ -306,7 +301,6 @@ Deno.serve(async (req) => {
             console.log('Geographic data failed:', error.message)
           }
 
-          // If we got any analytics data, return it
           if (mainMetrics || trafficSources || deviceTypes) {
             responseData = {
               analytics: mainMetrics,
@@ -316,7 +310,6 @@ Deno.serve(async (req) => {
               dateRange: { startDate, endDate }
             }
           } else {
-            // Fallback to basic channel statistics
             console.log('No analytics data available, falling back to basic stats')
             const fallbackResponse = await fetch(
               `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${tokenData.channel_id}`,
@@ -333,7 +326,6 @@ Deno.serve(async (req) => {
           }
         } catch (error) {
           console.error('Analytics API error:', error)
-          // Fallback to basic channel statistics
           const fallbackResponse = await fetch(
             `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${tokenData.channel_id}`,
             {
@@ -352,7 +344,6 @@ Deno.serve(async (req) => {
       case 'top-videos':
         console.log('=== DEBUGGING TOP VIDEOS THUMBNAILS ===')
         
-        // Get channel's videos with statistics and thumbnails
         const channelVideosResponse = await fetch(
           `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${tokenData.channel_id}&order=viewCount&maxResults=50&type=video`,
           {
@@ -377,7 +368,6 @@ Deno.serve(async (req) => {
         let allVideoStats = []
         
         if (allVideoIds) {
-          // Include snippet part to get thumbnail data
           const allVideoStatsResponse = await fetch(
             `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet,contentDetails&id=${allVideoIds}`,
             {
@@ -396,7 +386,6 @@ Deno.serve(async (req) => {
             } : 'NO_THUMBNAILS'
           })
           
-          // Map the data to include thumbnail information
           allVideoStats = (allVideoStatsData.items || []).map((video: any) => {
             const videoData = {
               id: video.id,
@@ -436,12 +425,67 @@ Deno.serve(async (req) => {
         console.log('=== END DEBUGGING ===')
         break
 
+      case 'scheduled-videos':
+        console.log('Fetching scheduled videos for channel:', tokenData.channel_id)
+        
+        try {
+          // Fetch all videos with status=unlisted or private which might include scheduled ones
+          const scheduledResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${tokenData.channel_id}&order=date&maxResults=50&type=video`,
+            {
+              headers: { 'Authorization': `Bearer ${accessToken}` },
+            }
+          )
+          const scheduledSearchData = await scheduledResponse.json()
+
+          if (scheduledSearchData.items && scheduledSearchData.items.length > 0) {
+            const videoIds = scheduledSearchData.items.map((video: any) => video.id.videoId).join(',')
+            
+            // Get detailed video information including status and scheduled publish time
+            const videoDetailsResponse = await fetch(
+              `https://www.googleapis.com/youtube/v3/videos?part=snippet,status&id=${videoIds}`,
+              {
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+              }
+            )
+            const videoDetailsData = await videoDetailsResponse.json()
+
+            // Filter for videos that are scheduled (have publishAt in the future)
+            const scheduledVideos = (videoDetailsData.items || [])
+              .filter((video: any) => {
+                return video.snippet?.publishAt && 
+                       new Date(video.snippet.publishAt) > new Date() &&
+                       (video.status?.privacyStatus === 'private' || video.status?.privacyStatus === 'unlisted')
+              })
+              .sort((a: any, b: any) => 
+                new Date(a.snippet.publishAt).getTime() - new Date(b.snippet.publishAt).getTime()
+              )
+
+            console.log('Found scheduled videos:', scheduledVideos.length)
+
+            responseData = {
+              scheduledVideos: scheduledVideos
+            }
+          } else {
+            responseData = {
+              scheduledVideos: []
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching scheduled videos:', error)
+          responseData = {
+            scheduledVideos: [],
+            error: 'Could not fetch scheduled videos. This may require additional permissions.'
+          }
+        }
+        break
+
       default:
         throw new Error(`Unknown metrics type: ${metricsType}`)
     }
 
-    // Cache the response (except for top-videos while debugging)
-    if (metricsType !== 'top-videos') {
+    // Cache the response (except for top-videos and scheduled-videos while debugging)
+    if (metricsType !== 'top-videos' && metricsType !== 'scheduled-videos') {
       await saveToCache(supabaseClient, user.id, cacheKey, responseData, 30)
     }
 
