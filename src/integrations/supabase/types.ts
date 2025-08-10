@@ -584,6 +584,198 @@ export type Database = {
           },
         ]
       }
+      video_workflow_activities: {
+        Row: {
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          created_at: string | null
+          description: string
+          id: string
+          metadata: Json | null
+          user_id: string
+          video_item_id: string
+        }
+        Insert: {
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          created_at?: string | null
+          description: string
+          id?: string
+          metadata?: Json | null
+          user_id: string
+          video_item_id: string
+        }
+        Update: {
+          activity_type?: Database["public"]["Enums"]["activity_type"]
+          created_at?: string | null
+          description?: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string
+          video_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_workflow_activities_video_item_id_fkey"
+            columns: ["video_item_id"]
+            isOneToOne: false
+            referencedRelation: "video_workflow_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_workflow_approvals: {
+        Row: {
+          approved: boolean
+          comment: string | null
+          created_at: string | null
+          id: string
+          user_id: string
+          video_item_id: string
+        }
+        Insert: {
+          approved: boolean
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          user_id: string
+          video_item_id: string
+        }
+        Update: {
+          approved?: boolean
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          user_id?: string
+          video_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_workflow_approvals_video_item_id_fkey"
+            columns: ["video_item_id"]
+            isOneToOne: false
+            referencedRelation: "video_workflow_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_workflow_archived: {
+        Row: {
+          approval_count: number | null
+          completed_at: string | null
+          content_type: Database["public"]["Enums"]["content_type"]
+          final_publication_date: string | null
+          id: string
+          metadata: Json | null
+          original_item_id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          approval_count?: number | null
+          completed_at?: string | null
+          content_type: Database["public"]["Enums"]["content_type"]
+          final_publication_date?: string | null
+          id?: string
+          metadata?: Json | null
+          original_item_id: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          approval_count?: number | null
+          completed_at?: string | null
+          content_type?: Database["public"]["Enums"]["content_type"]
+          final_publication_date?: string | null
+          id?: string
+          metadata?: Json | null
+          original_item_id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      video_workflow_comments: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          user_id: string
+          video_item_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          user_id: string
+          video_item_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+          video_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_workflow_comments_video_item_id_fkey"
+            columns: ["video_item_id"]
+            isOneToOne: false
+            referencedRelation: "video_workflow_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_workflow_items: {
+        Row: {
+          content_type: Database["public"]["Enums"]["content_type"]
+          created_at: string | null
+          current_stage: Database["public"]["Enums"]["video_stage"]
+          description: string | null
+          drive_link: string | null
+          estimated_publication_date: string | null
+          id: string
+          priority: number | null
+          script_link: string | null
+          tags: string[] | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content_type?: Database["public"]["Enums"]["content_type"]
+          created_at?: string | null
+          current_stage?: Database["public"]["Enums"]["video_stage"]
+          description?: string | null
+          drive_link?: string | null
+          estimated_publication_date?: string | null
+          id?: string
+          priority?: number | null
+          script_link?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content_type?: Database["public"]["Enums"]["content_type"]
+          created_at?: string | null
+          current_stage?: Database["public"]["Enums"]["video_stage"]
+          description?: string | null
+          drive_link?: string | null
+          estimated_publication_date?: string | null
+          id?: string
+          priority?: number | null
+          script_link?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       youtube_cache: {
         Row: {
           cache_data: Json
@@ -695,11 +887,26 @@ export type Database = {
       }
     }
     Enums: {
+      activity_type: "created" | "moved" | "commented" | "approved" | "rejected"
       app_role: "admin" | "manager" | "user"
+      content_type:
+        | "tutorial"
+        | "review"
+        | "gameplay"
+        | "vlog"
+        | "short"
+        | "livestream"
+        | "other"
       event_status: "upcoming" | "completed" | "cancelled"
       recurrence_interval: "weekly" | "monthly" | "quarterly" | "yearly"
       transaction_status: "paid" | "not_paid" | "canceled"
       transaction_type: "income" | "expense"
+      video_stage:
+        | "scripted"
+        | "recorded"
+        | "editing"
+        | "awaiting_review"
+        | "approved"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -827,11 +1034,28 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      activity_type: ["created", "moved", "commented", "approved", "rejected"],
       app_role: ["admin", "manager", "user"],
+      content_type: [
+        "tutorial",
+        "review",
+        "gameplay",
+        "vlog",
+        "short",
+        "livestream",
+        "other",
+      ],
       event_status: ["upcoming", "completed", "cancelled"],
       recurrence_interval: ["weekly", "monthly", "quarterly", "yearly"],
       transaction_status: ["paid", "not_paid", "canceled"],
       transaction_type: ["income", "expense"],
+      video_stage: [
+        "scripted",
+        "recorded",
+        "editing",
+        "awaiting_review",
+        "approved",
+      ],
     },
   },
 } as const

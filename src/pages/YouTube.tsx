@@ -6,11 +6,12 @@ import { YouTubeConnection } from '@/components/youtube/YouTubeConnection';
 import { YouTubeStats } from '@/components/youtube/YouTubeStats';
 import { YouTubeCharts } from '@/components/youtube/YouTubeCharts';
 import { YouTubeScheduledVideos } from '@/components/youtube/YouTubeScheduledVideos';
+import { YouTubeWorkflow } from '@/components/youtube/YouTubeWorkflow';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Youtube, TrendingUp, BarChart3, Calendar } from 'lucide-react';
+import { Youtube, TrendingUp, BarChart3, Calendar, Clapperboard } from 'lucide-react';
 
 export default function YouTube() {
   const { user } = useAuth();
@@ -114,7 +115,7 @@ export default function YouTube() {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               Visão Geral
@@ -126,6 +127,10 @@ export default function YouTube() {
             <TabsTrigger value="scheduled" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Vídeos Agendados
+            </TabsTrigger>
+            <TabsTrigger value="workflow" className="flex items-center gap-2">
+              <Clapperboard className="h-4 w-4" />
+              Workflow
             </TabsTrigger>
           </TabsList>
 
@@ -139,6 +144,10 @@ export default function YouTube() {
 
           <TabsContent value="scheduled" className="space-y-6">
             <YouTubeScheduledVideos />
+          </TabsContent>
+
+          <TabsContent value="workflow" className="space-y-6">
+            <YouTubeWorkflow />
           </TabsContent>
         </Tabs>
       </div>
