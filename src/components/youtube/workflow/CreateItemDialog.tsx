@@ -25,10 +25,10 @@ interface CreateItemDialogProps {
 }
 
 const CONTENT_TYPES: { value: ContentType; label: string }[] = [
-  { value: 'tutorial', label: 'Tutorial' },
-  { value: 'review', label: 'Review' },
   { value: 'davizão news', label: 'Davizão News' },
   { value: 'vlog de Show', label: 'Vlog de Show' },
+  { value: 'tutorial', label: 'Tutorial' },
+  { value: 'review', label: 'Review' },
   { value: 'short', label: 'Short' },
   { value: 'livestream', label: 'Livestream' },
   { value: 'other', label: 'Outro' },
