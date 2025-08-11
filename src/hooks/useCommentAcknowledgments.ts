@@ -32,7 +32,7 @@ export const useCommentAcknowledgments = (commentId: string) => {
           comment_id,
           user_id,
           acknowledged_at,
-          profiles!fk_video_workflow_comment_acknowledgments_user_id (
+          profiles (
             full_name,
             avatar_url
           )

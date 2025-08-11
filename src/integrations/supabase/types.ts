@@ -742,6 +742,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_video_workflow_comment_acknowledgments_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "video_workflow_comment_acknowledgments_comment_id_fkey"
             columns: ["comment_id"]
             isOneToOne: false
