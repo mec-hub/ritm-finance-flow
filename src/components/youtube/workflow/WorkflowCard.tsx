@@ -13,7 +13,8 @@ import {
   XCircle,
   MoreHorizontal,
   Clock,
-  Activity
+  Activity,
+  Edit
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -22,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { WorkflowDetailsModal } from './WorkflowDetailsModal';
+import { EditWorkflowItemModal } from './EditWorkflowItemModal';
 import { useVideoWorkflow } from '@/hooks/useVideoWorkflow';
 import { useWorkflowComments } from '@/hooks/useWorkflowComments';
 import { useWorkflowApprovals } from '@/hooks/useWorkflowApprovals';
@@ -65,7 +67,6 @@ const ACTIVITY_TRANSLATIONS = {
   'recorded': 'gravado',
   'editing': 'editando',
   'awaiting_review': 'aguardando revisão',
-  'approved': 'aprovado',
   'created': 'criou',
   'updated': 'atualizou',
   'commented on': 'comentou em',
@@ -86,6 +87,7 @@ const translateActivity = (description: string): string => {
 
 export const WorkflowCard = ({ item }: WorkflowCardProps) => {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const { deleteItem } = useVideoWorkflow();
   const { comments, isLoading: commentsLoading, error: commentsError } = useWorkflowComments(item.id);
   const { approvals, isLoading: approvalsLoading, error: approvalsError } = useWorkflowApprovals(item.id);
@@ -126,6 +128,10 @@ export const WorkflowCard = ({ item }: WorkflowCardProps) => {
                 <DropdownMenuItem onClick={() => setIsDetailsOpen(true)}>
                   <FileText className="h-4 w-4 mr-2" />
                   Ver Detalhes
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={handleDelete}
@@ -286,6 +292,12 @@ export const WorkflowCard = ({ item }: WorkflowCardProps) => {
         item={item}
         open={isDetailsOpen}
         onOpenChange={setIsDetailsOpen}
+      />
+
+      <EditWorkflowItemModal
+        item={item}
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
       />
     </>
   );

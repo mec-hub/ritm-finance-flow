@@ -12,6 +12,7 @@ export interface WorkflowComment {
   created_at: string;
   profiles: {
     full_name: string | null;
+    avatar_url: string | null;
   };
 }
 
@@ -19,7 +20,7 @@ export const useWorkflowComments = (videoItemId: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch comments with automatic foreign key joins
+  // Fetch comments with automatic foreign key joins including avatar_url
   const { data: comments = [], isLoading, error } = useQuery({
     queryKey: ['workflow-comments', videoItemId],
     queryFn: async () => {
@@ -39,7 +40,8 @@ export const useWorkflowComments = (videoItemId: string) => {
           content,
           created_at,
           profiles!fk_video_workflow_comments_user_id (
-            full_name
+            full_name,
+            avatar_url
           )
         `)
         .eq('video_item_id', videoItemId)
@@ -54,7 +56,7 @@ export const useWorkflowComments = (videoItemId: string) => {
       
       return (data || []).map(comment => ({
         ...comment,
-        profiles: comment.profiles || { full_name: null }
+        profiles: comment.profiles || { full_name: null, avatar_url: null }
       })) as WorkflowComment[];
     },
     enabled: !!videoItemId && !!user,
@@ -83,7 +85,8 @@ export const useWorkflowComments = (videoItemId: string) => {
           content,
           created_at,
           profiles!fk_video_workflow_comments_user_id (
-            full_name
+            full_name,
+            avatar_url
           )
         `)
         .single();
@@ -114,11 +117,86 @@ export const useWorkflowComments = (videoItemId: string) => {
     },
   });
 
+  // Edit comment mutation
+  const editCommentMutation = useMutation({
+    mutationFn: async ({ commentId, content }: { commentId: string; content: string }) => {
+      if (!user) throw new Error('User not authenticated');
+      
+      const { data, error } = await supabase
+        .from('video_workflow_comments')
+        .update({ content })
+        .eq('id', commentId)
+        .eq('user_id', user.id) // Ensure only the author can edit
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error editing comment:', error);
+        throw error;
+      }
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workflow-comments', videoItemId] });
+      toast({
+        title: "Comentário atualizado",
+        description: "Comentário atualizado com sucesso.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error editing comment:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao editar comentário.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete comment mutation
+  const deleteCommentMutation = useMutation({
+    mutationFn: async (commentId: string) => {
+      if (!user) throw new Error('User not authenticated');
+      
+      const { error } = await supabase
+        .from('video_workflow_comments')
+        .delete()
+        .eq('id', commentId)
+        .eq('user_id', user.id); // Ensure only the author can delete
+
+      if (error) {
+        console.error('Error deleting comment:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workflow-comments', videoItemId] });
+      queryClient.invalidateQueries({ queryKey: ['video-workflow-items'] });
+      toast({
+        title: "Comentário removido",
+        description: "Comentário removido com sucesso.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error deleting comment:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao remover comentário.",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     comments,
     isLoading,
     error,
     addComment: addCommentMutation.mutate,
+    editComment: editCommentMutation.mutate,
+    deleteComment: deleteCommentMutation.mutate,
     isAdding: addCommentMutation.isPending,
+    isEditing: editCommentMutation.isPending,
+    isDeleting: deleteCommentMutation.isPending,
   };
 };

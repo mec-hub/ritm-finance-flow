@@ -721,6 +721,35 @@ export type Database = {
         }
         Relationships: []
       }
+      video_workflow_comment_acknowledgments: {
+        Row: {
+          acknowledged_at: string
+          comment_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string
+          comment_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string
+          comment_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_workflow_comment_acknowledgments_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "video_workflow_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       video_workflow_comments: {
         Row: {
           content: string
