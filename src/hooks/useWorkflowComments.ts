@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -16,9 +16,14 @@ export interface WorkflowComment {
   };
 }
 
+// Global channel management to prevent duplicate subscriptions
+const activeChannels = new Map<string, any>();
+
 export const useWorkflowComments = (videoItemId: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const channelRef = useRef<any>(null);
+  const isSubscribedRef = useRef(false);
 
   // Fetch comments with real-time updates
   const { data: comments = [], isLoading } = useQuery({
@@ -88,14 +93,23 @@ export const useWorkflowComments = (videoItemId: string) => {
     },
   });
 
-  // Set up real-time subscription
+  // Set up real-time subscription with proper cleanup
   useEffect(() => {
-    if (!videoItemId) return;
+    if (!videoItemId || isSubscribedRef.current) return;
+
+    const channelKey = `comments-${videoItemId}`;
+    
+    // Check if channel already exists
+    if (activeChannels.has(channelKey)) {
+      console.log('Channel already exists for:', videoItemId);
+      return;
+    }
 
     console.log('Setting up comments subscription for:', videoItemId);
     
-    const channel = supabase
-      .channel(`comments-${videoItemId}-${Date.now()}`) // Add timestamp to make unique
+    const channel = supabase.channel(channelKey);
+    
+    channel
       .on(
         'postgres_changes',
         {
@@ -112,11 +126,23 @@ export const useWorkflowComments = (videoItemId: string) => {
       )
       .subscribe((status) => {
         console.log('Comments subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          isSubscribedRef.current = true;
+        }
       });
 
+    channelRef.current = channel;
+    activeChannels.set(channelKey, channel);
+
     return () => {
-      console.log('Cleaning up comments subscription');
-      supabase.removeChannel(channel);
+      console.log('Cleaning up comments subscription for:', videoItemId);
+      isSubscribedRef.current = false;
+      
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        activeChannels.delete(channelKey);
+        channelRef.current = null;
+      }
     };
   }, [videoItemId, queryClient]);
 

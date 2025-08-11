@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -17,9 +17,14 @@ export interface WorkflowApproval {
   };
 }
 
+// Global channel management to prevent duplicate subscriptions
+const activeChannels = new Map<string, any>();
+
 export const useWorkflowApprovals = (videoItemId: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const channelRef = useRef<any>(null);
+  const isSubscribedRef = useRef(false);
 
   // Fetch approvals with real-time updates
   const { data: approvals = [], isLoading } = useQuery({
@@ -99,14 +104,23 @@ export const useWorkflowApprovals = (videoItemId: string) => {
     },
   });
 
-  // Set up real-time subscription
+  // Set up real-time subscription with proper cleanup
   useEffect(() => {
-    if (!videoItemId) return;
+    if (!videoItemId || isSubscribedRef.current) return;
+
+    const channelKey = `approvals-${videoItemId}`;
+    
+    // Check if channel already exists
+    if (activeChannels.has(channelKey)) {
+      console.log('Channel already exists for:', videoItemId);
+      return;
+    }
 
     console.log('Setting up approvals subscription for:', videoItemId);
     
-    const channel = supabase
-      .channel(`approvals-${videoItemId}-${Date.now()}`) // Add timestamp to make unique
+    const channel = supabase.channel(channelKey);
+    
+    channel
       .on(
         'postgres_changes',
         {
@@ -123,11 +137,23 @@ export const useWorkflowApprovals = (videoItemId: string) => {
       )
       .subscribe((status) => {
         console.log('Approvals subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          isSubscribedRef.current = true;
+        }
       });
 
+    channelRef.current = channel;
+    activeChannels.set(channelKey, channel);
+
     return () => {
-      console.log('Cleaning up approvals subscription');
-      supabase.removeChannel(channel);
+      console.log('Cleaning up approvals subscription for:', videoItemId);
+      isSubscribedRef.current = false;
+      
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        activeChannels.delete(channelKey);
+        channelRef.current = null;
+      }
     };
   }, [videoItemId, queryClient]);
 
