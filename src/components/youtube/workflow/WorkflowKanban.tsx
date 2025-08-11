@@ -61,7 +61,7 @@ export function WorkflowKanban() {
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {columns.map(column => (
-            <Card key={column.id} className={`${column.color} border-2 transition-all hover:shadow-lg hover:scale-[1.02]`}>
+            <Card key={column.id} className={`${column.color} border-2 transition-all hover:shadow-lg`}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center justify-between text-foreground">
                   {column.title}
@@ -92,8 +92,17 @@ export function WorkflowKanban() {
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
                               className={`transition-all duration-200 ${
-                                snapshot.isDragging ? 'rotate-2 scale-105 shadow-xl' : 'hover:scale-[1.02]'
+                                snapshot.isDragging 
+                                  ? 'rotate-1 scale-105 shadow-xl z-50' 
+                                  : 'hover:shadow-md'
                               }`}
+                              style={{
+                                ...provided.draggableProps.style,
+                                // Ensure proper cursor positioning during drag
+                                ...(snapshot.isDragging && {
+                                  transform: `${provided.draggableProps.style?.transform} rotate(1deg) scale(1.05)`,
+                                }),
+                              }}
                             >
                               <WorkflowCard item={item} />
                             </div>
