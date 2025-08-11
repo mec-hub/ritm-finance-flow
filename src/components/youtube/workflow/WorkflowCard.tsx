@@ -34,20 +34,20 @@ interface WorkflowCardProps {
 }
 
 const CONTENT_TYPE_LABELS = {
+  davizão_news: 'Davizão News',
+  vlog_de_show: 'Vlog de Show',
+  resenha: 'Resenha',
   tutorial: 'Tutorial',
   review: 'Review',
-  gameplay: 'Gameplay',
-  vlog: 'Vlog',
-  short: 'Short',
   livestream: 'Live',
   other: 'Outro',
 };
 
 const PRIORITY_COLORS = {
   0: '',
-  1: 'border-l-blue-400',
+  1: 'border-l-red-400',
   2: 'border-l-yellow-400',
-  3: 'border-l-red-400',
+  3: 'border-l-blue-400',
 };
 
 export const WorkflowCard = ({ item }: WorkflowCardProps) => {
