@@ -10,3 +10,5 @@ export { TrafficSourcesChart } from './TrafficSourcesChart';
 export { DeviceAnalytics } from './DeviceAnalytics';
 export { MetricsOverview } from './MetricsOverview';
 export { DateRangePicker } from './DateRangePicker';
+export { VideoWorkflowCalendar } from './workflow/VideoWorkflowCalendar';
+export { VideoWorkflowDetailsModal } from './workflow/VideoWorkflowDetailsModal';
