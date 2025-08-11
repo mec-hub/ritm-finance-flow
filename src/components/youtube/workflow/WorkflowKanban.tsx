@@ -45,77 +45,86 @@ export function WorkflowKanban() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
+ <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
           <h2 className="text-2xl font-bold">Workflow de Vídeos</h2>
-          <p className="text-muted-foreground">
-            Gerencie o fluxo de produção dos seus vídeos
-          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsCreateDialogOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Item
+          </Button>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Item
-        </Button>
+        
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4" />
+          <select
+            value={filterStage}
+            onChange={(e) => setFilterStage(e.target.value as VideoStage | 'all')}
+            className="border rounded-md px-3 py-1 text-sm bg-background border-border"
+          >
+            <option value="all">Todos os estágios</option>
+            {STAGES.map(stage => (
+              <option key={stage.id} value={stage.id}>
+                {stage.title}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          {columns.map(column => (
-            <Card key={column.id} className={`${column.color}`}>
+          {STAGES.map(stage => (
+            <Card key={stage.id} className={`bg-card border-border ${stage.borderColor} border-l-4 min-h-[600px]`}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center justify-between">
-                  {column.title}
-                  <span className="bg-white rounded-full px-2 py-1 text-xs">
-                    {getItemsByStage(column.id).length}
+                  {stage.title}
+                  <span className="bg-secondary text-secondary-foreground text-xs px-2 py-1 rounded-full">
+                    {getItemsByStage(stage.id).length}
                   </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-0">
-                <Droppable droppableId={column.id}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={`min-h-32 space-y-2 transition-colors ${
-                        snapshot.isDraggingOver ? 'bg-white/50 rounded-md' : ''
-                      }`}
-                    >
-                      {getItemsByStage(column.id).map((item, index) => (
-                        <Draggable
-                          key={item.id}
-                          draggableId={item.id}
-                          index={index}
-                        >
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className={`transition-transform ${
-                                snapshot.isDragging ? 'rotate-2 scale-105' : ''
-                              }`}
-                            >
-                              <WorkflowCard item={item} />
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </CardContent>
+              
+              <Droppable droppableId={stage.id}>
+                {(provided, snapshot) => (
+                  <CardContent
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className={`space-y-3 min-h-[500px] ${
+                      snapshot.isDraggingOver ? 'bg-accent/20' : ''
+                    }`}
+                  >
+                    {getItemsByStage(stage.id).map((item, index) => (
+                      <Draggable key={item.id} draggableId={item.id} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            className={snapshot.isDragging ? 'rotate-2' : ''}
+                          >
+                            <WorkflowCard item={item} />
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </CardContent>
+                )}
+              </Droppable>
             </Card>
           ))}
         </div>
       </DragDropContext>
 
-      <VideoWorkflowCalendar workflowItems={workflowItems} />
-
       <CreateItemDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
       />
     </div>
   );
-}
+};
+      <div className="flex justify-between items-center">
