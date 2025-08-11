@@ -35,15 +35,15 @@ interface WorkflowDetailsModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const CONTENT_TYPE_LABELS = {
-  tutorial: 'Tutorial',
-  review: 'Review',
-  gameplay: 'Gameplay',
-  vlog: 'Vlog',
-  short: 'Short',
-  livestream: 'Live',
-  other: 'Outro',
-};
+const CONTENT_TYPES: { value: ContentType; label: string }[] = [
+  { value: 'davizão_news', label: 'Davizão News' },
+  { value: 'vlog_de_Show', label: 'Vlog de Show' },
+  { value: 'resenha', label: 'Resenha' },
+  { value: 'tutorial', label: 'Tutorial' },
+  { value: 'review', label: 'Review' },
+  { value: 'livestream', label: 'Livestream' },
+  { value: 'other', label: 'Outro' },
+];
 
 const STAGE_LABELS = {
   scripted: 'Roteirizado',
