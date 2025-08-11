@@ -11,7 +11,7 @@ export interface WorkflowActivity {
   description: string;
   metadata: any;
   created_at: string;
-  profiles?: {
+  profiles: {
     full_name: string | null;
   };
 }
@@ -34,7 +34,7 @@ export const useWorkflowActivities = (videoItemId: string) => {
           description,
           metadata,
           created_at,
-          profiles (
+          profiles!fk_video_workflow_activities_user_id (
             full_name
           )
         `)

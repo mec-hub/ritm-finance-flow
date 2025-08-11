@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { VideoWorkflowItem } from '@/hooks/useVideoWorkflow';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,6 @@ import {
   XCircle,
   MoreHorizontal,
   Clock,
-  User,
   Activity
 } from 'lucide-react';
 import {
@@ -54,8 +53,8 @@ const PRIORITY_COLORS = {
 export const WorkflowCard = ({ item }: WorkflowCardProps) => {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const { deleteItem } = useVideoWorkflow();
-  const { comments, isLoading: commentsLoading } = useWorkflowComments(item.id);
-  const { approvals, isLoading: approvalsLoading } = useWorkflowApprovals(item.id);
+  const { comments, isLoading: commentsLoading, error: commentsError } = useWorkflowComments(item.id);
+  const { approvals, isLoading: approvalsLoading, error: approvalsError } = useWorkflowApprovals(item.id);
   const { latestActivity, isLoading: activitiesLoading } = useWorkflowActivities(item.id);
 
   const handleDelete = () => {
@@ -68,17 +67,13 @@ export const WorkflowCard = ({ item }: WorkflowCardProps) => {
   const approvalCount = approvals.filter(a => a.approved).length;
   const rejectionCount = approvals.filter(a => !a.approved).length;
 
-  // Debug logging
-  useEffect(() => {
-    console.log(`WorkflowCard ${item.id} data:`, {
-      commentsCount: comments.length,
-      approvalsCount: approvals.length,
-      latestActivity: latestActivity?.description,
-      commentsLoading,
-      approvalsLoading,
-      activitiesLoading
-    });
-  }, [comments, approvals, latestActivity, commentsLoading, approvalsLoading, activitiesLoading, item.id]);
+  // Log errors for debugging
+  if (commentsError) {
+    console.error('Comments error for item', item.id, ':', commentsError);
+  }
+  if (approvalsError) {
+    console.error('Approvals error for item', item.id, ':', approvalsError);
+  }
 
   return (
     <>
@@ -135,7 +130,7 @@ export const WorkflowCard = ({ item }: WorkflowCardProps) => {
           )}
 
           {/* Latest Activity */}
-          {latestActivity && (
+          {latestActivity && !activitiesLoading && (
             <div className="flex items-start gap-1 text-xs text-muted-foreground mb-2 bg-muted/30 p-2 rounded">
               <Activity className="h-3 w-3 mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
@@ -154,21 +149,21 @@ export const WorkflowCard = ({ item }: WorkflowCardProps) => {
 
           {/* Activity indicators */}
           <div className="flex items-center gap-2 mb-2">
-            {comments.length > 0 && (
+            {!commentsLoading && comments.length > 0 && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <MessageSquare className="h-3 w-3" />
                 <span>{comments.length}</span>
               </div>
             )}
             
-            {approvalCount > 0 && (
+            {!approvalsLoading && approvalCount > 0 && (
               <div className="flex items-center gap-1 text-xs text-green-600">
                 <CheckCircle className="h-3 w-3" />
                 <span>{approvalCount}</span>
               </div>
             )}
             
-            {rejectionCount > 0 && (
+            {!approvalsLoading && rejectionCount > 0 && (
               <div className="flex items-center gap-1 text-xs text-red-600">
                 <XCircle className="h-3 w-3" />
                 <span>{rejectionCount}</span>
@@ -176,7 +171,7 @@ export const WorkflowCard = ({ item }: WorkflowCardProps) => {
             )}
 
             {/* Loading indicators */}
-            {(commentsLoading || approvalsLoading) && (
+            {(commentsLoading || approvalsLoading || activitiesLoading) && (
               <div className="text-xs text-muted-foreground">
                 Carregando...
               </div>

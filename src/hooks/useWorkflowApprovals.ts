@@ -1,5 +1,4 @@
 
-import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -12,21 +11,16 @@ export interface WorkflowApproval {
   approved: boolean;
   comment?: string;
   created_at: string;
-  profiles?: {
+  profiles: {
     full_name: string | null;
   };
 }
 
-// Global channel management to prevent duplicate subscriptions
-const activeChannels = new Map<string, any>();
-
 export const useWorkflowApprovals = (videoItemId: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const channelRef = useRef<any>(null);
-  const isSubscribedRef = useRef(false);
 
-  // Fetch approvals with real-time updates
+  // Fetch approvals with automatic foreign key joins
   const { data: approvals = [], isLoading, error } = useQuery({
     queryKey: ['workflow-approvals', videoItemId],
     queryFn: async () => {
@@ -46,7 +40,7 @@ export const useWorkflowApprovals = (videoItemId: string) => {
           approved,
           comment,
           created_at,
-          profiles (
+          profiles!fk_video_workflow_approvals_user_id (
             full_name
           )
         `)
@@ -55,7 +49,7 @@ export const useWorkflowApprovals = (videoItemId: string) => {
 
       if (error) {
         console.error('Error fetching approvals:', error);
-        return [];
+        throw error;
       }
 
       console.log('Approvals fetched:', data?.length || 0, 'for video:', videoItemId);
@@ -66,16 +60,9 @@ export const useWorkflowApprovals = (videoItemId: string) => {
       })) as WorkflowApproval[];
     },
     enabled: !!videoItemId && !!user,
-    staleTime: 30000, // Consider data fresh for 30 seconds
+    staleTime: 30000,
     refetchOnWindowFocus: false,
   });
-
-  // Log any query errors
-  useEffect(() => {
-    if (error) {
-      console.error('Approvals query error:', error);
-    }
-  }, [error]);
 
   // Add approval mutation
   const addApprovalMutation = useMutation({
@@ -100,7 +87,17 @@ export const useWorkflowApprovals = (videoItemId: string) => {
         }], {
           onConflict: 'video_item_id,user_id'
         })
-        .select()
+        .select(`
+          id,
+          video_item_id,
+          user_id,
+          approved,
+          comment,
+          created_at,
+          profiles!fk_video_workflow_approvals_user_id (
+            full_name
+          )
+        `)
         .single();
 
       if (error) {
@@ -128,59 +125,6 @@ export const useWorkflowApprovals = (videoItemId: string) => {
       });
     },
   });
-
-  // Set up real-time subscription with proper cleanup
-  useEffect(() => {
-    if (!videoItemId || !user || isSubscribedRef.current) return;
-
-    const channelKey = `approvals-${videoItemId}`;
-    
-    // Check if channel already exists
-    if (activeChannels.has(channelKey)) {
-      console.log('Approvals channel already exists for:', videoItemId);
-      return;
-    }
-
-    console.log('Setting up approvals subscription for:', videoItemId);
-    
-    const channel = supabase.channel(channelKey);
-    
-    channel
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'video_workflow_approvals',
-          filter: `video_item_id=eq.${videoItemId}`,
-        },
-        (payload) => {
-          console.log('Approvals realtime update:', payload);
-          queryClient.invalidateQueries({ queryKey: ['workflow-approvals', videoItemId] });
-          queryClient.invalidateQueries({ queryKey: ['video-workflow-items'] });
-        }
-      )
-      .subscribe((status) => {
-        console.log('Approvals subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          isSubscribedRef.current = true;
-        }
-      });
-
-    channelRef.current = channel;
-    activeChannels.set(channelKey, channel);
-
-    return () => {
-      console.log('Cleaning up approvals subscription for:', videoItemId);
-      isSubscribedRef.current = false;
-      
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        activeChannels.delete(channelKey);
-        channelRef.current = null;
-      }
-    };
-  }, [videoItemId, queryClient, user]);
 
   return {
     approvals,

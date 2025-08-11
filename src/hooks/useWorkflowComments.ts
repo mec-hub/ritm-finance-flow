@@ -1,5 +1,4 @@
 
-import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -11,21 +10,16 @@ export interface WorkflowComment {
   user_id: string;
   content: string;
   created_at: string;
-  profiles?: {
+  profiles: {
     full_name: string | null;
   };
 }
 
-// Global channel management to prevent duplicate subscriptions
-const activeChannels = new Map<string, any>();
-
 export const useWorkflowComments = (videoItemId: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const channelRef = useRef<any>(null);
-  const isSubscribedRef = useRef(false);
 
-  // Fetch comments with real-time updates
+  // Fetch comments with automatic foreign key joins
   const { data: comments = [], isLoading, error } = useQuery({
     queryKey: ['workflow-comments', videoItemId],
     queryFn: async () => {
@@ -44,7 +38,7 @@ export const useWorkflowComments = (videoItemId: string) => {
           user_id,
           content,
           created_at,
-          profiles (
+          profiles!fk_video_workflow_comments_user_id (
             full_name
           )
         `)
@@ -53,7 +47,7 @@ export const useWorkflowComments = (videoItemId: string) => {
 
       if (error) {
         console.error('Error fetching comments:', error);
-        return [];
+        throw error;
       }
 
       console.log('Comments fetched:', data?.length || 0, 'for video:', videoItemId);
@@ -64,16 +58,9 @@ export const useWorkflowComments = (videoItemId: string) => {
       })) as WorkflowComment[];
     },
     enabled: !!videoItemId && !!user,
-    staleTime: 30000, // Consider data fresh for 30 seconds
+    staleTime: 30000,
     refetchOnWindowFocus: false,
   });
-
-  // Log any query errors
-  useEffect(() => {
-    if (error) {
-      console.error('Comments query error:', error);
-    }
-  }, [error]);
 
   // Add comment mutation
   const addCommentMutation = useMutation({
@@ -89,7 +76,16 @@ export const useWorkflowComments = (videoItemId: string) => {
           user_id: user.id,
           content,
         }])
-        .select()
+        .select(`
+          id,
+          video_item_id,
+          user_id,
+          content,
+          created_at,
+          profiles!fk_video_workflow_comments_user_id (
+            full_name
+          )
+        `)
         .single();
 
       if (error) {
@@ -117,59 +113,6 @@ export const useWorkflowComments = (videoItemId: string) => {
       });
     },
   });
-
-  // Set up real-time subscription with proper cleanup
-  useEffect(() => {
-    if (!videoItemId || !user || isSubscribedRef.current) return;
-
-    const channelKey = `comments-${videoItemId}`;
-    
-    // Check if channel already exists
-    if (activeChannels.has(channelKey)) {
-      console.log('Comments channel already exists for:', videoItemId);
-      return;
-    }
-
-    console.log('Setting up comments subscription for:', videoItemId);
-    
-    const channel = supabase.channel(channelKey);
-    
-    channel
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'video_workflow_comments',
-          filter: `video_item_id=eq.${videoItemId}`,
-        },
-        (payload) => {
-          console.log('Comments realtime update:', payload);
-          queryClient.invalidateQueries({ queryKey: ['workflow-comments', videoItemId] });
-          queryClient.invalidateQueries({ queryKey: ['video-workflow-items'] });
-        }
-      )
-      .subscribe((status) => {
-        console.log('Comments subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          isSubscribedRef.current = true;
-        }
-      });
-
-    channelRef.current = channel;
-    activeChannels.set(channelKey, channel);
-
-    return () => {
-      console.log('Cleaning up comments subscription for:', videoItemId);
-      isSubscribedRef.current = false;
-      
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        activeChannels.delete(channelKey);
-        channelRef.current = null;
-      }
-    };
-  }, [videoItemId, queryClient, user]);
 
   return {
     comments,

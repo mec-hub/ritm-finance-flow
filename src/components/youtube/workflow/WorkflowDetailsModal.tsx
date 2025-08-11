@@ -54,8 +54,8 @@ const STAGE_LABELS = {
 };
 
 export const WorkflowDetailsModal = ({ item, open, onOpenChange }: WorkflowDetailsModalProps) => {
-  const { comments, addComment, isAdding } = useWorkflowComments(item.id);
-  const { approvals, addApproval } = useWorkflowApprovals(item.id);
+  const { comments, addComment, isAdding, error: commentsError } = useWorkflowComments(item.id);
+  const { approvals, addApproval, error: approvalsError } = useWorkflowApprovals(item.id);
   const [newComment, setNewComment] = useState('');
   const [approvalComment, setApprovalComment] = useState('');
 
@@ -77,6 +77,14 @@ export const WorkflowDetailsModal = ({ item, open, onOpenChange }: WorkflowDetai
 
   const approvalCount = approvals.filter(a => a.approved).length;
   const rejectionCount = approvals.filter(a => !a.approved).length;
+
+  // Log errors for debugging
+  if (commentsError) {
+    console.error('Comments error in modal:', commentsError);
+  }
+  if (approvalsError) {
+    console.error('Approvals error in modal:', approvalsError);
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -614,6 +614,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_video_workflow_activities_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_video_workflow_activities_video_item_id"
+            columns: ["video_item_id"]
+            isOneToOne: false
+            referencedRelation: "video_workflow_items"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "video_workflow_activities_video_item_id_fkey"
             columns: ["video_item_id"]
             isOneToOne: false
@@ -648,6 +662,20 @@ export type Database = {
           video_item_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_video_workflow_approvals_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_video_workflow_approvals_video_item_id"
+            columns: ["video_item_id"]
+            isOneToOne: false
+            referencedRelation: "video_workflow_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "video_workflow_approvals_video_item_id_fkey"
             columns: ["video_item_id"]
@@ -716,6 +744,20 @@ export type Database = {
           video_item_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_video_workflow_comments_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_video_workflow_comments_video_item_id"
+            columns: ["video_item_id"]
+            isOneToOne: false
+            referencedRelation: "video_workflow_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "video_workflow_comments_video_item_id_fkey"
             columns: ["video_item_id"]
