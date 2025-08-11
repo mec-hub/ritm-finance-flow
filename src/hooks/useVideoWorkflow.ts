@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,7 +5,7 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
 export type VideoStage = 'scripted' | 'recorded' | 'editing' | 'awaiting_review' | 'approved';
-export type ContentType = 'tutorial' | 'review' | 'gameplay' | 'vlog' | 'short' | 'livestream' | 'other';
+export type ContentType = 'davizão_news' | 'vlog_de_show' | 'resenha' | 'tutorial' | 'review' | 'livestream' | 'other';
 
 export interface VideoWorkflowItem {
   id: string;

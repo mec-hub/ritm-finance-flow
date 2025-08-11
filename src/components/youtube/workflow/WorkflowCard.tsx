@@ -43,11 +43,45 @@ const CONTENT_TYPE_LABELS = {
   other: 'Outro',
 };
 
-const PRIORITY_COLORS = {
+const PRIORITY_CONFIG = {
+  0: null, // No priority badge
+  1: { label: 'Baixa', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+  2: { label: 'Média', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  3: { label: 'Alta', color: 'bg-red-100 text-red-800 border-red-200' },
+};
+
+const PRIORITY_BORDER_COLORS = {
   0: '',
-  1: 'border-l-red-400',
-  2: 'border-l-yellow-400',
-  3: 'border-l-blue-400',
+  1: 'border-l-blue-400',
+  2: 'border-l-yellow-400', 
+  3: 'border-l-red-400',
+};
+
+// Translation mapping for activity descriptions
+const ACTIVITY_TRANSLATIONS = {
+  'moved from': 'moveu de',
+  'to': 'para',
+  'scripted': 'roteirizado',
+  'recorded': 'gravado',
+  'editing': 'editando',
+  'awaiting_review': 'aguardando revisão',
+  'approved': 'aprovado',
+  'created': 'criou',
+  'updated': 'atualizou',
+  'commented on': 'comentou em',
+  'approved': 'aprovou',
+  'rejected': 'rejeitou',
+};
+
+const translateActivity = (description: string): string => {
+  let translated = description.toLowerCase();
+  
+  // Replace common activity patterns
+  Object.entries(ACTIVITY_TRANSLATIONS).forEach(([english, portuguese]) => {
+    translated = translated.replace(new RegExp(english, 'gi'), portuguese);
+  });
+  
+  return translated;
 };
 
 export const WorkflowCard = ({ item }: WorkflowCardProps) => {
@@ -63,7 +97,8 @@ export const WorkflowCard = ({ item }: WorkflowCardProps) => {
     }
   };
 
-  const priorityBorder = PRIORITY_COLORS[item.priority as keyof typeof PRIORITY_COLORS] || '';
+  const priorityBorder = PRIORITY_BORDER_COLORS[item.priority as keyof typeof PRIORITY_BORDER_COLORS] || '';
+  const priorityConfig = PRIORITY_CONFIG[item.priority as keyof typeof PRIORITY_CONFIG];
   const approvalCount = approvals.filter(a => a.approved).length;
   const rejectionCount = approvals.filter(a => !a.approved).length;
 
@@ -77,7 +112,7 @@ export const WorkflowCard = ({ item }: WorkflowCardProps) => {
 
   return (
     <>
-      <Card className={`cursor-pointer hover:shadow-md transition-shadow bg-card border-border hover:border-accent ${priorityBorder} ${priorityBorder ? 'border-l-2' : ''}`}>
+      <Card className={`cursor-pointer hover:shadow-md transition-shadow bg-card border-border hover:border-accent ${priorityBorder} ${priorityBorder ? 'border-l-4' : ''}`}>
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between">
             <h4 className="font-medium text-sm line-clamp-2 text-foreground">{item.title}</h4>
@@ -107,9 +142,12 @@ export const WorkflowCard = ({ item }: WorkflowCardProps) => {
             <Badge variant="secondary" className="text-xs">
               {CONTENT_TYPE_LABELS[item.content_type]}
             </Badge>
-            {item.priority > 0 && (
-              <Badge variant="destructive" className="text-xs">
-                Prioridade {item.priority}
+            {priorityConfig && (
+              <Badge 
+                variant="outline" 
+                className={`text-xs border ${priorityConfig.color}`}
+              >
+                {priorityConfig.label}
               </Badge>
             )}
           </div>
@@ -138,7 +176,7 @@ export const WorkflowCard = ({ item }: WorkflowCardProps) => {
                   <span className="font-medium">
                     {latestActivity.profiles?.full_name || 'Usuário'}
                   </span>{' '}
-                  {latestActivity.description.toLowerCase()}
+                  {translateActivity(latestActivity.description)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {format(new Date(latestActivity.created_at), 'dd/MM HH:mm', { locale: ptBR })}
