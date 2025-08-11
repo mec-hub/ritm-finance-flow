@@ -11,11 +11,11 @@ import { Plus } from 'lucide-react';
 import type { VideoStage } from '@/hooks/useVideoWorkflow';
 
 const columns: { id: VideoStage; title: string; color: string }[] = [
-  { id: 'scripted', title: 'Roteirizado', color: 'bg-yellow-100 border-yellow-300' },
-  { id: 'recorded', title: 'Gravado', color: 'bg-blue-100 border-blue-300' },
-  { id: 'editing', title: 'Editando', color: 'bg-orange-100 border-orange-300' },
-  { id: 'awaiting_review', title: 'Aguardando Revisão', color: 'bg-purple-100 border-purple-300' },
-  { id: 'approved', title: 'Aprovado', color: 'bg-green-100 border-green-300' },
+  { id: 'scripted', title: 'Roteirizado', color: 'bg-gradient-to-br from-amber-500/20 to-yellow-600/20 border-amber-500/30' },
+  { id: 'recorded', title: 'Gravado', color: 'bg-gradient-to-br from-blue-500/20 to-blue-600/20 border-blue-500/30' },
+  { id: 'editing', title: 'Editando', color: 'bg-gradient-to-br from-orange-500/20 to-orange-600/20 border-orange-500/30' },
+  { id: 'awaiting_review', title: 'Aguardando Revisão', color: 'bg-gradient-to-br from-purple-500/20 to-purple-600/20 border-purple-500/30' },
+  { id: 'approved', title: 'Aprovado', color: 'bg-gradient-to-br from-green-500/20 to-green-600/20 border-green-500/30' },
 ];
 
 export function WorkflowKanban() {
@@ -52,7 +52,7 @@ export function WorkflowKanban() {
             Gerencie o fluxo de produção dos seus vídeos
           </p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
+        <Button onClick={() => setCreateDialogOpen(true)} className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
           <Plus className="h-4 w-4 mr-2" />
           Novo Item
         </Button>
@@ -61,11 +61,11 @@ export function WorkflowKanban() {
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {columns.map(column => (
-            <Card key={column.id} className={`${column.color}`}>
+            <Card key={column.id} className={`${column.color} backdrop-blur-sm border-2 transition-all hover:shadow-lg hover:scale-[1.02]`}>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center justify-between">
+                <CardTitle className="text-sm font-medium flex items-center justify-between text-foreground">
                   {column.title}
-                  <span className="bg-white rounded-full px-2 py-1 text-xs">
+                  <span className="bg-card/80 backdrop-blur-sm border border-border rounded-full px-3 py-1 text-xs font-semibold shadow-sm">
                     {getItemsByStage(column.id).length}
                   </span>
                 </CardTitle>
@@ -76,8 +76,8 @@ export function WorkflowKanban() {
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`min-h-32 space-y-2 transition-colors ${
-                        snapshot.isDraggingOver ? 'bg-white/50 rounded-md' : ''
+                      className={`min-h-32 space-y-3 transition-all duration-200 ${
+                        snapshot.isDraggingOver ? 'bg-card/30 backdrop-blur-sm rounded-lg border-2 border-dashed border-primary/50 p-2' : ''
                       }`}
                     >
                       {getItemsByStage(column.id).map((item, index) => (
@@ -91,8 +91,8 @@ export function WorkflowKanban() {
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
-                              className={`transition-transform ${
-                                snapshot.isDragging ? 'rotate-2 scale-105' : ''
+                              className={`transition-all duration-200 ${
+                                snapshot.isDragging ? 'rotate-2 scale-105 shadow-xl' : 'hover:scale-[1.02]'
                               }`}
                             >
                               <WorkflowCard item={item} />
