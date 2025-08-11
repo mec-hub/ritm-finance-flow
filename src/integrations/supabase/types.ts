@@ -939,6 +939,9 @@ export type Database = {
         | "short"
         | "livestream"
         | "other"
+        | "davizão_news"
+        | "vlog_de_show"
+        | "resenha"
       event_status: "upcoming" | "completed" | "cancelled"
       recurrence_interval: "weekly" | "monthly" | "quarterly" | "yearly"
       transaction_status: "paid" | "not_paid" | "canceled"
@@ -1086,6 +1089,9 @@ export const Constants = {
         "short",
         "livestream",
         "other",
+        "davizão_news",
+        "vlog_de_show",
+        "resenha",
       ],
       event_status: ["upcoming", "completed", "cancelled"],
       recurrence_interval: ["weekly", "monthly", "quarterly", "yearly"],

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useVideoWorkflow, ContentType } from '@/hooks/useVideoWorkflow';
 import {
@@ -26,7 +25,7 @@ interface CreateItemDialogProps {
 
 const CONTENT_TYPES: { value: ContentType; label: string }[] = [
   { value: 'davizão_news', label: 'Davizão News' },
-  { value: 'vlog_de_Show', label: 'Vlog de Show' },
+  { value: 'vlog_de_show', label: 'Vlog de Show' },
   { value: 'resenha', label: 'Resenha' },
   { value: 'tutorial', label: 'Tutorial' },
   { value: 'review', label: 'Review' },
