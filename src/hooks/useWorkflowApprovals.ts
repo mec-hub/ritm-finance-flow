@@ -27,9 +27,16 @@ export const useWorkflowApprovals = (videoItemId: string) => {
   const isSubscribedRef = useRef(false);
 
   // Fetch approvals with real-time updates
-  const { data: approvals = [], isLoading } = useQuery({
+  const { data: approvals = [], isLoading, error } = useQuery({
     queryKey: ['workflow-approvals', videoItemId],
     queryFn: async () => {
+      if (!videoItemId) {
+        console.log('No videoItemId provided for approvals');
+        return [];
+      }
+      
+      console.log('Fetching approvals for video:', videoItemId);
+      
       const { data, error } = await supabase
         .from('video_workflow_approvals')
         .select(`
@@ -51,13 +58,24 @@ export const useWorkflowApprovals = (videoItemId: string) => {
         return [];
       }
 
+      console.log('Approvals fetched:', data?.length || 0, 'for video:', videoItemId);
+      
       return (data || []).map(approval => ({
         ...approval,
         profiles: approval.profiles || { full_name: null }
       })) as WorkflowApproval[];
     },
-    enabled: !!videoItemId,
+    enabled: !!videoItemId && !!user,
+    staleTime: 30000, // Consider data fresh for 30 seconds
+    refetchOnWindowFocus: false,
   });
+
+  // Log any query errors
+  useEffect(() => {
+    if (error) {
+      console.error('Approvals query error:', error);
+    }
+  }, [error]);
 
   // Add approval mutation
   const addApprovalMutation = useMutation({
@@ -69,6 +87,8 @@ export const useWorkflowApprovals = (videoItemId: string) => {
       comment?: string;
     }) => {
       if (!user) throw new Error('User not authenticated');
+      
+      console.log('Adding approval:', { approved, comment }, 'for video:', videoItemId);
       
       const { data, error } = await supabase
         .from('video_workflow_approvals')
@@ -83,7 +103,12 @@ export const useWorkflowApprovals = (videoItemId: string) => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error adding approval:', error);
+        throw error;
+      }
+      
+      console.log('Approval added successfully:', data);
       return data;
     },
     onSuccess: () => {
@@ -106,13 +131,13 @@ export const useWorkflowApprovals = (videoItemId: string) => {
 
   // Set up real-time subscription with proper cleanup
   useEffect(() => {
-    if (!videoItemId || isSubscribedRef.current) return;
+    if (!videoItemId || !user || isSubscribedRef.current) return;
 
     const channelKey = `approvals-${videoItemId}`;
     
     // Check if channel already exists
     if (activeChannels.has(channelKey)) {
-      console.log('Channel already exists for:', videoItemId);
+      console.log('Approvals channel already exists for:', videoItemId);
       return;
     }
 
@@ -155,11 +180,12 @@ export const useWorkflowApprovals = (videoItemId: string) => {
         channelRef.current = null;
       }
     };
-  }, [videoItemId, queryClient]);
+  }, [videoItemId, queryClient, user]);
 
   return {
     approvals,
     isLoading,
+    error,
     addApproval: addApprovalMutation.mutate,
     isAdding: addApprovalMutation.isPending,
   };

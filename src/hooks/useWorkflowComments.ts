@@ -26,9 +26,16 @@ export const useWorkflowComments = (videoItemId: string) => {
   const isSubscribedRef = useRef(false);
 
   // Fetch comments with real-time updates
-  const { data: comments = [], isLoading } = useQuery({
+  const { data: comments = [], isLoading, error } = useQuery({
     queryKey: ['workflow-comments', videoItemId],
     queryFn: async () => {
+      if (!videoItemId) {
+        console.log('No videoItemId provided for comments');
+        return [];
+      }
+      
+      console.log('Fetching comments for video:', videoItemId);
+      
       const { data, error } = await supabase
         .from('video_workflow_comments')
         .select(`
@@ -49,18 +56,31 @@ export const useWorkflowComments = (videoItemId: string) => {
         return [];
       }
 
+      console.log('Comments fetched:', data?.length || 0, 'for video:', videoItemId);
+      
       return (data || []).map(comment => ({
         ...comment,
         profiles: comment.profiles || { full_name: null }
       })) as WorkflowComment[];
     },
-    enabled: !!videoItemId,
+    enabled: !!videoItemId && !!user,
+    staleTime: 30000, // Consider data fresh for 30 seconds
+    refetchOnWindowFocus: false,
   });
+
+  // Log any query errors
+  useEffect(() => {
+    if (error) {
+      console.error('Comments query error:', error);
+    }
+  }, [error]);
 
   // Add comment mutation
   const addCommentMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!user) throw new Error('User not authenticated');
+      
+      console.log('Adding comment:', content, 'for video:', videoItemId);
       
       const { data, error } = await supabase
         .from('video_workflow_comments')
@@ -72,7 +92,12 @@ export const useWorkflowComments = (videoItemId: string) => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error adding comment:', error);
+        throw error;
+      }
+      
+      console.log('Comment added successfully:', data);
       return data;
     },
     onSuccess: () => {
@@ -95,13 +120,13 @@ export const useWorkflowComments = (videoItemId: string) => {
 
   // Set up real-time subscription with proper cleanup
   useEffect(() => {
-    if (!videoItemId || isSubscribedRef.current) return;
+    if (!videoItemId || !user || isSubscribedRef.current) return;
 
     const channelKey = `comments-${videoItemId}`;
     
     // Check if channel already exists
     if (activeChannels.has(channelKey)) {
-      console.log('Channel already exists for:', videoItemId);
+      console.log('Comments channel already exists for:', videoItemId);
       return;
     }
 
@@ -144,11 +169,12 @@ export const useWorkflowComments = (videoItemId: string) => {
         channelRef.current = null;
       }
     };
-  }, [videoItemId, queryClient]);
+  }, [videoItemId, queryClient, user]);
 
   return {
     comments,
     isLoading,
+    error,
     addComment: addCommentMutation.mutate,
     isAdding: addCommentMutation.isPending,
   };

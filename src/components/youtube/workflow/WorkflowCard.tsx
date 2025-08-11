@@ -13,7 +13,8 @@ import {
   XCircle,
   MoreHorizontal,
   Clock,
-  User
+  User,
+  Activity
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -25,6 +26,7 @@ import { WorkflowDetailsModal } from './WorkflowDetailsModal';
 import { useVideoWorkflow } from '@/hooks/useVideoWorkflow';
 import { useWorkflowComments } from '@/hooks/useWorkflowComments';
 import { useWorkflowApprovals } from '@/hooks/useWorkflowApprovals';
+import { useWorkflowActivities } from '@/hooks/useWorkflowActivities';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -52,8 +54,9 @@ const PRIORITY_COLORS = {
 export const WorkflowCard = ({ item }: WorkflowCardProps) => {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const { deleteItem } = useVideoWorkflow();
-  const { comments } = useWorkflowComments(item.id);
-  const { approvals } = useWorkflowApprovals(item.id);
+  const { comments, isLoading: commentsLoading } = useWorkflowComments(item.id);
+  const { approvals, isLoading: approvalsLoading } = useWorkflowApprovals(item.id);
+  const { latestActivity, isLoading: activitiesLoading } = useWorkflowActivities(item.id);
 
   const handleDelete = () => {
     if (confirm('Tem certeza que deseja excluir este item?')) {
@@ -64,6 +67,18 @@ export const WorkflowCard = ({ item }: WorkflowCardProps) => {
   const priorityBorder = PRIORITY_COLORS[item.priority as keyof typeof PRIORITY_COLORS] || '';
   const approvalCount = approvals.filter(a => a.approved).length;
   const rejectionCount = approvals.filter(a => !a.approved).length;
+
+  // Debug logging
+  useEffect(() => {
+    console.log(`WorkflowCard ${item.id} data:`, {
+      commentsCount: comments.length,
+      approvalsCount: approvals.length,
+      latestActivity: latestActivity?.description,
+      commentsLoading,
+      approvalsLoading,
+      activitiesLoading
+    });
+  }, [comments, approvals, latestActivity, commentsLoading, approvalsLoading, activitiesLoading, item.id]);
 
   return (
     <>
@@ -119,6 +134,24 @@ export const WorkflowCard = ({ item }: WorkflowCardProps) => {
             </div>
           )}
 
+          {/* Latest Activity */}
+          {latestActivity && (
+            <div className="flex items-start gap-1 text-xs text-muted-foreground mb-2 bg-muted/30 p-2 rounded">
+              <Activity className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="line-clamp-2">
+                  <span className="font-medium">
+                    {latestActivity.profiles?.full_name || 'Usuário'}
+                  </span>{' '}
+                  {latestActivity.description.toLowerCase()}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {format(new Date(latestActivity.created_at), 'dd/MM HH:mm', { locale: ptBR })}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Activity indicators */}
           <div className="flex items-center gap-2 mb-2">
             {comments.length > 0 && (
@@ -139,6 +172,13 @@ export const WorkflowCard = ({ item }: WorkflowCardProps) => {
               <div className="flex items-center gap-1 text-xs text-red-600">
                 <XCircle className="h-3 w-3" />
                 <span>{rejectionCount}</span>
+              </div>
+            )}
+
+            {/* Loading indicators */}
+            {(commentsLoading || approvalsLoading) && (
+              <div className="text-xs text-muted-foreground">
+                Carregando...
               </div>
             )}
           </div>

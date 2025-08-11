@@ -171,22 +171,11 @@ Deno.serve(async (req) => {
 
     console.log('Processing request:', { metricsType, startDate, endDate })
 
-    // For top-videos, always clear cache to debug
-    if (metricsType === 'top-videos') {
-      const cacheKey = `metrics_${metricsType}_${startDate}_${endDate}`
-      await supabaseClient
-        .from('youtube_cache')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('cache_key', cacheKey)
-      console.log('Cleared cache for top-videos to debug thumbnails')
-    }
-
-    // Check cache first
+    // Check cache first (but always refresh scheduled videos for debugging)
     const cacheKey = `metrics_${metricsType}_${startDate}_${endDate}`
     const cachedData = await fetchFromCache(supabaseClient, user.id, cacheKey)
     
-    if (cachedData && metricsType !== 'top-videos' && metricsType !== 'scheduled-videos') {
+    if (cachedData && metricsType !== 'scheduled-videos') {
       console.log('Returning cached data for:', cacheKey)
       return new Response(JSON.stringify(cachedData), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -199,7 +188,7 @@ Deno.serve(async (req) => {
     // Fetch different metrics based on type
     switch (metricsType) {
       case 'overview':
-        // Channel statistics
+        // ... keep existing code (channel statistics and overview logic)
         const channelResponse = await fetch(
           `https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&id=${tokenData.channel_id}`,
           {
@@ -237,7 +226,7 @@ Deno.serve(async (req) => {
         break
 
       case 'analytics':
-        
+        // ... keep existing code (analytics logic)
         try {
           console.log('Fetching analytics data for channel:', tokenData.channel_id)
 
@@ -342,8 +331,7 @@ Deno.serve(async (req) => {
         break
 
       case 'top-videos':
-        console.log('=== DEBUGGING TOP VIDEOS THUMBNAILS ===')
-        
+        // ... keep existing code (top videos logic)
         const channelVideosResponse = await fetch(
           `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${tokenData.channel_id}&order=viewCount&maxResults=50&type=video`,
           {
@@ -351,18 +339,6 @@ Deno.serve(async (req) => {
           }
         )
         const channelVideosData = await channelVideosResponse.json()
-        
-        console.log('Search API response structure:', {
-          itemsCount: channelVideosData.items?.length || 0,
-          firstItemStructure: channelVideosData.items?.[0] ? {
-            id: channelVideosData.items[0].id,
-            snippet: {
-              title: channelVideosData.items[0].snippet?.title,
-              hasThumbnails: !!channelVideosData.items[0].snippet?.thumbnails,
-              thumbnailKeys: channelVideosData.items[0].snippet?.thumbnails ? Object.keys(channelVideosData.items[0].snippet.thumbnails) : []
-            }
-          } : null
-        })
 
         const allVideoIds = channelVideosData.items?.map((video: any) => video.id.videoId).join(',')
         let allVideoStats = []
@@ -376,40 +352,14 @@ Deno.serve(async (req) => {
           )
           const allVideoStatsData = await allVideoStatsResponse.json()
           
-          console.log('Videos API response structure:', {
-            itemsCount: allVideoStatsData.items?.length || 0,
-            firstItemThumbnails: allVideoStatsData.items?.[0]?.snippet?.thumbnails ? {
-              keys: Object.keys(allVideoStatsData.items[0].snippet.thumbnails),
-              defaultUrl: allVideoStatsData.items[0].snippet.thumbnails.default?.url,
-              mediumUrl: allVideoStatsData.items[0].snippet.thumbnails.medium?.url,
-              highUrl: allVideoStatsData.items[0].snippet.thumbnails.high?.url
-            } : 'NO_THUMBNAILS'
-          })
-          
-          allVideoStats = (allVideoStatsData.items || []).map((video: any) => {
-            const videoData = {
-              id: video.id,
-              title: video.snippet?.title || '',
-              publishedAt: video.snippet?.publishedAt || '',
-              thumbnails: video.snippet?.thumbnails || null,
-              statistics: video.statistics || { viewCount: '0', likeCount: '0', commentCount: '0' },
-              contentDetails: video.contentDetails || { duration: 'PT0S' }
-            }
-            
-            console.log(`Video ${video.id} thumbnails:`, {
-              hasThumbnails: !!videoData.thumbnails,
-              thumbnailKeys: videoData.thumbnails ? Object.keys(videoData.thumbnails) : [],
-              defaultUrl: videoData.thumbnails?.default?.url,
-              mediumUrl: videoData.thumbnails?.medium?.url
-            })
-            
-            return videoData
-          })
-          
-          console.log('Processed video stats sample:', {
-            totalVideos: allVideoStats.length,
-            firstVideoThumbnail: allVideoStats[0]?.thumbnails
-          })
+          allVideoStats = (allVideoStatsData.items || []).map((video: any) => ({
+            id: video.id,
+            title: video.snippet?.title || '',
+            publishedAt: video.snippet?.publishedAt || '',
+            thumbnails: video.snippet?.thumbnails || null,
+            statistics: video.statistics || { viewCount: '0', likeCount: '0', commentCount: '0' },
+            contentDetails: video.contentDetails || { duration: 'PT0S' }
+          }))
         }
 
         responseData = {
@@ -417,75 +367,147 @@ Deno.serve(async (req) => {
             parseInt(b.statistics.viewCount || '0') - parseInt(a.statistics.viewCount || '0')
           ).slice(0, 20)
         }
-        
-        console.log('Final response thumbnails check:', {
-          topVideosCount: responseData.topVideos?.length || 0,
-          firstTopVideoThumbnails: responseData.topVideos?.[0]?.thumbnails
-        })
-        console.log('=== END DEBUGGING ===')
         break
 
       case 'scheduled-videos':
+        console.log('=== ENHANCED SCHEDULED VIDEOS DETECTION ===')
         console.log('Fetching scheduled videos for channel:', tokenData.channel_id)
         
         try {
-          // Fetch all videos with status=unlisted or private which might include scheduled ones
-          const scheduledResponse = await fetch(
-            `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${tokenData.channel_id}&order=date&maxResults=50&type=video`,
+          // Method 1: Try to get videos that are private/unlisted which might include scheduled ones
+          console.log('Method 1: Checking private/unlisted videos...')
+          const myVideosResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/search?part=snippet&forMine=true&type=video&maxResults=50&order=date`,
             {
               headers: { 'Authorization': `Bearer ${accessToken}` },
             }
           )
-          const scheduledSearchData = await scheduledResponse.json()
+          
+          if (!myVideosResponse.ok) {
+            console.error('My videos search failed:', await myVideosResponse.text())
+            throw new Error('Failed to fetch user videos')
+          }
+          
+          const myVideosData = await myVideosResponse.json()
+          console.log('My videos response:', {
+            itemsCount: myVideosData.items?.length || 0,
+            pageInfo: myVideosData.pageInfo,
+            error: myVideosData.error
+          })
 
-          if (scheduledSearchData.items && scheduledSearchData.items.length > 0) {
-            const videoIds = scheduledSearchData.items.map((video: any) => video.id.videoId).join(',')
+          let scheduledVideos = []
+
+          if (myVideosData.items && myVideosData.items.length > 0) {
+            const videoIds = myVideosData.items.map((video: any) => video.id.videoId).join(',')
             
-            // Get detailed video information including status and scheduled publish time
+            // Get detailed video information including status
+            console.log('Fetching detailed video status for', myVideosData.items.length, 'videos...')
             const videoDetailsResponse = await fetch(
               `https://www.googleapis.com/youtube/v3/videos?part=snippet,status&id=${videoIds}`,
               {
                 headers: { 'Authorization': `Bearer ${accessToken}` },
               }
             )
-            const videoDetailsData = await videoDetailsResponse.json()
-
-            // Filter for videos that are scheduled (have publishAt in the future)
-            const scheduledVideos = (videoDetailsData.items || [])
-              .filter((video: any) => {
-                return video.snippet?.publishAt && 
-                       new Date(video.snippet.publishAt) > new Date() &&
-                       (video.status?.privacyStatus === 'private' || video.status?.privacyStatus === 'unlisted')
+            
+            if (!videoDetailsResponse.ok) {
+              console.error('Video details fetch failed:', await videoDetailsResponse.text())
+            } else {
+              const videoDetailsData = await videoDetailsResponse.json()
+              console.log('Video details response:', {
+                itemsCount: videoDetailsData.items?.length || 0,
+                sampleVideo: videoDetailsData.items?.[0] ? {
+                  title: videoDetailsData.items[0].snippet?.title,
+                  privacyStatus: videoDetailsData.items[0].status?.privacyStatus,
+                  publishAt: videoDetailsData.items[0].status?.publishAt,
+                  uploadStatus: videoDetailsData.items[0].status?.uploadStatus
+                } : 'No videos'
               })
-              .sort((a: any, b: any) => 
-                new Date(a.snippet.publishAt).getTime() - new Date(b.snippet.publishAt).getTime()
-              )
 
-            console.log('Found scheduled videos:', scheduledVideos.length)
-
-            responseData = {
-              scheduledVideos: scheduledVideos
-            }
-          } else {
-            responseData = {
-              scheduledVideos: []
+              // Filter for scheduled videos
+              scheduledVideos = (videoDetailsData.items || [])
+                .filter((video: any) => {
+                  const hasPublishAt = video.status?.publishAt
+                  const isPrivate = video.status?.privacyStatus === 'private'
+                  const isUnlisted = video.status?.privacyStatus === 'unlisted'
+                  const isFutureDate = hasPublishAt && new Date(video.status.publishAt) > new Date()
+                  
+                  console.log(`Video ${video.snippet?.title}:`, {
+                    privacyStatus: video.status?.privacyStatus,
+                    publishAt: video.status?.publishAt,
+                    uploadStatus: video.status?.uploadStatus,
+                    isFutureDate,
+                    isScheduled: hasPublishAt && isFutureDate && (isPrivate || isUnlisted)
+                  })
+                  
+                  return hasPublishAt && isFutureDate && (isPrivate || isUnlisted)
+                })
+                .sort((a: any, b: any) => 
+                  new Date(a.status.publishAt).getTime() - new Date(b.status.publishAt).getTime()
+                )
             }
           }
+
+          // Method 2: Alternative approach using activities API if available
+          if (scheduledVideos.length === 0) {
+            console.log('Method 2: Trying channel activities approach...')
+            try {
+              const activitiesResponse = await fetch(
+                `https://www.googleapis.com/youtube/v3/activities?part=snippet,contentDetails&channelId=${tokenData.channel_id}&maxResults=50`,
+                {
+                  headers: { 'Authorization': `Bearer ${accessToken}` },
+                }
+              )
+              
+              if (activitiesResponse.ok) {
+                const activitiesData = await activitiesResponse.json()
+                console.log('Activities response:', {
+                  itemsCount: activitiesData.items?.length || 0,
+                  activities: activitiesData.items?.map((item: any) => ({
+                    type: item.snippet?.type,
+                    publishedAt: item.snippet?.publishedAt,
+                    title: item.snippet?.title
+                  })) || []
+                })
+              } else {
+                console.log('Activities API not accessible:', await activitiesResponse.text())
+              }
+            } catch (error) {
+              console.log('Activities API error:', error)
+            }
+          }
+
+          console.log('Final scheduled videos found:', scheduledVideos.length)
+          
+          responseData = {
+            scheduledVideos: scheduledVideos,
+            debug: {
+              totalVideosChecked: myVideosData.items?.length || 0,
+              method: 'forMine=true search + video details',
+              timestamp: new Date().toISOString()
+            }
+          }
+
         } catch (error) {
           console.error('Error fetching scheduled videos:', error)
           responseData = {
             scheduledVideos: [],
-            error: 'Could not fetch scheduled videos. This may require additional permissions.'
+            error: `Could not fetch scheduled videos: ${error.message}`,
+            debug: {
+              error: error.message,
+              timestamp: new Date().toISOString()
+            }
           }
         }
+        
+        console.log('=== END ENHANCED SCHEDULED VIDEOS DETECTION ===')
         break
 
       default:
         throw new Error(`Unknown metrics type: ${metricsType}`)
     }
 
-    // Cache the response (except for top-videos and scheduled-videos while debugging)
-    if (metricsType !== 'top-videos' && metricsType !== 'scheduled-videos') {
+    // Cache the response (except for scheduled-videos while debugging)
+    if (metricsType !== 'scheduled-videos') {
       await saveToCache(supabaseClient, user.id, cacheKey, responseData, 30)
     }
 
