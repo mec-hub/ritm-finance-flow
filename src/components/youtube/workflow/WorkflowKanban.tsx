@@ -11,11 +11,11 @@ import { Plus } from 'lucide-react';
 import type { VideoStage } from '@/hooks/useVideoWorkflow';
 
 const columns: { id: VideoStage; title: string; color: string }[] = [
-  { id: 'scripted', title: 'Roteirizado', color: 'bg-gradient-to-br from-amber-500/20 to-yellow-600/20 border-amber-500/30' },
-  { id: 'recorded', title: 'Gravado', color: 'bg-gradient-to-br from-blue-500/20 to-blue-600/20 border-blue-500/30' },
-  { id: 'editing', title: 'Editando', color: 'bg-gradient-to-br from-orange-500/20 to-orange-600/20 border-orange-500/30' },
-  { id: 'awaiting_review', title: 'Aguardando Revisão', color: 'bg-gradient-to-br from-purple-500/20 to-purple-600/20 border-purple-500/30' },
-  { id: 'approved', title: 'Aprovado', color: 'bg-gradient-to-br from-green-500/20 to-green-600/20 border-green-500/30' },
+  { id: 'scripted', title: 'Roteirizado', color: 'bg-card border-cyan-500' },
+  { id: 'recorded', title: 'Gravado', color: 'bg-card border-yellow-500' },
+  { id: 'editing', title: 'Editando', color: 'bg-card border-purple-500' },
+  { id: 'awaiting_review', title: 'Aguardando Revisão', color: 'bg-card border-orange-500' },
+  { id: 'approved', title: 'Aprovado', color: 'bg-card border-green-500' },
 ];
 
 export function WorkflowKanban() {
@@ -61,11 +61,11 @@ export function WorkflowKanban() {
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {columns.map(column => (
-            <Card key={column.id} className={`${column.color} backdrop-blur-sm border-2 transition-all hover:shadow-lg hover:scale-[1.02]`}>
+            <Card key={column.id} className={`${column.color} border-2 transition-all hover:shadow-lg hover:scale-[1.02]`}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center justify-between text-foreground">
                   {column.title}
-                  <span className="bg-card/80 backdrop-blur-sm border border-border rounded-full px-3 py-1 text-xs font-semibold shadow-sm">
+                  <span className="bg-background border border-border rounded-full px-3 py-1 text-xs font-semibold shadow-sm">
                     {getItemsByStage(column.id).length}
                   </span>
                 </CardTitle>
@@ -77,7 +77,7 @@ export function WorkflowKanban() {
                       ref={provided.innerRef}
                       {...provided.droppableProps}
                       className={`min-h-32 space-y-3 transition-all duration-200 ${
-                        snapshot.isDraggingOver ? 'bg-card/30 backdrop-blur-sm rounded-lg border-2 border-dashed border-primary/50 p-2' : ''
+                        snapshot.isDraggingOver ? 'bg-background/50 rounded-lg border-2 border-dashed border-primary/50 p-2' : ''
                       }`}
                     >
                       {getItemsByStage(column.id).map((item, index) => (
