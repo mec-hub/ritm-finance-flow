@@ -60,6 +60,10 @@ export const CommentItem = ({ comment, onEdit, onDelete }: CommentItemProps) => 
     }
   };
 
+  const handleToggleAcknowledgment = () => {
+    toggleAcknowledgment();
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -151,7 +155,7 @@ export const CommentItem = ({ comment, onEdit, onDelete }: CommentItemProps) => 
                 variant="ghost"
                 size="sm"
                 className={`h-6 px-2 text-xs ${hasAcknowledged ? 'bg-green-100 text-green-800 hover:bg-green-200' : ''}`}
-                onClick={toggleAcknowledgment}
+                onClick={handleToggleAcknowledgment}
                 disabled={isToggling}
               >
                 <Check className="h-3 w-3 mr-1" />
