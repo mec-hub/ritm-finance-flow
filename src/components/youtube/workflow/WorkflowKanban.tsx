@@ -3,12 +3,11 @@ import { useState } from 'react';
 import { useVideoWorkflow } from '@/hooks/useVideoWorkflow';
 import { WorkflowCard } from './WorkflowCard';
 import { CreateItemDialog } from './CreateItemDialog';
+import { VideoWorkflowCalendar } from './VideoWorkflowCalendar';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { VideoWorkflowCalendar } from './VideoWorkflowCalendar';
-import { Plus, Kanban, Calendar } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { VideoStage } from '@/hooks/useVideoWorkflow';
 
 const columns: { id: VideoStage; title: string; color: string }[] = [
@@ -59,76 +58,59 @@ export function WorkflowKanban() {
         </Button>
       </div>
 
-      <Tabs defaultValue="kanban" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="kanban" className="flex items-center gap-2">
-            <Kanban className="h-4 w-4" />
-            Kanban
-          </TabsTrigger>
-          <TabsTrigger value="calendar" className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            Calendário
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="kanban" className="mt-6">
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              {columns.map(column => (
-                <Card key={column.id} className={`${column.color}`}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium flex items-center justify-between">
-                      {column.title}
-                      <span className="bg-white rounded-full px-2 py-1 text-xs">
-                        {getItemsByStage(column.id).length}
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <Droppable droppableId={column.id}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                          className={`min-h-32 space-y-2 transition-colors ${
-                            snapshot.isDraggingOver ? 'bg-white/50 rounded-md' : ''
-                          }`}
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {columns.map(column => (
+            <Card key={column.id} className={`${column.color}`}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center justify-between">
+                  {column.title}
+                  <span className="bg-white rounded-full px-2 py-1 text-xs">
+                    {getItemsByStage(column.id).length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <Droppable droppableId={column.id}>
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={`min-h-32 space-y-2 transition-colors ${
+                        snapshot.isDraggingOver ? 'bg-white/50 rounded-md' : ''
+                      }`}
+                    >
+                      {getItemsByStage(column.id).map((item, index) => (
+                        <Draggable
+                          key={item.id}
+                          draggableId={item.id}
+                          index={index}
                         >
-                          {getItemsByStage(column.id).map((item, index) => (
-                            <Draggable
-                              key={item.id}
-                              draggableId={item.id}
-                              index={index}
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className={`transition-transform ${
+                                snapshot.isDragging ? 'rotate-2 scale-105' : ''
+                              }`}
                             >
-                              {(provided, snapshot) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className={`transition-transform ${
-                                    snapshot.isDragging ? 'rotate-2 scale-105' : ''
-                                  }`}
-                                >
-                                  <WorkflowCard item={item} />
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </DragDropContext>
-        </TabsContent>
+                              <WorkflowCard item={item} />
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </DragDropContext>
 
-        <TabsContent value="calendar" className="mt-6">
-          <VideoWorkflowCalendar workflowItems={workflowItems} />
-        </TabsContent>
-      </Tabs>
+      <VideoWorkflowCalendar workflowItems={workflowItems} />
 
       <CreateItemDialog
         open={createDialogOpen}
